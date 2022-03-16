@@ -1,0 +1,15 @@
+# -*- org-todo-keyword-faces: (("CHECKPOINT" . "blue")); -*-
+#+TODO: TODO | DONE
+#+TODO: | CHECKPOINT
+
+* outline
+** TODO load geometries
+** TODO run MOPAC
+*** TODO write .mop input files
+*** TODO write submission scripts
+*** TODO submit submission scripts
+*** TODO monitor jobs and read output
+*** TODO clean up after above as stuff finishes
+** CHECKPOINT - these two are the foundation
+** TODO read config file
+** TODO load energies

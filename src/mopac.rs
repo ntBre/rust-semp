@@ -17,27 +17,32 @@ impl ToString for Param {
     }
 }
 
-/// Mopac holds the information needed to write a MOPAC input file
-pub struct Mopac {
+/// Mopac holds the information needed to write a MOPAC input file. `filename`
+/// should not include an extension. `.mop` will be appended for input files,
+/// and `.out` and `.aux` will be appended for output files.
+pub struct Mopac<'a> {
+    filename: &'a str,
     params: Vec<Param>,
     geom: Vec<Atom>,
 }
 
-impl Mopac {
+impl<'a> Mopac<'a> {
     pub fn write_params(&self, filename: &str) {
         let mut body = String::new();
         for p in &self.params {
             body.push_str(&p.to_string());
         }
-        let mut file = File::create(filename).expect("failed to create params file");
+        let mut file =
+            File::create(filename).expect("failed to create params file");
         write!(file, "{}", body).expect("failed to write params file");
     }
 
     /// Caller should ensure that paramfile is written before calling. This
     /// allows common parameter files to be shared between jobs
-    pub fn write_input(&self, filename: &str, paramfile: &str) {
+    pub fn write_input(&self, paramfile: &str) {
         let geom = geom_string(&self.geom);
-        let mut file = File::create(filename).expect("failed to create input file");
+        let mut file = File::create(format!("{}.mop", self.filename))
+            .expect("failed to create input file");
         write!(
             file,
             "scfcrt=1.D-21 aux(precision=14) PM6 external={paramfile}
@@ -48,6 +53,10 @@ Comment line 2
         )
         .expect("failed to write input file");
     }
+
+    pub fn read_output() {
+	todo!();
+    }
 }
 
 #[cfg(test)]
@@ -56,8 +65,9 @@ mod tests {
 
     use super::*;
 
-    fn test_mopac() -> Mopac {
+    fn test_mopac<'a>() -> Mopac<'a> {
         Mopac {
+            filename: "/tmp/test",
             params: vec![
                 Param {
                     name: String::from("USS"),
@@ -141,7 +151,7 @@ mod tests {
 
     #[test]
     fn test_write_input() {
-        test_mopac().write_input("/tmp/test.mop", "params.dat");
+        test_mopac().write_input("params.dat");
         let got = fs::read_to_string("/tmp/test.mop").expect("file not found");
         let want = "scfcrt=1.D-21 aux(precision=14) PM6 external=params.dat
 Comment line 1
@@ -149,12 +159,14 @@ Comment line 2
 
 ";
         assert_eq!(got, want);
+        fs::remove_file("/tmp/test.mop").unwrap();
     }
 
     #[test]
     fn test_write_params() {
         test_mopac().write_params("/tmp/params.dat");
-        let got = fs::read_to_string("/tmp/params.dat").expect("file not found");
+        let got =
+            fs::read_to_string("/tmp/params.dat").expect("file not found");
         let want = "USS            H    -11.246958000000
 ZS             H      1.268641000000
 BETAS          H     -8.352984000000
@@ -172,5 +184,6 @@ GP2            C      9.486212000000
 HSP            C      0.717322000000
 ";
         assert_eq!(got, want);
+        fs::remove_file("/tmp/params.dat").unwrap();
     }
 }

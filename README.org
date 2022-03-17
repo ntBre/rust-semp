@@ -9,15 +9,18 @@ be inside of the 'as needed' part -> iterator returning jobs?
 - use Iter.take(n) to grab the first n, I guess you slice off the front n
   elements of the original slice after that
 
-* outline
+see [[https://msfjarvis.dev/posts/building-static-rust-binaries-for-linux/][this]] if I have trouble with static binaries
+
+* tasks
 ** DONE load geometries
 ** DONE write .mop input files
 ** DONE write param file
 ** DONE write submission scripts
+** TODO process MOPAC output
 ** TODO submit submission scripts
-** TODO monitor jobs and read output
+   - need real submission and also test implementation
+** TODO monitor jobs
 ** TODO clean up after above as stuff finishes
-** TODO run MOPAC
 ** CHECKPOINT above are the essentials
 ** TODO assemble Jacobian matrix
 ** TODO load energies
@@ -25,3 +28,21 @@ be inside of the 'as needed' part -> iterator returning jobs?
 ** TODO implement levmar
 ** CHECKPOINT below are niceties
 ** TODO read config file
+
+* basic job-running outline
+** generate list of Mopacs
+** as needed, turn mopacs into jobs
+   - write input file
+   - write param file
+   - write submission script
+   - the last two of these need to be chunked and chunked separately
+     - only need to write a new param file when the parameters change
+       - share it across forward/back of numjac and across a run of single
+         semi-empirical vector run
+     - write a new submission script per chunksize jobs
+** submit these jobs
+** poll finishing jobs and extract energies
+** delete finished jobs
+   - mop, out, aux, arc
+   - param file - when shared jobs done
+   - pbs file - when different set of shared jobs done

@@ -1,7 +1,7 @@
 use std::{fs::File, io::BufRead, io::BufReader, io::Write};
 
 pub mod mopac;
-pub mod slurm;
+pub mod queue;
 
 #[derive(Debug)]
 pub struct Atom {
@@ -75,9 +75,15 @@ pub fn load_geoms(filename: &str) -> Vec<Vec<f64>> {
     ret
 }
 
-pub fn write_submit_script(filename: &str, infiles: Vec<&str>) {
-    let mut body = String::from(
-        "#!/bin/bash
+/// `filename` is the name of the Slurm submission script
+pub struct Slurm<'a> {
+    filename: &'a str,
+}
+
+impl<'a> queue::Submit for Slurm<'a> {
+    fn write_submit_script(&self, infiles: Vec<&str>) {
+        let mut body = String::from(
+            "#!/bin/bash
 #SBATCH --job-name=semp
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
@@ -85,13 +91,18 @@ pub fn write_submit_script(filename: &str, infiles: Vec<&str>) {
 #SBATCH --no-requeue
 #SBATCH --mem=1gb
 export LD_LIBRARY_PATH=/home/qc/mopac2016/\n",
-    );
-    for f in infiles {
-        body.push_str(&format!("/home/qc/mopac2016/MOPAC2016.exe {f}\n"));
+        );
+        for f in infiles {
+            body.push_str(&format!("/home/qc/mopac2016/MOPAC2016.exe {f}\n"));
+        }
+        let mut file =
+            File::create(self.filename).expect("failed to create params file");
+        write!(file, "{}", body).expect("failed to write params file");
     }
-    let mut file =
-        File::create(filename).expect("failed to create params file");
-    write!(file, "{}", body).expect("failed to write params file");
+
+    fn submit(&self) {
+        todo!()
+    }
 }
 
 #[cfg(test)]
@@ -99,6 +110,7 @@ mod tests {
     use std::fs;
 
     use super::*;
+    use crate::queue::*;
 
     #[test]
     fn test_load_geoms() {
@@ -172,10 +184,14 @@ mod tests {
 
     #[test]
     fn test_write_submit_script() {
-        write_submit_script(
-            "/tmp/submit.slurm",
-            vec!["input1.mop", "input2.mop", "input3.mop"],
-        );
+        Slurm {
+            filename: "/tmp/submit.slurm",
+        }
+        .write_submit_script(vec![
+            "input1.mop",
+            "input2.mop",
+            "input3.mop",
+        ]);
         let got = fs::read_to_string("/tmp/submit.slurm")
             .expect("failed to read /tmp/submit.slurm");
         let want = "#!/bin/bash
@@ -191,5 +207,23 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
 /home/qc/mopac2016/MOPAC2016.exe input3.mop
 ";
         assert_eq!(got, want);
+        fs::remove_file("/tmp/submit.slurm").unwrap();
+    }
+
+    struct TestQueue<'a> {
+        filename: &'a str,
+    }
+
+    impl<'a> Submit for TestQueue<'a> {
+        fn write_submit_script(&self, infiles: Vec<&str>) {
+            Slurm {
+                filename: self.filename,
+            }
+            .write_submit_script(infiles);
+        }
+
+        fn submit(&self) {
+            todo!()
+        }
     }
 }

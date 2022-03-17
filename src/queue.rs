@@ -1,4 +1,4 @@
-use std::{path::Path, process::Command};
+use std::{path::Path, process::Command, str};
 
 pub trait Submit {
     fn write_submit_script(&self, infiles: Vec<&str>);
@@ -7,21 +7,13 @@ pub trait Submit {
 
     fn submit_command(&self) -> &str;
 
-    fn submit(&self) {
-        let path = Path::new(self.filename());
-        let dir = match path.parent() {
-            Some(d) => d,
-            None => Path::new("."),
-        };
-        let base = path.file_name().expect("expected filename");
+    fn submit(&self) -> String {
         let output = match Command::new(self.submit_command())
-            .current_dir(dir)
-            .arg(base)
+            .arg(self.filename())
             .output()
         {
-            Ok(s) => s,
+            Ok(s) => return String::from(str::from_utf8(&s.stdout).unwrap()),
             Err(_) => todo!(),
         };
-        dbg!(path, dir, base, output);
     }
 }

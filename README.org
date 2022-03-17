@@ -13,7 +13,7 @@ be inside of the 'as needed' part -> iterator returning jobs?
 ** DONE load geometries
 ** DONE write .mop input files
 ** DONE write param file
-** TODO write submission scripts
+** DONE write submission scripts
 ** TODO submit submission scripts
 ** TODO monitor jobs and read output
 ** TODO clean up after above as stuff finishes

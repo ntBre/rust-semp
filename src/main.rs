@@ -1,4 +1,4 @@
-use rust_semp::{self, Atom};
+use rust_semp::Atom;
 
 fn main() {
     let names = vec!["C", "C", "C", "H", "H"];

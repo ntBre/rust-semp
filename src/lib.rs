@@ -1,6 +1,7 @@
-use std::{fs::File, io::BufRead, io::BufReader};
+use std::{fs::File, io::BufRead, io::BufReader, io::Write};
 
-mod mopac;
+pub mod mopac;
+pub mod slurm;
 
 #[derive(Debug)]
 pub struct Atom {
@@ -26,8 +27,8 @@ impl ToString for Atom {
 pub fn geom_string(geom: &Vec<Atom>) -> String {
     let ret = String::new();
     for g in geom {
-	println!("{:2}", g.label);
-	todo!()
+        println!("{:2}", g.label);
+        todo!()
     }
     ret
 }
@@ -74,8 +75,29 @@ pub fn load_geoms(filename: &str) -> Vec<Vec<f64>> {
     ret
 }
 
+pub fn write_submit_script(filename: &str, infiles: Vec<&str>) {
+    let mut body = String::from(
+        "#!/bin/bash
+#SBATCH --job-name=semp
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH -o {filename}.out
+#SBATCH --no-requeue
+#SBATCH --mem=1gb
+export LD_LIBRARY_PATH=/home/qc/mopac2016/\n",
+    );
+    for f in infiles {
+        body.push_str(&format!("/home/qc/mopac2016/MOPAC2016.exe {f}\n"));
+    }
+    let mut file =
+        File::create(filename).expect("failed to create params file");
+    write!(file, "{}", body).expect("failed to write params file");
+}
+
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
     use super::*;
 
     #[test]
@@ -146,5 +168,28 @@ mod tests {
             }
         }
         true
+    }
+
+    #[test]
+    fn test_write_submit_script() {
+        write_submit_script(
+            "/tmp/submit.slurm",
+            vec!["input1.mop", "input2.mop", "input3.mop"],
+        );
+        let got = fs::read_to_string("/tmp/submit.slurm")
+            .expect("failed to read /tmp/submit.slurm");
+        let want = "#!/bin/bash
+#SBATCH --job-name=semp
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH -o {filename}.out
+#SBATCH --no-requeue
+#SBATCH --mem=1gb
+export LD_LIBRARY_PATH=/home/qc/mopac2016/
+/home/qc/mopac2016/MOPAC2016.exe input1.mop
+/home/qc/mopac2016/MOPAC2016.exe input2.mop
+/home/qc/mopac2016/MOPAC2016.exe input3.mop
+";
+        assert_eq!(got, want);
     }
 }

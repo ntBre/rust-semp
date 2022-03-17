@@ -1,4 +1,6 @@
 use super::*;
+use std::fs::File;
+use std::io::Write;
 
 #[derive(Debug)]
 pub struct Param {
@@ -23,13 +25,15 @@ impl Mopac {
     fn make_params(&self) -> String {
         let mut ret = String::new();
         for p in &self.params {
-	    ret.push_str(&p.to_string());
+            ret.push_str(&p.to_string());
         }
         ret
     }
     // TODO this is probably going to be pub
     fn write_params(&self, filename: &str) {
         let body = self.make_params();
+        let mut file = File::create(filename).expect("failed to create params file");
+        write!(file, "{}", body).expect("failed to write params file");
     }
     fn make_input(&self, paramfile: &str) -> String {
         let geom = geom_string(&self.geom);
@@ -54,24 +58,8 @@ Comment line 2
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_make_input() {
-        let mp = Mopac {
-            params: Vec::new(),
-            geom: Vec::new(),
-        };
-        let got = mp.make_input("params.dat");
-        let want = "scfcrt=1.D-21 aux(precision=14) PM6 external=params.dat
-Comment line 1
-Comment line 2
-
-";
-        assert_eq!(got, want);
-    }
-
-    #[test]
-    fn test_make_params() {
-        let mp = Mopac {
+    fn test_mopac() -> Mopac {
+        Mopac {
             params: vec![
                 Param {
                     name: String::from("USS"),
@@ -150,8 +138,23 @@ Comment line 2
                 },
             ],
             geom: Vec::new(),
-        };
-        let got = mp.make_params();
+        }
+    }
+
+    #[test]
+    fn test_make_input() {
+        let got = test_mopac().make_input("params.dat");
+        let want = "scfcrt=1.D-21 aux(precision=14) PM6 external=params.dat
+Comment line 1
+Comment line 2
+
+";
+        assert_eq!(got, want);
+    }
+
+    #[test]
+    fn test_make_params() {
+        let got = test_mopac().make_params();
         let want = "USS            H    -11.246958000000
 ZS             H      1.268641000000
 BETAS          H     -8.352984000000
@@ -169,5 +172,28 @@ GP2            C      9.486212000000
 HSP            C      0.717322000000
 ";
         assert_eq!(got, want, "got\n{}, wanted\n{}", got, want);
+    }
+
+    #[test]
+    fn test_write_params() {
+        test_mopac().write_params("/tmp/params.dat");
+	let got = include_str!("/tmp/params.dat");
+        let want = "USS            H    -11.246958000000
+ZS             H      1.268641000000
+BETAS          H     -8.352984000000
+GSS            H     14.448686000000
+USS            C    -51.089653000000
+UPP            C    -39.937920000000
+ZS             C      2.047558000000
+ZP             C      1.702841000000
+BETAS          C    -15.385236000000
+BETAP          C     -7.471929000000
+GSS            C     13.335519000000
+GPP            C     10.778326000000
+GSP            C     11.528134000000
+GP2            C      9.486212000000
+HSP            C      0.717322000000
+";
+	assert_eq!(got, want);
     }
 }

@@ -1,8 +1,9 @@
-#![allow(dead_code)]
-
 use super::*;
 use std::fs::File;
-use std::io::Write;
+use std::io::{BufReader, Write};
+
+/// kcal/mol per hartree
+const KCALHT: f64 = 627.5091809;
 
 #[derive(Debug)]
 pub struct Param {
@@ -54,8 +55,53 @@ Comment line 2
         .expect("failed to write input file");
     }
 
-    pub fn read_output() {
-	todo!();
+    /// Reads a MOPAC output file. If normal termination occurs, also try
+    /// reading the `.aux` file to extract the energy from there. This function
+    /// panics if an error is found in the output file. If a non-fatal error
+    /// occurs (file not found, not written to yet, etc) None is returned.
+    pub fn read_output(&self) -> Option<f64> {
+        let f = match File::open(self.filename) {
+            Ok(file) => file,
+            Err(_) => return None, // file not found
+        };
+        let f = BufReader::new(f);
+        for line in f.lines().map(|x| x.unwrap()) {
+            if line.to_uppercase().contains("PANIC") {
+                panic!("panic requested in read_output");
+            } else if line.to_uppercase().contains("ERROR") {
+                panic!("error found in {}, exiting", self.filename);
+            } else if line.contains(" == MOPAC DONE ==") {
+                return self.read_aux();
+            }
+        }
+        None
+    }
+
+    /// return the heat of formation from a MOPAC aux file in Hartrees
+    fn read_aux(&self) -> Option<f64> {
+        let base = Path::new(self.filename).file_stem().unwrap();
+        let mut auxfile = String::from(base.to_str().unwrap());
+        auxfile.push_str(".aux");
+        let f = if let Ok(file) = File::open(auxfile) {
+            file
+        } else {
+            return None;
+        };
+        let f = BufReader::new(f);
+        for line in f.lines().map(|x| x.unwrap()) {
+            // line like HEAT_OF_FORMATION:KCAL/MOL=+0.97127947459164715838D+02
+            if line.contains("HEAT_OF_FORMATION") {
+                let fields: Vec<&str> = line.split("=").collect();
+                match fields[1].replace("D", "E").parse::<f64>() {
+                    Ok(f) => return Some(f / KCALHT),
+                    Err(_) => {
+                        eprintln!("failed to parse {}", fields[1]);
+                        return None;
+                    }
+                }
+            }
+        }
+        None
     }
 }
 
@@ -64,6 +110,7 @@ mod tests {
     use std::fs;
 
     use super::*;
+    use crate::queue::*;
 
     fn test_mopac<'a>() -> Mopac<'a> {
         Mopac {
@@ -185,5 +232,41 @@ HSP            C      0.717322000000
 ";
         assert_eq!(got, want);
         fs::remove_file("/tmp/params.dat").unwrap();
+    }
+
+    #[test]
+    fn test_read_output() {
+        let mp = Mopac {
+            filename: "job.out",
+            geom: Vec::new(),
+            params: Vec::new(),
+        };
+        let got = mp.read_output().expect("expected a value");
+        let want = 0.97127947459164715838e+02 / KCALHT;
+        assert!((dbg!(got) - want).abs() < 1e-20);
+    }
+
+    struct TestQueue<'a> {
+        filename: &'a str,
+    }
+
+    impl<'a> Submit for TestQueue<'a> {
+        fn write_submit_script(&self, infiles: Vec<&str>) {
+            let mut body = String::from("export LD_LIBRARY_PATH=/opt/mopac/");
+            for f in infiles {
+                body.push_str(&format!("/opt/mopac/mopac {f}\n"));
+            }
+            let mut file = File::create(self.filename)
+                .expect("failed to create params file");
+            write!(file, "{}", body).expect("failed to write params file");
+        }
+
+        fn filename(&self) -> &str {
+            self.filename
+        }
+
+        fn submit_command(&self) -> &str {
+            "bash"
+        }
     }
 }

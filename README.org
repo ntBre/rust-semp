@@ -1,5 +1,5 @@
-# -*- org-todo-keyword-faces: (("CHECKPOINT" . "blue")); -*-
-#+TODO: TODO | DONE
+# -*- org-todo-keyword-faces: (("CHECKPOINT" . "blue") ("WAIT" . "#fce803")); -*-
+#+TODO: TODO WAIT | DONE
 #+TODO: | CHECKPOINT
 
 this time write input as needed, not all at once. the first three all need to
@@ -16,10 +16,13 @@ see [[https://msfjarvis.dev/posts/building-static-rust-binaries-for-linux/][this
 ** DONE write .mop input files
 ** DONE write param file
 ** DONE write submission scripts
-** TODO process MOPAC output
-** TODO submit submission scripts
+** DONE process MOPAC output
+** WAIT submit submission scripts
    - need real submission and also test implementation
+   - both in place but both need to be tested
 ** TODO monitor jobs
+   - this actually includes building the jobs as well since I want to build and
+     submit them as needed, obeying joblimit
 ** TODO clean up after above as stuff finishes
 ** CHECKPOINT above are the essentials
 ** TODO assemble Jacobian matrix

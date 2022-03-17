@@ -1,4 +1,4 @@
-use std::{fs::File, io::BufRead, io::BufReader, io::Write};
+use std::{fs::File, io::BufRead, io::BufReader, io::Write, path::Path};
 
 pub mod mopac;
 pub mod queue;
@@ -75,9 +75,17 @@ pub fn load_geoms(filename: &str) -> Vec<Vec<f64>> {
     ret
 }
 
+/// Slurm is a type for holding the information for submitting a slurm job.
 /// `filename` is the name of the Slurm submission script
 pub struct Slurm<'a> {
     filename: &'a str,
+}
+
+impl<'a> Slurm<'a> {
+    #[allow(dead_code)] // TODO remove this once I use it
+    fn new(filename: &'a str) -> Self {
+        Slurm { filename }
+    }
 }
 
 impl<'a> queue::Submit for Slurm<'a> {
@@ -100,8 +108,12 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/\n",
         write!(file, "{}", body).expect("failed to write params file");
     }
 
-    fn submit(&self) {
-        todo!()
+    fn filename(&self) -> &str {
+        self.filename
+    }
+
+    fn submit_command(&self) -> &str {
+        "sbatch"
     }
 }
 
@@ -208,22 +220,5 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
 ";
         assert_eq!(got, want);
         fs::remove_file("/tmp/submit.slurm").unwrap();
-    }
-
-    struct TestQueue<'a> {
-        filename: &'a str,
-    }
-
-    impl<'a> Submit for TestQueue<'a> {
-        fn write_submit_script(&self, infiles: Vec<&str>) {
-            Slurm {
-                filename: self.filename,
-            }
-            .write_submit_script(infiles);
-        }
-
-        fn submit(&self) {
-            todo!()
-        }
     }
 }

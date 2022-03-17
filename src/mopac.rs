@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::*;
 use std::fs::File;
 use std::io::Write;
@@ -22,40 +24,36 @@ pub struct Mopac {
 }
 
 impl Mopac {
-    fn make_params(&self) -> String {
-        let mut ret = String::new();
+    pub fn write_params(&self, filename: &str) {
+        let mut body = String::new();
         for p in &self.params {
-            ret.push_str(&p.to_string());
+            body.push_str(&p.to_string());
         }
-        ret
-    }
-    // TODO this is probably going to be pub
-    fn write_params(&self, filename: &str) {
-        let body = self.make_params();
         let mut file = File::create(filename).expect("failed to create params file");
         write!(file, "{}", body).expect("failed to write params file");
     }
-    fn make_input(&self, paramfile: &str) -> String {
+
+    /// Caller should ensure that paramfile is written before calling. This
+    /// allows common parameter files to be shared between jobs
+    pub fn write_input(&self, filename: &str, paramfile: &str) {
         let geom = geom_string(&self.geom);
-        format!(
+        let mut file = File::create(filename).expect("failed to create input file");
+        write!(
+            file,
             "scfcrt=1.D-21 aux(precision=14) PM6 external={paramfile}
 Comment line 1
 Comment line 2
 {geom}
 "
         )
-    }
-    pub fn write_input(&self, filename: &str) {
-        // TODO make paramfile name
-        let paramfile = "params.dat";
-        // TODO call write_params
-        // TODO put this into filename
-        self.make_input(paramfile);
+        .expect("failed to write input file");
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
     use super::*;
 
     fn test_mopac() -> Mopac {
@@ -142,8 +140,9 @@ mod tests {
     }
 
     #[test]
-    fn test_make_input() {
-        let got = test_mopac().make_input("params.dat");
+    fn test_write_input() {
+        test_mopac().write_input("/tmp/test.mop", "params.dat");
+        let got = fs::read_to_string("/tmp/test.mop").expect("file not found");
         let want = "scfcrt=1.D-21 aux(precision=14) PM6 external=params.dat
 Comment line 1
 Comment line 2
@@ -153,31 +152,9 @@ Comment line 2
     }
 
     #[test]
-    fn test_make_params() {
-        let got = test_mopac().make_params();
-        let want = "USS            H    -11.246958000000
-ZS             H      1.268641000000
-BETAS          H     -8.352984000000
-GSS            H     14.448686000000
-USS            C    -51.089653000000
-UPP            C    -39.937920000000
-ZS             C      2.047558000000
-ZP             C      1.702841000000
-BETAS          C    -15.385236000000
-BETAP          C     -7.471929000000
-GSS            C     13.335519000000
-GPP            C     10.778326000000
-GSP            C     11.528134000000
-GP2            C      9.486212000000
-HSP            C      0.717322000000
-";
-        assert_eq!(got, want, "got\n{}, wanted\n{}", got, want);
-    }
-
-    #[test]
     fn test_write_params() {
         test_mopac().write_params("/tmp/params.dat");
-	let got = include_str!("/tmp/params.dat");
+        let got = fs::read_to_string("/tmp/params.dat").expect("file not found");
         let want = "USS            H    -11.246958000000
 ZS             H      1.268641000000
 BETAS          H     -8.352984000000
@@ -194,6 +171,6 @@ GSP            C     11.528134000000
 GP2            C      9.486212000000
 HSP            C      0.717322000000
 ";
-	assert_eq!(got, want);
+        assert_eq!(got, want);
     }
 }

@@ -2,14 +2,26 @@
 #+TODO: TODO | DONE
 #+TODO: | CHECKPOINT
 
+this time write input as needed, not all at once. the first three all need to
+be inside of the 'as needed' part -> iterator returning jobs?
+- if I can set up a list of structs containing all the info necessary for a
+  job, I can map over that and submit as I go
+- use Iter.take(n) to grab the first n, I guess you slice off the front n
+  elements of the original slice after that
+
 * outline
-** TODO load geometries
+** DONE load geometries
+** TODO write .mop input files
+** TODO write submission scripts
+   use [[https://doc.rust-lang.org/std/macro.include_str.html][include_str]] for templates
+** TODO submit submission scripts
+** TODO monitor jobs and read output
+** TODO clean up after above as stuff finishes
 ** TODO run MOPAC
-*** TODO write .mop input files
-*** TODO write submission scripts
-*** TODO submit submission scripts
-*** TODO monitor jobs and read output
-*** TODO clean up after above as stuff finishes
-** CHECKPOINT - these two are the foundation
-** TODO read config file
+** CHECKPOINT above are the essentials
+** TODO assemble Jacobian matrix
 ** TODO load energies
+** TODO do matrix math
+** TODO implement levmar
+** CHECKPOINT below are niceties
+** TODO read config file

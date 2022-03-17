@@ -1,5 +1,32 @@
 use std::{fs::File, io::BufRead, io::BufReader};
 
+mod mopac;
+
+pub struct Atom {
+    label: String,
+    coord: Vec<f64>,
+}
+
+impl Atom {
+    fn new(label: String, coord: Vec<f64>) -> Self {
+        Self { label, coord }
+    }
+}
+
+impl ToString for Atom {
+    fn to_string(&self) -> String {
+        format!(
+            "{:2} {:15.10} {:15.10} {:15.10}",
+            self.label, self.coord[0], self.coord[1], self.coord[2]
+        )
+    }
+}
+
+pub fn geom_string(geom: &Vec<Atom>) -> String {
+    let ret = String::new();
+    ret
+}
+
 pub fn load_geoms(filename: &str) -> Vec<Vec<f64>> {
     let f = File::open(filename).expect("failed to open three07");
     let lines = BufReader::new(f).lines();

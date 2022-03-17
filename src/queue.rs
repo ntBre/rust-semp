@@ -1,4 +1,4 @@
-use std::{path::Path, process::Command, str};
+use std::{process::Command, str};
 
 pub trait Submit {
     fn write_submit_script(&self, infiles: Vec<&str>);
@@ -8,7 +8,7 @@ pub trait Submit {
     fn submit_command(&self) -> &str;
 
     fn submit(&self) -> String {
-        let output = match Command::new(self.submit_command())
+        match Command::new(self.submit_command())
             .arg(self.filename())
             .output()
         {

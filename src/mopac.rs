@@ -246,11 +246,44 @@ HSP            C      0.717322000000
         assert!((dbg!(got) - want).abs() < 1e-20);
     }
 
-    struct TestQueue<'a> {
+    /// minimal queue for testing general submission
+    struct TestQueue;
+
+    impl Submit for TestQueue {
+        fn write_submit_script(&self, infiles: Vec<&str>) {
+            let mut body = String::new();
+            for f in infiles {
+                body.push_str(&format!("echo {f}\n"));
+            }
+            let mut file = File::create(self.filename())
+                .expect("failed to create params file");
+            write!(file, "{}", body).expect("failed to write params file");
+        }
+
+        fn filename(&self) -> &str {
+            "/tmp/main.pbs"
+        }
+
+        fn submit_command(&self) -> &str {
+            "bash"
+        }
+    }
+
+    #[test]
+    fn test_submit() {
+        let tq = TestQueue;
+        tq.write_submit_script(vec!["input1.mop", "input2.mop", "input3.mop"]);
+	let got = tq.submit();
+	let want = "input1.mop\ninput2.mop\ninput3.mop\n";
+	assert_eq!(got, want);
+    }
+
+    /// less minimal implementation for testing actually running mopac
+    struct LocalQueue<'a> {
         filename: &'a str,
     }
 
-    impl<'a> Submit for TestQueue<'a> {
+    impl<'a> Submit for LocalQueue<'a> {
         fn write_submit_script(&self, infiles: Vec<&str>) {
             let mut body = String::from("export LD_LIBRARY_PATH=/opt/mopac/");
             for f in infiles {

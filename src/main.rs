@@ -25,14 +25,18 @@ fn main() {
     }
     let mut chunk = Vec::new();
     jobs[0].write_params("inp/params.dat");
-    for job in jobs {
+    for job in &jobs {
         job.write_input("inp/params.dat");
-        chunk.push(job.filename);
+        chunk.push(job.filename.clone());
     }
     let slurm = LocalQueue::new("inp/main.slurm");
     slurm.write_submit_script(chunk);
     // run jobs
     println!("{}", slurm.submit());
+    // collect output
+    for job in jobs {
+	println!("{}", job.read_output().unwrap());
+    }
 }
 
 // really params doesn't need to be a field of Mopac, each Mopac doesn't really

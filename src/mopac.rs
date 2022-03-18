@@ -46,6 +46,10 @@ pub struct Mopac {
     pub geom: Vec<Atom>,
 }
 
+pub enum OutputError {
+    FileNotFound,
+}
+
 impl Mopac {
     pub fn write_params(&self, filename: &str) {
         let mut body = String::new();
@@ -74,14 +78,26 @@ Comment line 2
         .expect("failed to write input file");
     }
 
+    /// return filename with its extension replaced by ext
+    fn with_ext(filename: &str, ext: &str) -> String {
+        let base = Path::new(filename).file_stem().unwrap();
+        let mut ret = String::from(base.to_str().unwrap());
+        ret.push_str(ext);
+        ret
+    }
+
     /// Reads a MOPAC output file. If normal termination occurs, also try
     /// reading the `.aux` file to extract the energy from there. This function
     /// panics if an error is found in the output file. If a non-fatal error
     /// occurs (file not found, not written to yet, etc) None is returned.
     pub fn read_output(&self) -> Option<f64> {
-        let f = match File::open(&self.filename) {
+        let outfile = Self::with_ext(&self.filename, ".out");
+        let f = match File::open(outfile) {
             Ok(file) => file,
-            Err(_) => return None, // file not found
+            Err(_) => {
+                eprintln!("file {} not found", self.filename);
+                return None;
+            } // file not found
         };
         let f = BufReader::new(f);
         for line in f.lines().map(|x| x.unwrap()) {
@@ -98,9 +114,7 @@ Comment line 2
 
     /// return the heat of formation from a MOPAC aux file in Hartrees
     fn read_aux(&self) -> Option<f64> {
-        let base = Path::new(&self.filename).file_stem().unwrap();
-        let mut auxfile = String::from(base.to_str().unwrap());
-        auxfile.push_str(".aux");
+        let auxfile = Self::with_ext(&self.filename, ".aux");
         let f = if let Ok(file) = File::open(auxfile) {
             file
         } else {
@@ -135,81 +149,21 @@ mod tests {
         Mopac {
             filename: String::from("/tmp/test"),
             params: vec![
-                Param {
-                    name: String::from("USS"),
-                    atom: String::from("H"),
-                    value: -11.246958000000,
-                },
-                Param {
-                    name: String::from("ZS"),
-                    atom: String::from("H"),
-                    value: 1.268641000000,
-                },
-                Param {
-                    name: String::from("BETAS"),
-                    atom: String::from("H"),
-                    value: -8.352984000000,
-                },
-                Param {
-                    name: String::from("GSS"),
-                    atom: String::from("H"),
-                    value: 14.448686000000,
-                },
-                Param {
-                    name: String::from("USS"),
-                    atom: String::from("C"),
-                    value: -51.089653000000,
-                },
-                Param {
-                    name: String::from("UPP"),
-                    atom: String::from("C"),
-                    value: -39.937920000000,
-                },
-                Param {
-                    name: String::from("ZS"),
-                    atom: String::from("C"),
-                    value: 2.047558000000,
-                },
-                Param {
-                    name: String::from("ZP"),
-                    atom: String::from("C"),
-                    value: 1.702841000000,
-                },
-                Param {
-                    name: String::from("BETAS"),
-                    atom: String::from("C"),
-                    value: -15.385236000000,
-                },
-                Param {
-                    name: String::from("BETAP"),
-                    atom: String::from("C"),
-                    value: -7.471929000000,
-                },
-                Param {
-                    name: String::from("GSS"),
-                    atom: String::from("C"),
-                    value: 13.335519000000,
-                },
-                Param {
-                    name: String::from("GPP"),
-                    atom: String::from("C"),
-                    value: 10.778326000000,
-                },
-                Param {
-                    name: String::from("GSP"),
-                    atom: String::from("C"),
-                    value: 11.528134000000,
-                },
-                Param {
-                    name: String::from("GP2"),
-                    atom: String::from("C"),
-                    value: 9.486212000000,
-                },
-                Param {
-                    name: String::from("HSP"),
-                    atom: String::from("C"),
-                    value: 0.717322000000,
-                },
+                Param::new("USS", "H", -11.246958000000),
+                Param::new("ZS", "H", 1.268641000000),
+                Param::new("BETAS", "H", -8.352984000000),
+                Param::new("GSS", "H", 14.448686000000),
+                Param::new("USS", "C", -51.089653000000),
+                Param::new("UPP", "C", -39.937920000000),
+                Param::new("ZS", "C", 2.047558000000),
+                Param::new("ZP", "C", 1.702841000000),
+                Param::new("BETAS", "C", -15.385236000000),
+                Param::new("BETAP", "C", -7.471929000000),
+                Param::new("GSS", "C", 13.335519000000),
+                Param::new("GPP", "C", 10.778326000000),
+                Param::new("GSP", "C", 11.528134000000),
+                Param::new("GP2", "C", 9.486212000000),
+                Param::new("HSP", "C", 0.717322000000),
             ],
             geom: Vec::new(),
         }
@@ -256,7 +210,7 @@ HSP            C      0.717322000000
     #[test]
     fn test_read_output() {
         let mp = Mopac {
-            filename: String::from("job.out"),
+            filename: String::from("job"),
             geom: Vec::new(),
             params: Vec::new(),
         };

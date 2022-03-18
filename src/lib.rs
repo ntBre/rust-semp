@@ -165,6 +165,7 @@ impl<'a> queue::Submit for LocalQueue<'a> {
         let mut body = String::from("export LD_LIBRARY_PATH=/opt/mopac/\n");
         for f in infiles {
             body.push_str(&format!("/opt/mopac/mopac {f}.mop\n"));
+            body.push_str(&format!("date +%s\n"));
         }
         let mut file =
             File::create(self.filename).expect("failed to create params file");

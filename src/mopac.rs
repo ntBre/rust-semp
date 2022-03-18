@@ -46,6 +46,7 @@ pub struct Mopac {
     pub filename: String,
     pub params: Vec<Param>,
     pub geom: Vec<Atom>,
+    pub param_file: String,
 }
 
 pub enum OutputError {
@@ -53,23 +54,34 @@ pub enum OutputError {
 }
 
 impl Mopac {
-    fn write_params(&self, filename: &str) {
+    pub fn new(filename: String, params: Vec<Param>, geom: Vec<Atom>) -> Self {
+        Self {
+            filename,
+            params,
+            geom,
+            param_file: String::new(),
+        }
+    }
+
+    fn write_params(&self) {
         let mut body = String::new();
         for p in &self.params {
             body.push_str(&p.to_string());
         }
-        let mut file =
-            File::create(filename).expect("failed to create params file");
+        let mut file = File::create(&self.param_file)
+            .expect("failed to create params file");
         write!(file, "{}", body).expect("failed to write params file");
     }
 
     /// Writes the parameters of self to a parameter file, then writes the MOPAC
-    /// input file with external=paramfile
-    pub fn write_input(&self) -> String{
+    /// input file with external=paramfile. Also update self.paramfile to point
+    /// to the generated name for the parameter file
+    pub fn write_input(&mut self) {
         let mut s = DefaultHasher::new();
         self.filename.hash(&mut s);
         let paramfile = format!("tmparam/{}", s.finish());
-        self.write_params(&paramfile);
+        self.param_file = paramfile;
+        self.write_params();
         let geom = geom_string(&self.geom);
         let mut file = File::create(format!("{}.mop", self.filename))
             .expect("failed to create input file");
@@ -79,10 +91,8 @@ impl Mopac {
 Comment line 1
 Comment line 2
 {geom}
-"
-        )
+", paramfile=&self.param_file)
         .expect("failed to write input file");
-	paramfile
     }
 
     /// Reads a MOPAC output file. If normal termination occurs, also try
@@ -145,9 +155,9 @@ mod tests {
     use crate::queue::*;
 
     fn test_mopac() -> Mopac {
-        Mopac {
-            filename: String::from("/tmp/test"),
-            params: vec![
+        Mopac::new(
+            String::from("/tmp/test"),
+            vec![
                 Param::new("USS", "H", -11.246958000000),
                 Param::new("ZS", "H", 1.268641000000),
                 Param::new("BETAS", "H", -8.352984000000),
@@ -164,26 +174,32 @@ mod tests {
                 Param::new("GP2", "C", 9.486212000000),
                 Param::new("HSP", "C", 0.717322000000),
             ],
-            geom: Vec::new(),
-        }
+            Vec::new(),
+        )
     }
 
     #[test]
     fn test_write_input() {
-        let paramfile = test_mopac().write_input();
+        setup();
+        let mut tm = test_mopac();
+        tm.write_input();
         let got = fs::read_to_string("/tmp/test.mop").expect("file not found");
         let want = format!("XYZ 1SCF A0 scfcrt=1.D-21 aux(precision=14) PM6 external={paramfile}
 Comment line 1
 Comment line 2
 
-");
+", paramfile=tm.param_file);
         assert_eq!(got, want);
         fs::remove_file("/tmp/test.mop").unwrap();
+        takedown();
     }
 
     #[test]
     fn test_write_params() {
-        test_mopac().write_params("/tmp/params.dat");
+        setup();
+        let mut tm = test_mopac();
+        tm.param_file = String::from("/tmp/params.dat");
+        tm.write_params();
         let got =
             fs::read_to_string("/tmp/params.dat").expect("file not found");
         let want = "USS            H    -11.246958000000
@@ -204,15 +220,12 @@ HSP            C      0.717322000000
 ";
         assert_eq!(got, want);
         fs::remove_file("/tmp/params.dat").unwrap();
+        takedown();
     }
 
     #[test]
     fn test_read_output() {
-        let mp = Mopac {
-            filename: String::from("job"),
-            geom: Vec::new(),
-            params: Vec::new(),
-        };
+        let mp = Mopac::new(String::from("job"), Vec::new(), Vec::new());
         let got = mp.read_output().expect("expected a value");
         let want = 0.97127947459164715838e+02 / KCALHT;
         assert!((dbg!(got) - want).abs() < 1e-20);

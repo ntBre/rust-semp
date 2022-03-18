@@ -62,3 +62,15 @@ see [[https://msfjarvis.dev/posts/building-static-rust-binaries-for-linux/][this
     be able to pull from the whole Jacobian at one time instead of switching
     from running to writing over and over
     - just go back to one param file per job
+  - I think a Job type needs to contain
+    1. a Mopac - all the information for setting up the mopac job
+       - set when I first generate the jobs
+    2. a submit_script - the PBS file for the chunk it's in
+       - set when I write the jobs to disk
+    3. a job_id - the jobid for the chunk it's in
+       - set when the job is submitted
+  - cleanup
+    - delete Job.mopac.filename.{mop,out,aux,arc} and Job.mopac.paramfile when a
+      single job finishes
+    - delete Job.submit_script when all the jobs in a chunk finish
+      - have to keep track of the jobs belonging to a chunk

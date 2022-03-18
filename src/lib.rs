@@ -1,7 +1,34 @@
-use std::{fs::File, io::BufRead, io::BufReader, io::Write};
+use std::{
+    fs::{self, File},
+    io::BufRead,
+    io::BufReader,
+    io::Write,
+};
 
 pub mod mopac;
 pub mod queue;
+
+static DIRS: &'static [&str] = &["inp", "tmparam"];
+
+/// set up the directories needed for the program
+pub fn setup() {
+    for dir in DIRS {
+        match fs::create_dir(dir) {
+            Ok(_) => (),
+            Err(_) => (),
+        }
+    }
+}
+
+// TODO don't do this if -nodel flag
+pub fn takedown() {
+    for dir in DIRS {
+        match fs::remove_dir_all(dir) {
+            Ok(_) => (),
+            Err(_) => (),
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct Atom {
@@ -182,6 +209,7 @@ impl<'a> queue::Submit for LocalQueue<'a> {
 }
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
     use std::fs;
 
     use super::*;
@@ -295,34 +323,31 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         for mol in moles {
             let filename = format!("inp/job.{count:08}");
             count += 1;
-            jobs.push(Mopac {
-                filename,
-                params: params.clone(),
-                geom: mol,
-            })
+            jobs.push(Job::new(Mopac::new(filename, params.clone(), mol)))
         }
-        // write jobs - know all params are the same right now
-        match fs::create_dir("inp") {
-            Ok(_) => (),
-            Err(_) => (), // ideally I'd only accept not exist error but idk
-        }
-        match fs::create_dir("tmparam") {
-            Ok(_) => (),
-            Err(_) => (), // ideally I'd only accept not exist error but idk
-        }
+        setup();
+        // slurm_file has to be set here so you can associate it with each job
+        // in the chunk.
+        let slurm_file = "inp/main.slurm";
         let mut chunk = Vec::new();
-        for job in &jobs {
-            job.write_input();
-            chunk.push(job.filename.clone());
+        for job in &mut jobs {
+            job.mopac.write_input();
+            job.pbs_file = slurm_file.to_string();
+            chunk.push(job.mopac.filename.clone());
         }
-        let slurm = LocalQueue::new("inp/main.slurm");
+        let mut slurm_jobs = HashMap::new();
+        slurm_jobs.insert(slurm_file, chunk.len());
+        let slurm = LocalQueue::new(slurm_file);
         slurm.write_submit_script(chunk);
-        // run jobs
+        // run jobs. TODO loop over jobs in this chunk and set job.job_id to the
+        // return value of slurm.submit
         slurm.submit();
         // collect output
         let mut got = Vec::new();
         for job in jobs {
-            got.push(job.read_output().unwrap());
+            got.push(job.mopac.read_output().unwrap());
+            let count = slurm_jobs.get_mut(job.pbs_file.as_str()).unwrap();
+            *count -= 1;
         }
         let want = vec![
             0.20374485388911504,
@@ -332,6 +357,23 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let eps = 1e-20;
         for i in 0..got.len() {
             assert!((got[i] - want[i]).abs() < eps);
+        }
+        takedown();
+    }
+}
+
+pub struct Job {
+    pub mopac: mopac::Mopac,
+    pub pbs_file: String,
+    pub job_id: String,
+}
+
+impl Job {
+    pub fn new(mopac: mopac::Mopac) -> Self {
+        Self {
+            mopac,
+            pbs_file: String::new(),
+            job_id: String::new(),
         }
     }
 }

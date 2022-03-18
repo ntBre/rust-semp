@@ -1,5 +1,7 @@
 use super::*;
+use std::collections::hash_map::DefaultHasher;
 use std::fs::File;
+use std::hash::{Hash, Hasher};
 use std::io::{BufReader, Write};
 
 /// kcal/mol per hartree
@@ -51,7 +53,7 @@ pub enum OutputError {
 }
 
 impl Mopac {
-    pub fn write_params(&self, filename: &str) {
+    fn write_params(&self, filename: &str) {
         let mut body = String::new();
         for p in &self.params {
             body.push_str(&p.to_string());
@@ -61,9 +63,13 @@ impl Mopac {
         write!(file, "{}", body).expect("failed to write params file");
     }
 
-    /// Caller should ensure that paramfile is written before calling. This
-    /// allows common parameter files to be shared between jobs
-    pub fn write_input(&self, paramfile: &str) {
+    /// Writes the parameters of self to a parameter file, then writes the MOPAC
+    /// input file with external=paramfile
+    pub fn write_input(&self) -> String{
+        let mut s = DefaultHasher::new();
+        self.filename.hash(&mut s);
+        let paramfile = format!("tmparam/{}", s.finish());
+        self.write_params(&paramfile);
         let geom = geom_string(&self.geom);
         let mut file = File::create(format!("{}.mop", self.filename))
             .expect("failed to create input file");
@@ -76,6 +82,7 @@ Comment line 2
 "
         )
         .expect("failed to write input file");
+	paramfile
     }
 
     /// Reads a MOPAC output file. If normal termination occurs, also try
@@ -163,13 +170,13 @@ mod tests {
 
     #[test]
     fn test_write_input() {
-        test_mopac().write_input("params.dat");
+        let paramfile = test_mopac().write_input();
         let got = fs::read_to_string("/tmp/test.mop").expect("file not found");
-        let want = "XYZ 1SCF A0 scfcrt=1.D-21 aux(precision=14) PM6 external=params.dat
+        let want = format!("XYZ 1SCF A0 scfcrt=1.D-21 aux(precision=14) PM6 external={paramfile}
 Comment line 1
 Comment line 2
 
-";
+");
         assert_eq!(got, want);
         fs::remove_file("/tmp/test.mop").unwrap();
     }

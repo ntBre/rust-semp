@@ -51,3 +51,14 @@ see [[https://msfjarvis.dev/posts/building-static-rust-binaries-for-linux/][this
    - mop, out, aux, arc
    - param file - when shared jobs done
    - pbs file - when different set of shared jobs done
+
+* running jobs brainstorming
+  - the basic operation is run a set of jobs with a single set of parameters
+    1. this covers one SE step - f(β)
+    2. also covers NumJac - one set of parameters for each front/back per column,
+       but then you have to wait for each front/back to finish before you run
+       another
+  - the reason I want to mix parameters is because of point 2 above - I want to
+    be able to pull from the whole Jacobian at one time instead of switching
+    from running to writing over and over
+    - just go back to one param file per job

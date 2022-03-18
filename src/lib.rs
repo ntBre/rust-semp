@@ -1,4 +1,4 @@
-use std::{fs::File, io::BufRead, io::BufReader, io::Write, path::Path};
+use std::{fs::File, io::BufRead, io::BufReader, io::Write};
 
 pub mod mopac;
 pub mod queue;
@@ -306,10 +306,13 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             Ok(_) => (),
             Err(_) => (), // ideally I'd only accept not exist error but idk
         }
+        match fs::create_dir("tmparam") {
+            Ok(_) => (),
+            Err(_) => (), // ideally I'd only accept not exist error but idk
+        }
         let mut chunk = Vec::new();
-        jobs[0].write_params("inp/params.dat");
         for job in &jobs {
-            job.write_input("inp/params.dat");
+            job.write_input();
             chunk.push(job.filename.clone());
         }
         let slurm = LocalQueue::new("inp/main.slurm");

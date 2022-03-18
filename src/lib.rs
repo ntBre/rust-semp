@@ -207,6 +207,23 @@ impl<'a> queue::Submit for LocalQueue<'a> {
         "bash"
     }
 }
+
+pub struct Job {
+    pub mopac: mopac::Mopac,
+    pub pbs_file: String,
+    pub job_id: String,
+}
+
+impl Job {
+    pub fn new(mopac: mopac::Mopac) -> Self {
+        Self {
+            mopac,
+            pbs_file: String::new(),
+            job_id: String::new(),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -362,18 +379,3 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
     }
 }
 
-pub struct Job {
-    pub mopac: mopac::Mopac,
-    pub pbs_file: String,
-    pub job_id: String,
-}
-
-impl Job {
-    pub fn new(mopac: mopac::Mopac) -> Self {
-        Self {
-            mopac,
-            pbs_file: String::new(),
-            job_id: String::new(),
-        }
-    }
-}

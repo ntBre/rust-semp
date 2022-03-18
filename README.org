@@ -17,15 +17,20 @@ see [[https://msfjarvis.dev/posts/building-static-rust-binaries-for-linux/][this
 ** DONE write param file
 ** DONE write submission scripts
 ** DONE process MOPAC output
-** WAIT submit submission scripts
+** DONE submit submission scripts
    - need real submission and also test implementation
    - both in place but both need to be tested
-** TODO run mopac
+** DONE run mopac
    - assemble jobs and run them
-** TODO monitor jobs
-   - this actually includes building the jobs as well since I want to build and
-     submit them as needed, obeying joblimit
+** TODO build, run, poll loop
+   - take a list of jobs to run and build, run, poll, and clean them
+     - for faster calculations (eg the NumJac) just send it more built jobs to
+       run at once
+   - each piece is ready, just need the loop connecting them
+     - probably also factor out the pieces
 ** TODO clean up after above as stuff finishes
+   - partly in place, at least with the struct fields. just need to actually set
+     up the structure to do the deleting and call it
 ** CHECKPOINT above are the essentials
 ** TODO assemble Jacobian matrix
 ** TODO load energies
@@ -61,8 +66,8 @@ see [[https://msfjarvis.dev/posts/building-static-rust-binaries-for-linux/][this
   - the reason I want to mix parameters is because of point 2 above - I want to
     be able to pull from the whole Jacobian at one time instead of switching
     from running to writing over and over
-    - just go back to one param file per job
-  - I think a Job type needs to contain
+    - [X] just go back to one param file per job
+  - [X] I think a Job type needs to contain
     1. a Mopac - all the information for setting up the mopac job
        - set when I first generate the jobs
     2. a submit_script - the PBS file for the chunk it's in

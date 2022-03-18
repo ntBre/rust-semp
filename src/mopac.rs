@@ -49,10 +49,6 @@ pub struct Mopac {
     pub param_file: String,
 }
 
-pub enum OutputError {
-    FileNotFound,
-}
-
 impl Mopac {
     pub fn new(filename: String, params: Vec<Param>, geom: Vec<Atom>) -> Self {
         Self {

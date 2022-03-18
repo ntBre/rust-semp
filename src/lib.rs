@@ -284,4 +284,51 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         assert_eq!(got, want);
         fs::remove_file("/tmp/submit.slurm").unwrap();
     }
+    #[test]
+    fn test_full() {
+        let names = vec!["C", "C", "C", "H", "H"];
+        let moles = load_geoms("three07", names);
+        let params = load_params("params.dat");
+        // build jobs (in memory) -> write jobs (to disk) -> run jobs
+        let mut count: usize = 0;
+        let mut jobs = Vec::new();
+        for mol in moles {
+            let filename = format!("inp/job.{count:08}");
+            count += 1;
+            jobs.push(Mopac {
+                filename,
+                params: params.clone(),
+                geom: mol,
+            })
+        }
+        // write jobs - know all params are the same right now
+        match fs::create_dir("inp") {
+            Ok(_) => (),
+            Err(_) => (), // ideally I'd only accept not exist error but idk
+        }
+        let mut chunk = Vec::new();
+        jobs[0].write_params("inp/params.dat");
+        for job in &jobs {
+            job.write_input("inp/params.dat");
+            chunk.push(job.filename.clone());
+        }
+        let slurm = LocalQueue::new("inp/main.slurm");
+        slurm.write_submit_script(chunk);
+        // run jobs
+        slurm.submit();
+        // collect output
+        let mut got = Vec::new();
+        for job in jobs {
+            got.push(job.read_output().unwrap());
+        }
+        let want = vec![
+            0.20374485388911504,
+            0.20541305733965845,
+            0.20511337069030972,
+        ];
+        let eps = 1e-20;
+        for i in 0..got.len() {
+            assert!((got[i] - want[i]).abs() < eps);
+        }
+    }
 }

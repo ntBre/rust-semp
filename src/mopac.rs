@@ -78,20 +78,12 @@ Comment line 2
         .expect("failed to write input file");
     }
 
-    /// return filename with its extension replaced by ext
-    fn with_ext(filename: &str, ext: &str) -> String {
-        let base = Path::new(filename).file_stem().unwrap();
-        let mut ret = String::from(base.to_str().unwrap());
-        ret.push_str(ext);
-        ret
-    }
-
     /// Reads a MOPAC output file. If normal termination occurs, also try
     /// reading the `.aux` file to extract the energy from there. This function
     /// panics if an error is found in the output file. If a non-fatal error
     /// occurs (file not found, not written to yet, etc) None is returned.
     pub fn read_output(&self) -> Option<f64> {
-        let outfile = Self::with_ext(&self.filename, ".out");
+        let outfile = format!("{}.out", &self.filename);
         let f = match File::open(outfile) {
             Ok(file) => file,
             Err(_) => {
@@ -114,7 +106,7 @@ Comment line 2
 
     /// return the heat of formation from a MOPAC aux file in Hartrees
     fn read_aux(&self) -> Option<f64> {
-        let auxfile = Self::with_ext(&self.filename, ".aux");
+        let auxfile = format!("{}.aux", &self.filename);
         let f = if let Ok(file) = File::open(auxfile) {
             file
         } else {

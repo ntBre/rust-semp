@@ -69,7 +69,7 @@ impl Mopac {
             .expect("failed to create input file");
         write!(
             file,
-            "scfcrt=1.D-21 aux(precision=14) PM6 external={paramfile}
+            "XYZ 1SCF A0 scfcrt=1.D-21 aux(precision=14) PM6 external={paramfile}
 Comment line 1
 Comment line 2
 {geom}
@@ -173,7 +173,7 @@ mod tests {
     fn test_write_input() {
         test_mopac().write_input("params.dat");
         let got = fs::read_to_string("/tmp/test.mop").expect("file not found");
-        let want = "scfcrt=1.D-21 aux(precision=14) PM6 external=params.dat
+        let want = "XYZ 1SCF A0 scfcrt=1.D-21 aux(precision=14) PM6 external=params.dat
 Comment line 1
 Comment line 2
 

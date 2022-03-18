@@ -20,6 +20,8 @@ see [[https://msfjarvis.dev/posts/building-static-rust-binaries-for-linux/][this
 ** WAIT submit submission scripts
    - need real submission and also test implementation
    - both in place but both need to be tested
+** TODO run mopac
+   - assemble jobs and run them
 ** TODO monitor jobs
    - this actually includes building the jobs as well since I want to build and
      submit them as needed, obeying joblimit

@@ -5,7 +5,7 @@ use std::io::{BufReader, Write};
 /// kcal/mol per hartree
 const KCALHT: f64 = 627.5091809;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Param {
     name: String,
     atom: String,
@@ -18,16 +18,35 @@ impl ToString for Param {
     }
 }
 
+impl PartialEq for Param {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.atom == other.atom
+            && (self.value - other.value).abs() < 1e-12
+    }
+}
+
+impl Param {
+    pub fn new(name: &str, atom: &str, value: f64) -> Self {
+        Self {
+            name: name.to_string(),
+            atom: atom.to_string(),
+            value,
+        }
+    }
+}
+
 /// Mopac holds the information needed to write a MOPAC input file. `filename`
 /// should not include an extension. `.mop` will be appended for input files,
 /// and `.out` and `.aux` will be appended for output files.
-pub struct Mopac<'a> {
-    filename: &'a str,
-    params: Vec<Param>,
-    geom: Vec<Atom>,
+#[derive(Debug)]
+pub struct Mopac {
+    pub filename: String,
+    pub params: Vec<Param>,
+    pub geom: Vec<Atom>,
 }
 
-impl<'a> Mopac<'a> {
+impl Mopac {
     pub fn write_params(&self, filename: &str) {
         let mut body = String::new();
         for p in &self.params {
@@ -60,7 +79,7 @@ Comment line 2
     /// panics if an error is found in the output file. If a non-fatal error
     /// occurs (file not found, not written to yet, etc) None is returned.
     pub fn read_output(&self) -> Option<f64> {
-        let f = match File::open(self.filename) {
+        let f = match File::open(&self.filename) {
             Ok(file) => file,
             Err(_) => return None, // file not found
         };
@@ -79,7 +98,7 @@ Comment line 2
 
     /// return the heat of formation from a MOPAC aux file in Hartrees
     fn read_aux(&self) -> Option<f64> {
-        let base = Path::new(self.filename).file_stem().unwrap();
+        let base = Path::new(&self.filename).file_stem().unwrap();
         let mut auxfile = String::from(base.to_str().unwrap());
         auxfile.push_str(".aux");
         let f = if let Ok(file) = File::open(auxfile) {
@@ -112,9 +131,9 @@ mod tests {
     use super::*;
     use crate::queue::*;
 
-    fn test_mopac<'a>() -> Mopac<'a> {
+    fn test_mopac() -> Mopac {
         Mopac {
-            filename: "/tmp/test",
+            filename: String::from("/tmp/test"),
             params: vec![
                 Param {
                     name: String::from("USS"),
@@ -237,7 +256,7 @@ HSP            C      0.717322000000
     #[test]
     fn test_read_output() {
         let mp = Mopac {
-            filename: "job.out",
+            filename: String::from("job.out"),
             geom: Vec::new(),
             params: Vec::new(),
         };
@@ -250,7 +269,7 @@ HSP            C      0.717322000000
     struct TestQueue;
 
     impl Submit for TestQueue {
-        fn write_submit_script(&self, infiles: Vec<&str>) {
+        fn write_submit_script(&self, infiles: Vec<String>) {
             let mut body = String::new();
             for f in infiles {
                 body.push_str(&format!("echo {f}\n"));
@@ -272,34 +291,14 @@ HSP            C      0.717322000000
     #[test]
     fn test_submit() {
         let tq = TestQueue;
-        tq.write_submit_script(vec!["input1.mop", "input2.mop", "input3.mop"]);
-	let got = tq.submit();
-	let want = "input1.mop\ninput2.mop\ninput3.mop\n";
-	assert_eq!(got, want);
-    }
-
-    /// less minimal implementation for testing actually running mopac
-    struct LocalQueue<'a> {
-        filename: &'a str,
-    }
-
-    impl<'a> Submit for LocalQueue<'a> {
-        fn write_submit_script(&self, infiles: Vec<&str>) {
-            let mut body = String::from("export LD_LIBRARY_PATH=/opt/mopac/");
-            for f in infiles {
-                body.push_str(&format!("/opt/mopac/mopac {f}\n"));
-            }
-            let mut file = File::create(self.filename)
-                .expect("failed to create params file");
-            write!(file, "{}", body).expect("failed to write params file");
-        }
-
-        fn filename(&self) -> &str {
-            self.filename
-        }
-
-        fn submit_command(&self) -> &str {
-            "bash"
-        }
+        tq.write_submit_script(
+            vec!["input1.mop", "input2.mop", "input3.mop"]
+                .iter()
+                .map(|x| x.to_string())
+                .collect(),
+        );
+        let got = tq.submit();
+        let want = "input1.mop\ninput2.mop\ninput3.mop\n";
+        assert_eq!(got, want);
     }
 }

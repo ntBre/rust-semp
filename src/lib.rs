@@ -14,7 +14,7 @@ pub mod mopac;
 pub mod queue;
 
 static DIRS: &'static [&str] = &["inp", "tmparam"];
-static JOB_LIMIT: usize = 1024;
+static JOB_LIMIT: usize = 1600;
 static CHUNK_SIZE: usize = 128;
 static SLEEP_INT: usize = 1;
 
@@ -273,6 +273,7 @@ pub fn drain<S: Submit>(jobs: &mut Jobs, _submitter: S) {
     let mut cur = 0; // current index into jobs
     let tot_jobs = jobs.jobs.len();
     loop {
+        let mut finished = 0;
         if cur_jobs.len() < JOB_LIMIT {
             let new_chunk = build_chunk(
                 &mut jobs.jobs[cur..std::cmp::min(cur + CHUNK_SIZE, tot_jobs)],
@@ -291,6 +292,7 @@ pub fn drain<S: Submit>(jobs: &mut Jobs, _submitter: S) {
                 Some(val) => {
                     to_remove.push(i);
                     jobs.dst[job.index] = val;
+                    finished += 1;
                 }
                 None => (),
             }
@@ -308,7 +310,9 @@ pub fn drain<S: Submit>(jobs: &mut Jobs, _submitter: S) {
         if cur_jobs.len() == 0 && cur == tot_jobs {
             return;
         }
-        thread::sleep(time::Duration::from_secs(SLEEP_INT as u64));
+        if finished == 0 {
+            thread::sleep(time::Duration::from_secs(SLEEP_INT as u64));
+        }
     }
 }
 

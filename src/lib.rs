@@ -4,16 +4,19 @@ use std::{
     io::BufRead,
     io::BufReader,
     io::Write,
+    thread, time,
 };
 
+use mopac::{Mopac, Param};
 use queue::Submit;
 
 pub mod mopac;
 pub mod queue;
 
 static DIRS: &'static [&str] = &["inp", "tmparam"];
-static JOB_LIMIT: usize = 3;
-static CHUNK_SIZE: usize = 2;
+static JOB_LIMIT: usize = 1024;
+static CHUNK_SIZE: usize = 128;
+static SLEEP_INT: usize = 1;
 
 /// set up the directories needed for the program
 pub fn setup() {
@@ -70,7 +73,13 @@ pub fn geom_string(geom: &Vec<Atom>) -> String {
 
 /// Take an INTDER-style `file07` file and parse it into a Vec of geometries
 pub fn load_geoms(filename: &str, atom_names: Vec<&str>) -> Vec<Vec<Atom>> {
-    let f = File::open(filename).expect("failed to open three07");
+    let f = match File::open(filename) {
+        Ok(f) => f,
+        Err(e) => {
+            eprintln!("failed to open {filename} with {e}");
+            std::process::exit(1);
+        }
+    };
     let lines = BufReader::new(f).lines();
     let mut ret = Vec::new();
     let mut buf = Vec::new();
@@ -106,7 +115,15 @@ pub fn load_geoms(filename: &str, atom_names: Vec<&str>) -> Vec<Vec<Atom>> {
 /// into a vec of Params
 pub fn load_params(filename: &str) -> Vec<mopac::Param> {
     let mut ret = Vec::new();
-    let f = File::open(filename).expect("failed to open three07");
+    let f = match File::open(filename) {
+        Ok(f) => f,
+        Err(e) => {
+            eprintln!(
+                "failed to open {filename} for reading parameters with {e}"
+            );
+            std::process::exit(1);
+        }
+    };
     let lines = BufReader::new(f).lines();
     for line in lines.map(|x| x.unwrap()) {
         let fields: Vec<&str> = line.split_whitespace().collect();
@@ -125,7 +142,7 @@ pub struct Slurm;
 
 impl queue::Submit for Slurm {
     fn write_submit_script(&self, infiles: Vec<String>, filename: &str) {
-        let mut body = String::from(
+        let mut body = format!(
             "#!/bin/bash
 #SBATCH --job-name=semp
 #SBATCH --ntasks=1
@@ -140,13 +157,21 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/\n",
                 "/home/qc/mopac2016/MOPAC2016.exe {f}.mop\n"
             ));
         }
-        let mut file =
-            File::create(filename).expect("failed to create params file");
+        let mut file = match File::create(filename) {
+            Ok(f) => f,
+            Err(_) => {
+                panic!("write_submit_script: failed to create {filename}");
+            }
+        };
         write!(file, "{}", body).expect("failed to write params file");
     }
 
     fn submit_command(&self) -> &str {
         "sbatch"
+    }
+
+    fn new() -> Self {
+        Slurm {}
     }
 }
 
@@ -168,6 +193,10 @@ impl queue::Submit for LocalQueue {
     fn submit_command(&self) -> &str {
         "bash"
     }
+
+    fn new() -> Self {
+        Self {}
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -175,21 +204,115 @@ pub struct Job {
     pub mopac: mopac::Mopac,
     pub pbs_file: String,
     pub job_id: String,
+    pub index: usize,
 }
 
 impl Job {
-    pub fn new(mopac: mopac::Mopac) -> Self {
+    pub fn new(mopac: mopac::Mopac, index: usize) -> Self {
         Self {
             mopac,
             pbs_file: String::new(),
             job_id: String::new(),
+            index,
         }
+    }
+}
+
+/// Build a chunk of jobs by writing the MOPAC input file and the corresponding
+/// submission script and submitting the script
+pub fn build_chunk<'a, S: Submit>(
+    jobs: &'a [Job],
+    chunk_num: usize,
+    slurm_jobs: &'a mut HashMap<String, usize>,
+    queue: S,
+) -> Vec<Job> {
+    let queue_file = format!("inp/main{}.slurm", chunk_num);
+    let mut chunk_jobs = Vec::new();
+    for job in jobs {
+        let mut job = (*job).clone();
+        job.mopac.write_input();
+        job.pbs_file = queue_file.to_string();
+        chunk_jobs.push(job);
+    }
+    slurm_jobs.insert(queue_file.clone(), chunk_jobs.len());
+    queue.write_submit_script(
+        chunk_jobs
+            .iter()
+            .map(|j| j.mopac.filename.clone())
+            .collect(),
+        &queue_file,
+    );
+    // run jobs
+    let job_id = queue.submit(&queue_file);
+    for job in &mut chunk_jobs {
+        job.job_id = job_id.clone();
+    }
+    chunk_jobs
+}
+
+/// Build the jobs described by `moles` in memory, but don't write any of their
+/// files yet
+pub fn build_jobs(moles: Vec<Vec<Atom>>, params: Vec<Param>) -> Jobs {
+    let mut count: usize = 0;
+    let mut jobs = Jobs::new();
+    for mol in moles {
+        let filename = format!("inp/job.{count:08}");
+        jobs.jobs
+            .push(Job::new(Mopac::new(filename, params.clone(), mol), count));
+        count += 1;
+    }
+    jobs.dst = vec![0.0; count];
+    jobs
+}
+
+pub fn drain<S: Submit>(jobs: &mut Jobs, _submitter: S) {
+    let mut chunk_num: usize = 0;
+    let mut cur_jobs = Vec::new();
+    let mut slurm_jobs = HashMap::new();
+    let mut cur = 0; // current index into jobs
+    let tot_jobs = jobs.jobs.len();
+    loop {
+        if cur_jobs.len() < JOB_LIMIT {
+            let new_chunk = build_chunk(
+                &mut jobs.jobs[cur..std::cmp::min(cur + CHUNK_SIZE, tot_jobs)],
+                chunk_num,
+                &mut slurm_jobs,
+                S::new(),
+            );
+            chunk_num += 1;
+            cur += new_chunk.len();
+            cur_jobs.extend(new_chunk);
+        }
+        // collect output
+        let mut to_remove = Vec::new();
+        for (i, job) in cur_jobs.iter_mut().enumerate() {
+            match job.mopac.read_output() {
+                Some(val) => {
+                    to_remove.push(i);
+                    jobs.dst[job.index] = val;
+                }
+                None => (),
+            }
+            let count = slurm_jobs.get_mut(job.pbs_file.as_str()).unwrap();
+            *count -= 1;
+        }
+        // remove finished jobs. TODO also delete the files
+
+        // have to remove the highest index first so sort and reverse
+        to_remove.sort();
+        to_remove.reverse();
+        for i in to_remove {
+            cur_jobs.swap_remove(i);
+        }
+        if cur_jobs.len() == 0 && cur == tot_jobs {
+            return;
+        }
+        thread::sleep(time::Duration::from_secs(SLEEP_INT as u64));
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
     use std::fs;
 
     use super::*;
@@ -280,7 +403,7 @@ mod tests {
 #SBATCH --job-name=semp
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH -o {filename}.out
+#SBATCH -o /tmp/submit.slurm.out
 #SBATCH --no-requeue
 #SBATCH --mem=1gb
 export LD_LIBRARY_PATH=/home/qc/mopac2016/
@@ -291,68 +414,22 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         assert_eq!(got, want);
         fs::remove_file("/tmp/submit.slurm").unwrap();
     }
+
     #[test]
     fn test_full() {
         let names = vec!["C", "C", "C", "H", "H"];
         let moles = load_geoms("three07", names);
         let params = load_params("params.dat");
         // build jobs (in memory) -> write jobs (to disk) -> run jobs
-        let mut count: usize = 0;
-        let mut jobs = Vec::new();
-        for mol in moles {
-            let filename = format!("inp/job.{count:08}");
-            count += 1;
-            jobs.push(Job::new(Mopac::new(filename, params.clone(), mol)))
-        }
+        let mut jobs = build_jobs(moles, params);
         setup();
-        let chunk_num: usize = 0;
-        let mut cur_jobs = Vec::new();
-        let mut slurm_jobs = HashMap::new();
-        let mut cur = 0; // current index into jobs
-        let tot_jobs = jobs.len();
-        // TODO include index in got for job to point to
-        let mut got = Vec::new();
-        loop {
-            if cur_jobs.len() < JOB_LIMIT {
-                let new_chunk = build_chunk(
-                    &mut jobs[cur..std::cmp::min(cur + CHUNK_SIZE, tot_jobs)],
-                    chunk_num,
-                    &mut slurm_jobs,
-                    LocalQueue {},
-                );
-                cur += new_chunk.len();
-                cur_jobs.extend(new_chunk);
-            }
-            // collect output
-            let mut to_remove = Vec::new();
-            for (i, job) in cur_jobs.iter().enumerate() {
-                match job.mopac.read_output() {
-                    Some(val) => {
-                        to_remove.push(i);
-                        got.push(val);
-                    }
-                    None => todo!(),
-                }
-                let count = slurm_jobs.get_mut(job.pbs_file.as_str()).unwrap();
-                *count -= 1;
-            }
-            // remove finished jobs. TODO also delete the files
-
-	    // have to remove the highest index first so sort and reverse
-            to_remove.sort();
-	    to_remove.reverse();
-            for i in to_remove {
-                cur_jobs.swap_remove(i);
-            }
-            if cur_jobs.len() == 0 && cur == tot_jobs {
-                break;
-            }
-        }
+        drain(&mut jobs, LocalQueue {});
         let want = vec![
             0.20374485388911504,
             0.20541305733965845,
             0.20511337069030972,
         ];
+        let got = jobs.dst;
         let eps = 1e-20;
         for i in 0..want.len() {
             assert!((got[i] - want[i]).abs() < eps);
@@ -361,33 +438,16 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
     }
 }
 
-// I want this to consume a slice of jobs from the all_jobs vec and return a
-// slice/vec that can be added to cur_jobs
-pub fn build_chunk<S: Submit>(
-    jobs: &mut [Job],
-    chunk_num: usize,
-    slurm_jobs: &mut HashMap<String, usize>,
-    queue: S,
-) -> Vec<Job> {
-    let queue_file = format!("inp/main{}.slurm", chunk_num);
-    let mut chunk_jobs = Vec::new();
-    for job in jobs {
-        job.mopac.write_input();
-        job.pbs_file = queue_file.to_string();
-        chunk_jobs.push((*job).clone());
+pub struct Jobs {
+    pub jobs: Vec<Job>,
+    pub dst: Vec<f64>,
+}
+
+impl Jobs {
+    pub fn new() -> Self {
+        Jobs {
+            jobs: Vec::new(),
+            dst: Vec::new(),
+        }
     }
-    slurm_jobs.insert(queue_file.clone(), chunk_jobs.len());
-    queue.write_submit_script(
-        chunk_jobs
-            .iter()
-            .map(|j| j.mopac.filename.clone())
-            .collect(),
-        &queue_file,
-    );
-    // run jobs
-    let job_id = queue.submit(&queue_file);
-    for job in &mut chunk_jobs {
-        job.job_id = job_id.clone();
-    }
-    chunk_jobs
 }

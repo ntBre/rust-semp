@@ -22,7 +22,7 @@ see [[https://msfjarvis.dev/posts/building-static-rust-binaries-for-linux/][this
    - both in place but both need to be tested
 ** DONE run mopac
    - assemble jobs and run them
-** TODO build, run, poll loop
+** DONE build, run, poll loop
    - take a list of jobs to run and build, run, poll, and clean them
      - for faster calculations (eg the NumJac) just send it more built jobs to
        run at once

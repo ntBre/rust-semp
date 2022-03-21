@@ -1,6 +1,8 @@
 use std::{process::Command, str};
 
 pub trait Submit {
+    fn new() -> Self;
+
     fn write_submit_script(&self, infiles: Vec<String>, filename: &str);
 
     fn submit_command(&self) -> &str;

@@ -57,7 +57,7 @@ impl Mopac {
             params,
             geom,
             param_file: String::new(),
-	    param_dir: "tmparam".to_string(),
+            param_dir: "tmparam".to_string(),
         }
     }
 
@@ -66,8 +66,10 @@ impl Mopac {
         for p in &self.params {
             body.push_str(&p.to_string());
         }
-        let mut file = File::create(&self.param_file)
-            .expect("failed to create params file");
+        let mut file = match File::create(&self.param_file) {
+            Ok(f) => f,
+            Err(e) => panic!("failed to create {} with {}", self.param_file, e),
+        };
         write!(file, "{}", body).expect("failed to write params file");
     }
 
@@ -99,10 +101,9 @@ Comment line 2
     /// occurs (file not found, not written to yet, etc) None is returned.
     pub fn read_output(&self) -> Option<f64> {
         let outfile = format!("{}.out", &self.filename);
-        let f = match File::open(outfile) {
+        let f = match File::open(&outfile) {
             Ok(file) => file,
             Err(_) => {
-                eprintln!("file {} not found", self.filename);
                 return None;
             } // file not found
         };
@@ -178,7 +179,7 @@ mod tests {
     #[test]
     fn test_write_input() {
         let mut tm = test_mopac();
-	tm.param_dir = "/tmp".to_string();
+        tm.param_dir = "/tmp".to_string();
         tm.write_input();
         let got = fs::read_to_string("/tmp/test.mop").expect("file not found");
         let want = format!("XYZ 1SCF A0 scfcrt=1.D-21 aux(precision=14) PM6 external={paramfile}
@@ -241,6 +242,10 @@ HSP            C      0.717322000000
 
         fn submit_command(&self) -> &str {
             "bash"
+        }
+
+        fn new() -> Self {
+            Self {}
         }
     }
 

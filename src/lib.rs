@@ -206,6 +206,7 @@ pub struct Job {
     pub pbs_file: String,
     pub job_id: String,
     pub index: usize,
+    pub coeff: f64,
 }
 
 impl Job {
@@ -215,6 +216,7 @@ impl Job {
             pbs_file: String::new(),
             job_id: String::new(),
             index,
+            coeff: 1.0,
         }
     }
 }
@@ -253,16 +255,22 @@ pub fn build_chunk<'a, S: Submit>(
 
 /// Build the jobs described by `moles` in memory, but don't write any of their
 /// files yet
-pub fn build_jobs(moles: Vec<Vec<Atom>>, params: Vec<Param>) -> Jobs {
-    let mut count: usize = 0;
-    let mut jobs = Jobs::new();
+pub fn build_jobs(
+    moles: Vec<Vec<Atom>>,
+    params: Vec<Param>,
+    start_index: usize,
+    coeff: f64,
+) -> Vec<Job> {
+    let mut count: usize = start_index;
+    let mut jobs = Vec::new();
     for mol in moles {
         let filename = format!("inp/job.{count:08}");
-        jobs.jobs
-            .push(Job::new(Mopac::new(filename, params.clone(), mol), count));
+        let mut job =
+            Job::new(Mopac::new(filename, params.clone(), mol), count);
+        job.coeff = coeff;
+        jobs.push(job);
         count += 1;
     }
-    jobs.dst = vec![0.0; count];
     jobs
 }
 
@@ -298,18 +306,18 @@ impl Dump {
     }
 }
 
-pub fn drain<S: Submit>(jobs: &mut Jobs, _submitter: S) {
+pub fn drain<S: Submit>(jobs: &mut Vec<Job>, dst: &mut [f64], _submitter: S) {
     let mut chunk_num: usize = 0;
     let mut cur_jobs = Vec::new();
     let mut slurm_jobs = HashMap::new();
     let mut cur = 0; // current index into jobs
-    let tot_jobs = jobs.jobs.len();
+    let tot_jobs = jobs.len();
     let mut dump = Dump::new(CHUNK_SIZE * 5);
     loop {
         let mut finished = 0;
         while cur_jobs.len() < JOB_LIMIT && cur < tot_jobs {
             let new_chunk = build_chunk(
-                &mut jobs.jobs[cur..std::cmp::min(cur + CHUNK_SIZE, tot_jobs)],
+                &mut jobs[cur..std::cmp::min(cur + CHUNK_SIZE, tot_jobs)],
                 chunk_num,
                 &mut slurm_jobs,
                 S::new(),
@@ -324,7 +332,7 @@ pub fn drain<S: Submit>(jobs: &mut Jobs, _submitter: S) {
             match job.mopac.read_output() {
                 Some(val) => {
                     to_remove.push(i);
-                    jobs.dst[job.index] = val;
+                    dst[job.index] += job.coeff * val;
                     dump.add(vec![
                         format!("{}.mop", job.mopac.filename),
                         format!("{}.out", job.mopac.filename),
@@ -359,10 +367,10 @@ pub fn drain<S: Submit>(jobs: &mut Jobs, _submitter: S) {
             return;
         }
         if finished == 0 {
-            println!("none finished, sleeping");
+            eprintln!("none finished, sleeping");
             thread::sleep(time::Duration::from_secs(SLEEP_INT as u64));
         } else {
-            println!("finished {}", finished);
+            eprintln!("finished {}", finished);
         }
     }
 }
@@ -477,15 +485,15 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let moles = load_geoms("three07", names);
         let params = load_params("params.dat");
         // build jobs (in memory) -> write jobs (to disk) -> run jobs
-        let mut jobs = build_jobs(moles, params);
+        let mut jobs = build_jobs(moles, params, 0, 1.0);
         setup();
-        drain(&mut jobs, LocalQueue {});
+	let mut got = vec![0.0; jobs.len()];
+        drain(&mut jobs, &mut got, LocalQueue {});
         let want = vec![
             0.20374485388911504,
             0.20541305733965845,
             0.20511337069030972,
         ];
-        let got = jobs.dst;
         let eps = 1e-20;
         for i in 0..want.len() {
             assert!((got[i] - want[i]).abs() < eps);

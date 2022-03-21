@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     fs::{self, File},
     io::BufRead,
     io::BufReader,
@@ -9,6 +10,7 @@ pub mod mopac;
 pub mod queue;
 
 static DIRS: &'static [&str] = &["inp", "tmparam"];
+static JOB_LIMIT: usize = 3;
 
 /// set up the directories needed for the program
 pub fn setup() {
@@ -330,34 +332,17 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         //   receive chunk
         //
         let chunk_num: usize = 0;
+        let cur_jobs = Vec::new();
+        let mut slurm_jobs = HashMap::new();
         let got = loop {
-            // slurm_file has to be set here so you can associate it with each
-            // job in the chunk.
-            let slurm_file = format!("inp/main{}.slurm", chunk_num);
-            let mut chunk_jobs = Vec::new();
-            for job in &mut jobs {
-                job.mopac.write_input();
-                job.pbs_file = slurm_file.to_string();
-                chunk_jobs.push(job);
-            }
-            let mut slurm_jobs = HashMap::new();
-            slurm_jobs.insert(slurm_file.clone(), chunk_jobs.len());
-            let slurm = LocalQueue::new(&slurm_file);
-            slurm.write_submit_script(
-                chunk_jobs
-                    .iter()
-                    .map(|j| j.mopac.filename.clone())
-                    .collect(),
-            );
-            // run jobs
-            let job_id = slurm.submit();
-            for job in &mut chunk_jobs {
-                job.job_id = job_id.clone();
+            if cur_jobs.len() < JOB_LIMIT {
+                cur_jobs.extend(build_chunk(jobs, chunk_num, &mut slurm_jobs));
             }
             // collect output
             let mut got = Vec::new();
             for job in jobs {
                 dbg!(&job);
+		// TODO not unwrap, actually handle it
                 got.push(job.mopac.read_output().unwrap());
                 let count = slurm_jobs.get_mut(job.pbs_file.as_str()).unwrap();
                 *count -= 1;
@@ -375,4 +360,34 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         }
         takedown();
     }
+}
+
+// I want this to consume a slice of jobs from the all_jobs vec and return a
+// slice/vec that can be added to cur_jobs
+pub fn build_chunk(
+    jobs: Vec<Job>,
+    chunk_num: usize,
+    slurm_jobs: &mut HashMap<String, usize>,
+) -> Vec<Job> {
+    let slurm_file = format!("inp/main{}.slurm", chunk_num);
+    let mut chunk_jobs = Vec::new();
+    for job in jobs {
+        job.mopac.write_input();
+        job.pbs_file = slurm_file.to_string();
+        chunk_jobs.push(job);
+    }
+    slurm_jobs.insert(slurm_file.clone(), chunk_jobs.len());
+    let slurm = LocalQueue::new(&slurm_file);
+    slurm.write_submit_script(
+        chunk_jobs
+            .iter()
+            .map(|j| j.mopac.filename.clone())
+            .collect(),
+    );
+    // run jobs
+    let job_id = slurm.submit();
+    for job in &mut chunk_jobs {
+        job.job_id = job_id.clone();
+    }
+    chunk_jobs
 }

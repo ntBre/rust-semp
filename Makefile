@@ -3,4 +3,4 @@ eland:
 	scp -C target/release/rust-semp 'eland:'
 
 test:
-	cargo test -- --test-threads=1
+	cargo test -- --test-threads=1 --nocapture

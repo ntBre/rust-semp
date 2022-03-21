@@ -41,12 +41,13 @@ impl Param {
 /// Mopac holds the information needed to write a MOPAC input file. `filename`
 /// should not include an extension. `.mop` will be appended for input files,
 /// and `.out` and `.aux` will be appended for output files.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Mopac {
     pub filename: String,
     pub params: Vec<Param>,
     pub geom: Vec<Atom>,
     pub param_file: String,
+    pub param_dir: String,
 }
 
 impl Mopac {
@@ -56,6 +57,7 @@ impl Mopac {
             params,
             geom,
             param_file: String::new(),
+	    param_dir: "tmparam".to_string(),
         }
     }
 
@@ -75,7 +77,7 @@ impl Mopac {
     pub fn write_input(&mut self) {
         let mut s = DefaultHasher::new();
         self.filename.hash(&mut s);
-        let paramfile = format!("tmparam/{}", s.finish());
+        let paramfile = format!("{}/{}", self.param_dir, s.finish());
         self.param_file = paramfile;
         self.write_params();
         let geom = geom_string(&self.geom);
@@ -148,7 +150,6 @@ mod tests {
     use std::fs;
 
     use super::*;
-    use crate::queue::*;
 
     fn test_mopac() -> Mopac {
         Mopac::new(
@@ -176,8 +177,8 @@ mod tests {
 
     #[test]
     fn test_write_input() {
-        setup();
         let mut tm = test_mopac();
+	tm.param_dir = "/tmp".to_string();
         tm.write_input();
         let got = fs::read_to_string("/tmp/test.mop").expect("file not found");
         let want = format!("XYZ 1SCF A0 scfcrt=1.D-21 aux(precision=14) PM6 external={paramfile}
@@ -187,12 +188,10 @@ Comment line 2
 ", paramfile=tm.param_file);
         assert_eq!(got, want);
         fs::remove_file("/tmp/test.mop").unwrap();
-        takedown();
     }
 
     #[test]
     fn test_write_params() {
-        setup();
         let mut tm = test_mopac();
         tm.param_file = String::from("/tmp/params.dat");
         tm.write_params();
@@ -216,7 +215,6 @@ HSP            C      0.717322000000
 ";
         assert_eq!(got, want);
         fs::remove_file("/tmp/params.dat").unwrap();
-        takedown();
     }
 
     #[test]
@@ -224,25 +222,21 @@ HSP            C      0.717322000000
         let mp = Mopac::new(String::from("job"), Vec::new(), Vec::new());
         let got = mp.read_output().expect("expected a value");
         let want = 0.97127947459164715838e+02 / KCALHT;
-        assert!((dbg!(got) - want).abs() < 1e-20);
+        assert!((got - want).abs() < 1e-20);
     }
 
     /// minimal queue for testing general submission
     struct TestQueue;
 
     impl Submit for TestQueue {
-        fn write_submit_script(&self, infiles: Vec<String>) {
+        fn write_submit_script(&self, infiles: Vec<String>, filename: &str) {
             let mut body = String::new();
             for f in infiles {
                 body.push_str(&format!("echo {f}\n"));
             }
-            let mut file = File::create(self.filename())
-                .expect("failed to create params file");
+            let mut file =
+                File::create(filename).expect("failed to create params file");
             write!(file, "{}", body).expect("failed to write params file");
-        }
-
-        fn filename(&self) -> &str {
-            "/tmp/main.pbs"
         }
 
         fn submit_command(&self) -> &str {
@@ -258,8 +252,9 @@ HSP            C      0.717322000000
                 .iter()
                 .map(|x| x.to_string())
                 .collect(),
+            "/tmp/main.pbs",
         );
-        let got = tq.submit();
+        let got = tq.submit("/tmp/main.pbs");
         let want = "input1.mop\ninput2.mop\ninput3.mop";
         assert_eq!(got, want);
     }

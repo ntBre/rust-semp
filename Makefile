@@ -6,3 +6,9 @@ eland:
 
 test:
 	RUST_BACKTRACE=1 cargo test -- --test-threads=1 --nocapture
+
+profile:
+	cargo build --release
+	valgrind --tool=callgrind --callgrind-out-file=callgrind.out	\
+		--collect-jumps=yes --simulate-cache=yes		\
+		${BASE}/target/release/rust-semp

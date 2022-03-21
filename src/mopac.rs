@@ -107,13 +107,15 @@ Comment line 2
                 return None;
             } // file not found
         };
-        let f = BufReader::new(f);
-        for line in f.lines().map(|x| x.unwrap()) {
-            if line.to_uppercase().contains("PANIC") {
+        let mut f = BufReader::new(f);
+        let mut line = String::new();
+        while let Ok(_) = f.read_line(&mut line) {
+            line.make_ascii_uppercase();
+            if let Some(_) = line.find("PANIC") {
                 panic!("panic requested in read_output");
-            } else if line.to_uppercase().contains("ERROR") {
+            } else if let Some(_) = line.find("ERROR") {
                 panic!("error found in {}, exiting", self.filename);
-            } else if line.contains(" == MOPAC DONE ==") {
+            } else if let Some(_) = line.find(" == MOPAC DONE ==") {
                 return self.read_aux();
             }
         }

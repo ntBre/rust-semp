@@ -1,3 +1,6 @@
 /target
 /inp/
 /tmparam/
+/perf.data*
+/callgrind.out*
+/flamegraph.svg

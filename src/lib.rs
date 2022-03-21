@@ -266,12 +266,45 @@ pub fn build_jobs(moles: Vec<Vec<Atom>>, params: Vec<Param>) -> Jobs {
     jobs
 }
 
+struct Dump {
+    buf: Vec<String>,
+    ptr: usize,
+    max: usize,
+}
+
+impl Dump {
+    fn new(size: usize) -> Self {
+        Self {
+            buf: vec![String::new(); size],
+            ptr: 0,
+            max: size,
+        }
+    }
+    fn add(&mut self, files: Vec<String>) {
+        for file in files {
+            if self.ptr == self.max - 1 {
+                self.dump();
+            }
+            self.buf[self.ptr] = file;
+            self.ptr += 1;
+        }
+    }
+
+    fn dump(&mut self) {
+        for file in &self.buf {
+            let _ = std::fs::remove_file(file);
+        }
+        self.ptr = 0;
+    }
+}
+
 pub fn drain<S: Submit>(jobs: &mut Jobs, _submitter: S) {
     let mut chunk_num: usize = 0;
     let mut cur_jobs = Vec::new();
     let mut slurm_jobs = HashMap::new();
     let mut cur = 0; // current index into jobs
     let tot_jobs = jobs.jobs.len();
+    let mut dump = Dump::new(CHUNK_SIZE * 5);
     loop {
         let mut finished = 0;
         while cur_jobs.len() < JOB_LIMIT && cur < tot_jobs {
@@ -292,12 +325,27 @@ pub fn drain<S: Submit>(jobs: &mut Jobs, _submitter: S) {
                 Some(val) => {
                     to_remove.push(i);
                     jobs.dst[job.index] = val;
+                    dump.add(vec![
+                        format!("{}.mop", job.mopac.filename),
+                        format!("{}.out", job.mopac.filename),
+                        format!("{}.arc", job.mopac.filename),
+                        format!("{}.aux", job.mopac.filename),
+                        job.mopac.param_file.clone(),
+                    ]);
                     finished += 1;
+                    let job_name = job.pbs_file.as_str();
+                    let count = slurm_jobs.get_mut(job_name).unwrap();
+                    *count -= 1;
+                    if *count == 0 {
+                        // delete the submit script
+                        dump.add(vec![
+                            job_name.to_string(),
+                            format!("{}.out", job_name),
+                        ]);
+                    }
                 }
                 None => (),
             }
-            let count = slurm_jobs.get_mut(job.pbs_file.as_str()).unwrap();
-            *count -= 1;
         }
         // remove finished jobs. TODO also delete the files
 
@@ -311,11 +359,11 @@ pub fn drain<S: Submit>(jobs: &mut Jobs, _submitter: S) {
             return;
         }
         if finished == 0 {
-	    println!("none finished, sleeping");
+            println!("none finished, sleeping");
             thread::sleep(time::Duration::from_secs(SLEEP_INT as u64));
         } else {
-	    println!("finished {}", finished);
-	}
+            println!("finished {}", finished);
+        }
     }
 }
 

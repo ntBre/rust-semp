@@ -12,7 +12,9 @@ pub trait Submit {
             .arg(self.filename())
             .output()
         {
-            Ok(s) => return String::from(str::from_utf8(&s.stdout).unwrap()),
+            Ok(s) => {
+                return str::from_utf8(&s.stdout).unwrap().trim().to_string()
+            }
             Err(_) => todo!(),
         };
     }

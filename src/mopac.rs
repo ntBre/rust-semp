@@ -260,7 +260,7 @@ HSP            C      0.717322000000
                 .collect(),
         );
         let got = tq.submit();
-        let want = "input1.mop\ninput2.mop\ninput3.mop\n";
+        let want = "input1.mop\ninput2.mop\ninput3.mop";
         assert_eq!(got, want);
     }
 }

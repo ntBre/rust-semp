@@ -173,8 +173,8 @@ impl<'a> queue::Submit for LocalQueue<'a> {
         let mut body = String::from("export LD_LIBRARY_PATH=/opt/mopac/\n");
         for f in infiles {
             body.push_str(&format!("/opt/mopac/mopac {f}.mop\n"));
-            body.push_str(&format!("date +%s\n"));
         }
+        body.push_str(&format!("date +%s\n"));
         let mut file =
             File::create(self.filename).expect("failed to create params file");
         write!(file, "{}", body).expect("failed to write params file");
@@ -189,6 +189,7 @@ impl<'a> queue::Submit for LocalQueue<'a> {
     }
 }
 
+#[derive(Debug)]
 pub struct Job {
     pub mopac: mopac::Mopac,
     pub pbs_file: String,
@@ -324,29 +325,45 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             jobs.push(Job::new(Mopac::new(filename, params.clone(), mol)))
         }
         setup();
-        // slurm_file has to be set here so you can associate it with each job
-        // in the chunk.
-        let slurm_file = "inp/main.slurm";
-        let mut chunk = Vec::new();
-        for job in &mut jobs {
-            job.mopac.write_input();
-            job.pbs_file = slurm_file.to_string();
-            chunk.push(job.mopac.filename.clone());
-        }
-        let mut slurm_jobs = HashMap::new();
-        slurm_jobs.insert(slurm_file, chunk.len());
-        let slurm = LocalQueue::new(slurm_file);
-        slurm.write_submit_script(chunk);
-        // run jobs. TODO loop over jobs in this chunk and set job.job_id to the
-        // return value of slurm.submit
-        slurm.submit();
-        // collect output
-        let mut got = Vec::new();
-        for job in jobs {
-            got.push(job.mopac.read_output().unwrap());
-            let count = slurm_jobs.get_mut(job.pbs_file.as_str()).unwrap();
-            *count -= 1;
-        }
+        // receive list of jobs
+        // for numjobs < joblimit
+        //   receive chunk
+        //
+        let chunk_num: usize = 0;
+        let got = loop {
+            // slurm_file has to be set here so you can associate it with each
+            // job in the chunk.
+            let slurm_file = format!("inp/main{}.slurm", chunk_num);
+            let mut chunk_jobs = Vec::new();
+            for job in &mut jobs {
+                job.mopac.write_input();
+                job.pbs_file = slurm_file.to_string();
+                chunk_jobs.push(job);
+            }
+            let mut slurm_jobs = HashMap::new();
+            slurm_jobs.insert(slurm_file.clone(), chunk_jobs.len());
+            let slurm = LocalQueue::new(&slurm_file);
+            slurm.write_submit_script(
+                chunk_jobs
+                    .iter()
+                    .map(|j| j.mopac.filename.clone())
+                    .collect(),
+            );
+            // run jobs
+            let job_id = slurm.submit();
+            for job in &mut chunk_jobs {
+                job.job_id = job_id.clone();
+            }
+            // collect output
+            let mut got = Vec::new();
+            for job in jobs {
+                dbg!(&job);
+                got.push(job.mopac.read_output().unwrap());
+                let count = slurm_jobs.get_mut(job.pbs_file.as_str()).unwrap();
+                *count -= 1;
+            }
+            break got;
+        };
         let want = vec![
             0.20374485388911504,
             0.20541305733965845,
@@ -359,4 +376,3 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         takedown();
     }
 }
-

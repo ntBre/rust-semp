@@ -8,7 +8,7 @@ test:
 	RUST_BACKTRACE=1 cargo test -- --test-threads=1 --nocapture
 
 profile:
-	cargo build --release
+	RUSTFLAGS='-g' cargo build --release --bin profiling
 	valgrind --tool=callgrind --callgrind-out-file=callgrind.out	\
 		--collect-jumps=yes --simulate-cache=yes		\
-		${BASE}/target/release/rust-semp
+		${BASE}/target/release/profiling

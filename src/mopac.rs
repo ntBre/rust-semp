@@ -118,6 +118,7 @@ Comment line 2
             } else if let Some(_) = line.find(" == MOPAC DONE ==") {
                 return self.read_aux();
             }
+            line.clear();
         }
         None
     }
@@ -130,19 +131,21 @@ Comment line 2
         } else {
             return None;
         };
-        let f = BufReader::new(f);
-        for line in f.lines().map(|x| x.unwrap()) {
+        let mut f = BufReader::new(f);
+        let mut line = String::new();
+        while let Ok(_) = f.read_line(&mut line) {
             // line like HEAT_OF_FORMATION:KCAL/MOL=+0.97127947459164715838D+02
             if line.contains("HEAT_OF_FORMATION") {
-                let fields: Vec<&str> = line.split("=").collect();
+                let fields: Vec<&str> = line.trim().split("=").collect();
                 match fields[1].replace("D", "E").parse::<f64>() {
                     Ok(f) => return Some(f / KCALHT),
                     Err(_) => {
-                        eprintln!("failed to parse {}", fields[1]);
+                        eprintln!("failed to parse '{}'", fields[1]);
                         return None;
                     }
                 }
             }
+            line.clear();
         }
         None
     }

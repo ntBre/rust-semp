@@ -10,4 +10,5 @@ fn main() {
     for (i, g) in jobs.dst.iter().enumerate() {
         println!("{i:5}{g:20.12}");
     }
+    takedown();
 }

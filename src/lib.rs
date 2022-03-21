@@ -18,8 +18,9 @@ static JOB_LIMIT: usize = 1024;
 static CHUNK_SIZE: usize = 128;
 static SLEEP_INT: usize = 1;
 
-/// set up the directories needed for the program
+/// set up the directories needed for the program after deleting existing ones
 pub fn setup() {
+    takedown();
     for dir in DIRS {
         match fs::create_dir(dir) {
             Ok(_) => (),

@@ -274,7 +274,7 @@ pub fn drain<S: Submit>(jobs: &mut Jobs, _submitter: S) {
     let tot_jobs = jobs.jobs.len();
     loop {
         let mut finished = 0;
-        while cur_jobs.len() < JOB_LIMIT && dbg!(cur) < tot_jobs {
+        while cur_jobs.len() < JOB_LIMIT && cur < tot_jobs {
             let new_chunk = build_chunk(
                 &mut jobs.jobs[cur..std::cmp::min(cur + CHUNK_SIZE, tot_jobs)],
                 chunk_num,

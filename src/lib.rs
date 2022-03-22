@@ -20,6 +20,7 @@ static SLEEP_INT: usize = 1;
 static DELTA: f64 = 1e-8;
 static DELTA_FWD: f64 = 5e7; // 1 / 2Δ
 static DELTA_BWD: f64 = -5e7; // -1 / 2Δ
+static DEBUG: bool = false;
 
 /// set up the directories needed for the program after deleting existing ones
 pub fn setup() {
@@ -346,8 +347,9 @@ pub fn drain<S: Submit>(jobs: &mut Vec<Job>, dst: &mut [f64], _submitter: S) {
                 &mut slurm_jobs,
                 S::new(),
             );
-            // TODO gate with debug or verbose flag
-            eprintln!("submitted chunk {}", chunk_num);
+            if DEBUG {
+                eprintln!("submitted chunk {}", chunk_num);
+            }
             chunk_num += 1;
             cur += new_chunk.len();
             cur_jobs.extend(new_chunk);
@@ -381,8 +383,6 @@ pub fn drain<S: Submit>(jobs: &mut Vec<Job>, dst: &mut [f64], _submitter: S) {
                 None => (),
             }
         }
-        // remove finished jobs. TODO also delete the files
-
         // have to remove the highest index first so sort and reverse
         to_remove.sort();
         to_remove.reverse();
@@ -436,8 +436,9 @@ pub fn num_jac<S: Submit>(
         job_num += bwd_jobs.len();
         jobs.extend_from_slice(&bwd_jobs);
     }
-    // TODO gate with debug or verbose flag
-    eprintln!("num_jac: running {} jobs", jobs.len());
+    if DEBUG {
+        eprintln!("num_jac: running {} jobs", jobs.len());
+    }
     drain(&mut jobs, &mut jac_t, submitter);
     jac_t
 }

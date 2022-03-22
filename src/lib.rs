@@ -406,6 +406,14 @@ pub fn drain<S: Submit>(jobs: &mut Vec<Job>, dst: &mut [f64], _submitter: S) {
     }
 }
 
+/// compute the semi-empirical energies of `moles` for the given `params`
+pub fn semi_empirical(moles: Vec<Vec<Atom>>, params: Vec<Param>) -> Vec<f64> {
+    let mut jobs = build_jobs(moles, params, 0, 1.0, 0);
+    let mut got = vec![0.0; jobs.len()];
+    drain(&mut jobs, &mut got, LocalQueue {});
+    got
+}
+
 /// Compute the numerical Jacobian for the geomeries in `moles` and the
 /// parameters in `params`. For convenience of indexing, the transpose is
 /// actually computed and returned
@@ -604,15 +612,13 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let names = vec!["C", "C", "C", "H", "H"];
         let moles = load_geoms("three07", names);
         let params = load_params("params.dat");
-        let mut jobs = build_jobs(moles, params, 0, 1.0, 0);
-        setup();
-        let mut got = vec![0.0; jobs.len()];
-        drain(&mut jobs, &mut got, LocalQueue {});
         let want = vec![
             0.20374485388911504,
             0.20541305733965845,
             0.20511337069030972,
         ];
+        setup();
+	let got = semi_empirical(moles, params);
         let eps = 1e-20;
         for i in 0..want.len() {
             assert!((got[i] - want[i]).abs() < eps);
@@ -661,5 +667,18 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let got = num_jac(moles, params, LocalQueue {});
         assert!(comp_vec(&got, &want, 2e-6));
         takedown();
+    }
+
+    #[test]
+    fn test_lev_mar() {
+        // todo!();
+        // let names = vec!["C", "C", "C", "H", "H"];
+        // let moles = load_geoms("small07", names);
+        // let params = load_params("small.params");
+        // let want = transpose(&load_mat("small.jac"), moles.len(), params.len());
+        // setup();
+        // let got = num_jac(moles, params, LocalQueue {});
+        // assert!(comp_vec(&got, &want, 2e-6));
+        // takedown();
     }
 }

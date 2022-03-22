@@ -7,8 +7,13 @@ eland:
 test:
 	RUST_BACKTRACE=1 cargo test -- --test-threads=1 --nocapture
 
-profile:
-	RUSTFLAGS='-g' cargo build --release --bin profiling
+profile = RUSTFLAGS='-g' cargo build --release --bin $(1); \
 	valgrind --tool=callgrind --callgrind-out-file=callgrind.out	\
 		--collect-jumps=yes --simulate-cache=yes		\
-		${BASE}/target/release/profiling
+		${BASE}/target/release/$(1)
+
+profile.one_iter:
+	$(call profile,one_iter)
+
+profile.num_jac:
+	$(call profile,num_jac)

@@ -17,6 +17,9 @@ static DIRS: &'static [&str] = &["inp", "tmparam"];
 static JOB_LIMIT: usize = 1600;
 static CHUNK_SIZE: usize = 128;
 static SLEEP_INT: usize = 1;
+static DELTA: f64 = 1e-8;
+static DELTA_FWD: f64 = 5e7; // 1 / 2Δ
+static DELTA_BWD: f64 = -5e7; // -1 / 2Δ
 
 /// set up the directories needed for the program after deleting existing ones
 pub fn setup() {
@@ -278,11 +281,14 @@ pub fn build_jobs(
     params: Vec<Param>,
     start_index: usize,
     coeff: f64,
+    job_num: usize,
 ) -> Vec<Job> {
     let mut count: usize = start_index;
+    let mut job_num = job_num;
     let mut jobs = Vec::new();
     for mol in moles {
-        let filename = format!("inp/job.{count:08}");
+        let filename = format!("inp/job.{:08}", job_num);
+        job_num += 1;
         let mut job =
             Job::new(Mopac::new(filename, params.clone(), mol), count);
         job.coeff = coeff;
@@ -340,6 +346,8 @@ pub fn drain<S: Submit>(jobs: &mut Vec<Job>, dst: &mut [f64], _submitter: S) {
                 &mut slurm_jobs,
                 S::new(),
             );
+            // TODO gate with debug or verbose flag
+            eprintln!("submitted chunk {}", chunk_num);
             chunk_num += 1;
             cur += new_chunk.len();
             cur_jobs.extend(new_chunk);
@@ -386,6 +394,11 @@ pub fn drain<S: Submit>(jobs: &mut Vec<Job>, dst: &mut [f64], _submitter: S) {
         }
         if finished == 0 {
             eprintln!("none finished, sleeping");
+            dbg!(
+                cur_jobs.len(),
+                &cur_jobs[0].mopac.filename,
+                &cur_jobs[0].pbs_file
+            );
             thread::sleep(time::Duration::from_secs(SLEEP_INT as u64));
         } else {
             eprintln!("finished {}", finished);
@@ -393,8 +406,40 @@ pub fn drain<S: Submit>(jobs: &mut Vec<Job>, dst: &mut [f64], _submitter: S) {
     }
 }
 
-pub fn num_jac() {
-    todo!();
+/// Compute the numerical Jacobian for the geomeries in `moles` and the
+/// parameters in `params`. For convenience of indexing, the transpose is
+/// actually computed and returned
+pub fn num_jac<S: Submit>(
+    moles: Vec<Vec<Atom>>,
+    params: Vec<Param>,
+    submitter: S,
+) -> Vec<f64> {
+    let rows = params.len();
+    let cols = moles.len();
+    let mut jac_t = vec![0.; rows * cols];
+    // front and back for each row and col
+    let mut jobs = Vec::with_capacity(2 * rows * cols);
+    let mut job_num = 0;
+    for row in 0..rows {
+        // loop over params
+        let mut pf = params.clone();
+        let mut pb = params.clone();
+        let idx = row * cols;
+        // TODO do I really have to clone here?
+        pf[row].value += DELTA;
+        let fwd_jobs = build_jobs(moles.clone(), pf, idx, DELTA_FWD, job_num);
+        job_num += fwd_jobs.len();
+        jobs.extend_from_slice(&fwd_jobs);
+
+        pb[row].value -= DELTA;
+        let bwd_jobs = build_jobs(moles.clone(), pb, idx, DELTA_BWD, job_num);
+        job_num += bwd_jobs.len();
+        jobs.extend_from_slice(&bwd_jobs);
+    }
+    // TODO gate with debug or verbose flag
+    eprintln!("num_jac: running {} jobs", jobs.len());
+    drain(&mut jobs, &mut jac_t, submitter);
+    jac_t
 }
 
 #[cfg(test)]
@@ -438,7 +483,12 @@ mod tests {
             return false;
         }
         for (i, g) in got.iter().enumerate() {
-            if (g - want[i]).abs() > eps {
+            let diff = (g - want[i]).abs();
+            if diff > eps {
+                eprintln!(
+                    "{:5} got: {}, wanted {}: diff {:e}",
+                    i, g, want[i], diff
+                );
                 return false;
             }
         }
@@ -553,8 +603,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let names = vec!["C", "C", "C", "H", "H"];
         let moles = load_geoms("three07", names);
         let params = load_params("params.dat");
-        // build jobs (in memory) -> write jobs (to disk) -> run jobs
-        let mut jobs = build_jobs(moles, params, 0, 1.0);
+        let mut jobs = build_jobs(moles, params, 0, 1.0, 0);
         setup();
         let mut got = vec![0.0; jobs.len()];
         drain(&mut jobs, &mut got, LocalQueue {});
@@ -586,16 +635,30 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
                 .skip(1)
                 .map(|x| x.parse().unwrap())
                 .collect();
-	    ret.extend_from_slice(&sp);
+            ret.extend_from_slice(&sp);
+        }
+        ret
+    }
+
+    fn transpose(orig: &[f64], rows: usize, cols: usize) -> Vec<f64> {
+        let mut ret = Vec::with_capacity(rows * cols);
+        for i in 0..cols {
+            for j in 0..rows {
+                ret.push(orig[i + j * cols])
+            }
         }
         ret
     }
 
     #[test]
-    fn test_numjac() {
+    fn test_num_jac() {
         let names = vec!["C", "C", "C", "H", "H"];
-        let _moles = load_geoms("three07", names);
-        let _params = load_params("params.dat");
-        let _want = load_mat("small.jac");
+        let moles = load_geoms("small07", names);
+        let params = load_params("small.params");
+        let want = transpose(&load_mat("small.jac"), moles.len(), params.len());
+        setup();
+        let got = num_jac(moles, params, LocalQueue {});
+        assert!(comp_vec(&got, &want, 2e-6));
+        takedown();
     }
 }

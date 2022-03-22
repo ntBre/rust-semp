@@ -8,4 +8,7 @@ edition = "2021"
 [dependencies]
 
 [[bin]]
-name = "profiling"
+name = "one_iter"
+
+[[bin]]
+name = "num_jac"

@@ -11,7 +11,7 @@ const KCALHT: f64 = 627.5091809;
 pub struct Param {
     name: String,
     atom: String,
-    value: f64,
+    pub value: f64,
 }
 
 impl ToString for Param {

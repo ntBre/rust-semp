@@ -5,7 +5,7 @@ fn main() {
     let moles = load_geoms("quarter07", names);
     let ml = moles.len();
     let params = load_params("params.dat");
-    let mut jobs = build_jobs(moles, params, 0, 1.0);
+    let mut jobs = build_jobs(moles, params, 0, 1.0, 0);
     setup();
     let mut energies = vec![0.; ml];
     drain(&mut jobs, &mut energies, LocalQueue {});

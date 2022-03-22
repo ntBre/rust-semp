@@ -109,7 +109,10 @@ Comment line 2
         };
         let mut f = BufReader::new(f);
         let mut line = String::new();
-        while let Ok(_) = f.read_line(&mut line) {
+        while let Ok(b) = f.read_line(&mut line) {
+            if b == 0 {
+                break;
+            }
             line.make_ascii_uppercase();
             if let Some(_) = line.find("PANIC") {
                 panic!("panic requested in read_output");
@@ -133,7 +136,10 @@ Comment line 2
         };
         let mut f = BufReader::new(f);
         let mut line = String::new();
-        while let Ok(_) = f.read_line(&mut line) {
+        while let Ok(b) = f.read_line(&mut line) {
+            if b == 0 {
+                break;
+            }
             // line like HEAT_OF_FORMATION:KCAL/MOL=+0.97127947459164715838D+02
             if line.contains("HEAT_OF_FORMATION") {
                 let fields: Vec<&str> = line.trim().split("=").collect();
@@ -225,10 +231,21 @@ HSP            C      0.717322000000
 
     #[test]
     fn test_read_output() {
+        // success
         let mp = Mopac::new(String::from("job"), Vec::new(), Vec::new());
         let got = mp.read_output().expect("expected a value");
         let want = 0.97127947459164715838e+02 / KCALHT;
         assert!((got - want).abs() < 1e-20);
+
+        // failure in output
+        let mp = Mopac::new(String::from("nojob"), Vec::new(), Vec::new());
+        let got = mp.read_output();
+        assert_eq!(got, None);
+
+        // failure in aux
+        let mp = Mopac::new(String::from("noaux"), Vec::new(), Vec::new());
+        let got = mp.read_output();
+        assert_eq!(got, None);
     }
 
     /// minimal queue for testing general submission

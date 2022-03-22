@@ -121,7 +121,7 @@ pub fn load_energies(filename: &str) -> Vec<f64> {
     };
     let lines = BufReader::new(f).lines();
     for line in lines.map(|x| x.unwrap()) {
-	ret.push(line.trim().parse().unwrap());
+        ret.push(line.trim().parse().unwrap());
     }
     ret
 }
@@ -393,6 +393,10 @@ pub fn drain<S: Submit>(jobs: &mut Vec<Job>, dst: &mut [f64], _submitter: S) {
     }
 }
 
+pub fn num_jac() {
+    todo!();
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs;
@@ -438,7 +442,7 @@ mod tests {
                 return false;
             }
         }
-	true
+        true
     }
 
     fn comp_geoms(got: Vec<Vec<Atom>>, want: Vec<Vec<Atom>>, eps: f64) -> bool {
@@ -448,9 +452,9 @@ mod tests {
                 if atom.label != btom.label {
                     return false;
                 }
-		if !comp_vec(&atom.coord, &btom.coord, eps) {
-		    return false;
-		}
+                if !comp_vec(&atom.coord, &btom.coord, eps) {
+                    return false;
+                }
             }
         }
         true
@@ -490,7 +494,7 @@ mod tests {
             0.000127547307,
             0.000128059983,
         ];
-	assert!(comp_vec(&got, &want, 1e-12));
+        assert!(comp_vec(&got, &want, 1e-12));
     }
 
     #[test]
@@ -545,7 +549,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
     }
 
     #[test]
-    fn test_full() {
+    fn test_one_iter() {
         let names = vec!["C", "C", "C", "H", "H"];
         let moles = load_geoms("three07", names);
         let params = load_params("params.dat");
@@ -565,18 +569,33 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         }
         takedown();
     }
-}
 
-pub struct Jobs {
-    pub jobs: Vec<Job>,
-    pub dst: Vec<f64>,
-}
-
-impl Jobs {
-    pub fn new() -> Self {
-        Jobs {
-            jobs: Vec::new(),
-            dst: Vec::new(),
+    fn load_mat(filename: &str) -> Vec<f64> {
+        let f = match File::open(filename) {
+            Ok(f) => f,
+            Err(e) => {
+                panic!("failed to open {} with {}", filename, e);
+            }
+        };
+        let lines = BufReader::new(f).lines().map(|x| x.unwrap());
+        let mut ret = Vec::new();
+        for line in lines {
+            let sp: Vec<f64> = line
+                .trim()
+                .split_whitespace()
+                .skip(1)
+                .map(|x| x.parse().unwrap())
+                .collect();
+	    ret.extend_from_slice(&sp);
         }
+        ret
+    }
+
+    #[test]
+    fn test_numjac() {
+        let names = vec!["C", "C", "C", "H", "H"];
+        let _moles = load_geoms("three07", names);
+        let _params = load_params("params.dat");
+        let _want = load_mat("small.jac");
     }
 }

@@ -108,6 +108,24 @@ pub fn load_geoms(filename: &str, atom_names: Vec<&str>) -> Vec<Vec<Atom>> {
     ret
 }
 
+pub fn load_energies(filename: &str) -> Vec<f64> {
+    let mut ret = Vec::new();
+    let f = match File::open(filename) {
+        Ok(f) => f,
+        Err(e) => {
+            eprintln!(
+                "failed to open {filename} for reading energies with {e}"
+            );
+            std::process::exit(1);
+        }
+    };
+    let lines = BufReader::new(f).lines();
+    for line in lines.map(|x| x.unwrap()) {
+	ret.push(line.trim().parse().unwrap());
+    }
+    ret
+}
+
 /// parse a file containing lines like:
 ///
 ///   USS            H    -11.246958000000
@@ -411,6 +429,18 @@ mod tests {
         assert!(comp_geoms(got, want, 1e-10));
     }
 
+    fn comp_vec(got: &[f64], want: &[f64], eps: f64) -> bool {
+        if got.len() != want.len() {
+            return false;
+        }
+        for (i, g) in got.iter().enumerate() {
+            if (g - want[i]).abs() > eps {
+                return false;
+            }
+        }
+	true
+    }
+
     fn comp_geoms(got: Vec<Vec<Atom>>, want: Vec<Vec<Atom>>, eps: f64) -> bool {
         for (i, mol) in got.iter().enumerate() {
             for (j, atom) in mol.iter().enumerate() {
@@ -418,14 +448,49 @@ mod tests {
                 if atom.label != btom.label {
                     return false;
                 }
-                for k in 0..atom.coord.len() {
-                    if (atom.coord[k] - btom.coord[k]).abs() > eps {
-                        return false;
-                    }
-                }
+		if !comp_vec(&atom.coord, &btom.coord, eps) {
+		    return false;
+		}
             }
         }
         true
+    }
+
+    #[test]
+    fn test_load_energies() {
+        let got = load_energies("small.dat");
+        let want = vec![
+            0.000000000000,
+            0.000453458157,
+            0.000258906149,
+            0.000268926371,
+            0.000247426244,
+            0.000251632099,
+            0.000259236055,
+            0.000267395682,
+            0.000273547427,
+            0.000159696616,
+            0.000136655279,
+            0.000118039859,
+            0.000119823282,
+            0.000124994640,
+            0.000136055791,
+            0.000177574442,
+            0.000124620943,
+            0.000126842659,
+            0.000132448769,
+            0.000108785467,
+            0.000107629675,
+            0.000176541210,
+            0.000144535949,
+            0.000126349619,
+            0.000129459053,
+            0.000141660093,
+            0.000176137923,
+            0.000127547307,
+            0.000128059983,
+        ];
+	assert!(comp_vec(&got, &want, 1e-12));
     }
 
     #[test]
@@ -487,7 +552,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         // build jobs (in memory) -> write jobs (to disk) -> run jobs
         let mut jobs = build_jobs(moles, params, 0, 1.0);
         setup();
-	let mut got = vec![0.0; jobs.len()];
+        let mut got = vec![0.0; jobs.len()];
         drain(&mut jobs, &mut got, LocalQueue {});
         let want = vec![
             0.20374485388911504,

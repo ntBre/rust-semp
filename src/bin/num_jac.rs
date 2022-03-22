@@ -5,6 +5,6 @@ fn main() {
     let moles = load_geoms("small07", names);
     let params = load_params("small.params");
     setup();
-    num_jac(moles, params, LocalQueue {});
+    num_jac(&moles, &params, LocalQueue {});
     takedown();
 }

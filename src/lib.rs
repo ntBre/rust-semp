@@ -21,6 +21,7 @@ static DELTA: f64 = 1e-8;
 static DELTA_FWD: f64 = 5e7; // 1 / 2Δ
 static DELTA_BWD: f64 = -5e7; // -1 / 2Δ
 static DEBUG: bool = false;
+static HT_TO_CM: f64 = 219_474.5459784;
 
 /// set up the directories needed for the program after deleting existing ones
 pub fn setup() {
@@ -278,8 +279,8 @@ pub fn build_chunk<'a, S: Submit>(
 /// Build the jobs described by `moles` in memory, but don't write any of their
 /// files yet
 pub fn build_jobs(
-    moles: Vec<Vec<Atom>>,
-    params: Vec<Param>,
+    moles: &Vec<Vec<Atom>>,
+    params: &Vec<Param>,
     start_index: usize,
     coeff: f64,
     job_num: usize,
@@ -291,7 +292,7 @@ pub fn build_jobs(
         let filename = format!("inp/job.{:08}", job_num);
         job_num += 1;
         let mut job =
-            Job::new(Mopac::new(filename, params.clone(), mol), count);
+            Job::new(Mopac::new(filename, params.clone(), mol.clone()), count);
         job.coeff = coeff;
         jobs.push(job);
         count += 1;
@@ -407,7 +408,7 @@ pub fn drain<S: Submit>(jobs: &mut Vec<Job>, dst: &mut [f64], _submitter: S) {
 }
 
 /// compute the semi-empirical energies of `moles` for the given `params`
-pub fn semi_empirical(moles: Vec<Vec<Atom>>, params: Vec<Param>) -> Vec<f64> {
+pub fn semi_empirical(moles: &Vec<Vec<Atom>>, params: &Vec<Param>) -> Vec<f64> {
     let mut jobs = build_jobs(moles, params, 0, 1.0, 0);
     let mut got = vec![0.0; jobs.len()];
     drain(&mut jobs, &mut got, LocalQueue {});
@@ -418,8 +419,8 @@ pub fn semi_empirical(moles: Vec<Vec<Atom>>, params: Vec<Param>) -> Vec<f64> {
 /// parameters in `params`. For convenience of indexing, the transpose is
 /// actually computed and returned
 pub fn num_jac<S: Submit>(
-    moles: Vec<Vec<Atom>>,
-    params: Vec<Param>,
+    moles: &Vec<Vec<Atom>>,
+    params: &Vec<Param>,
     submitter: S,
 ) -> Vec<f64> {
     let rows = params.len();
@@ -435,12 +436,12 @@ pub fn num_jac<S: Submit>(
         let idx = row * cols;
         // TODO do I really have to clone here?
         pf[row].value += DELTA;
-        let fwd_jobs = build_jobs(moles.clone(), pf, idx, DELTA_FWD, job_num);
+        let fwd_jobs = build_jobs(&moles.clone(), &pf, idx, DELTA_FWD, job_num);
         job_num += fwd_jobs.len();
         jobs.extend_from_slice(&fwd_jobs);
 
         pb[row].value -= DELTA;
-        let bwd_jobs = build_jobs(moles.clone(), pb, idx, DELTA_BWD, job_num);
+        let bwd_jobs = build_jobs(&moles.clone(), &pb, idx, DELTA_BWD, job_num);
         job_num += bwd_jobs.len();
         jobs.extend_from_slice(&bwd_jobs);
     }
@@ -618,7 +619,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             0.20511337069030972,
         ];
         setup();
-	let got = semi_empirical(moles, params);
+        let got = semi_empirical(&moles, &params);
         let eps = 1e-20;
         for i in 0..want.len() {
             assert!((got[i] - want[i]).abs() < eps);
@@ -664,21 +665,114 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let params = load_params("small.params");
         let want = transpose(&load_mat("small.jac"), moles.len(), params.len());
         setup();
-        let got = num_jac(moles, params, LocalQueue {});
+        let got = num_jac(&moles, &params, LocalQueue {});
         assert!(comp_vec(&got, &want, 2e-6));
         takedown();
     }
 
     #[test]
     fn test_lev_mar() {
-        // todo!();
-        // let names = vec!["C", "C", "C", "H", "H"];
-        // let moles = load_geoms("small07", names);
-        // let params = load_params("small.params");
-        // let want = transpose(&load_mat("small.jac"), moles.len(), params.len());
-        // setup();
-        // let got = num_jac(moles, params, LocalQueue {});
-        // assert!(comp_vec(&got, &want, 2e-6));
-        // takedown();
+        let names = vec!["C", "C", "C", "H", "H"];
+        let moles = load_geoms("small07", names);
+        let params = load_params("small.params");
+        let ai = load_energies("25.dat");
+        setup();
+        let se = semi_empirical(&moles, &params);
+        let rel = relative(&se);
+        let mut stats = Stats::new(&ai, &rel);
+        let mut last_stats = Stats::default();
+        Stats::print_header();
+        stats.print_step(0, &last_stats);
+        let mut iter = 1;
+        while iter < 5 {
+	    // let jac_t = num_jac(&moles, &params, LocalQueue{});
+	    // TODO write lev_mar and call it with jac_t
+            stats = Stats::new(&ai, &rel);
+            stats.print_step(iter, &last_stats);
+            last_stats = stats;
+            iter += 1;
+        }
+        takedown();
     }
+}
+
+#[derive(Debug)]
+pub struct Stats {
+    pub norm: f64,
+    pub rmsd: f64,
+    pub max: f64,
+}
+
+impl Stats {
+    /// compute the Stats between `v` and `w` in cm-1 under the assumption they
+    /// started out in Ht
+    pub fn new(v: &Vec<f64>, w: &Vec<f64>) -> Self {
+        let count = v.len();
+        assert_eq!(count, w.len());
+        let mut sq_diffs = 0.0;
+        let mut max = v[0] - w[0];
+        for i in 0..count {
+            let diff = v[i] - w[i];
+            sq_diffs += diff * diff;
+            if diff.abs() > max {
+                max = diff.abs();
+            }
+        }
+        Self {
+            norm: sq_diffs.sqrt() * HT_TO_CM,
+            rmsd: (sq_diffs / count as f64).sqrt() * HT_TO_CM,
+            max: max * HT_TO_CM,
+        }
+    }
+    pub fn print_header() {
+        println!(
+            "{:>17}{:>12}{:>12}{:>12}{:>12}{:>12}",
+            "cm-1", "cm-1", "cm-1", "cm-1", "cm-1", "s"
+        );
+        println!(
+            "{:>5}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+            "Iter", "Norm", "ΔNorm", "RMSD", "ΔRMSD", "Max", "Time"
+        );
+    }
+
+    // TODO bring time back in last column
+    pub fn print_step(&self, iter: usize, last: &Self) {
+        print!(
+            "{:5}{:12.4}{:12.4}{:12.4}{:12.4}{:12.4}{:12.1}\n",
+            iter,
+            self.norm,
+            self.norm - last.norm,
+            self.rmsd,
+            self.rmsd - last.rmsd,
+            self.max,
+            0.0
+        );
+    }
+}
+
+impl Default for Stats {
+    fn default() -> Self {
+        Self {
+            norm: 0.0,
+            rmsd: 0.0,
+            max: 0.0,
+        }
+    }
+}
+
+/// return `energies` relative to its minimum element
+pub fn relative(energies: &Vec<f64>) -> Vec<f64> {
+    let mut ret = Vec::with_capacity(energies.len());
+    let mut min = energies[0];
+    // compute the min
+    for e in energies {
+        if e < &min {
+            min = *e
+        }
+    }
+
+    for e in energies {
+        ret.push(e - min);
+    }
+    ret
 }

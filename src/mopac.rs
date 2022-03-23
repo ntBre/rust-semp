@@ -232,18 +232,18 @@ HSP            C      0.717322000000
     #[test]
     fn test_read_output() {
         // success
-        let mp = Mopac::new(String::from("job"), Vec::new(), Vec::new());
+        let mp = Mopac::new(String::from("test_files/job"), Vec::new(), Vec::new());
         let got = mp.read_output().expect("expected a value");
         let want = 0.97127947459164715838e+02 / KCALHT;
         assert!((got - want).abs() < 1e-20);
 
         // failure in output
-        let mp = Mopac::new(String::from("nojob"), Vec::new(), Vec::new());
+        let mp = Mopac::new(String::from("test_files/nojob"), Vec::new(), Vec::new());
         let got = mp.read_output();
         assert_eq!(got, None);
 
         // failure in aux
-        let mp = Mopac::new(String::from("noaux"), Vec::new(), Vec::new());
+        let mp = Mopac::new(String::from("test_files/noaux"), Vec::new(), Vec::new());
         let got = mp.read_output();
         assert_eq!(got, None);
     }

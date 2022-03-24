@@ -115,7 +115,7 @@ pub fn load_geoms(filename: &str, atom_names: Vec<&str>) -> Vec<Vec<Atom>> {
     ret
 }
 
-pub fn load_energies(filename: &str) -> Vec<f64> {
+pub fn load_energies(filename: &str) -> na::DVector<f64> {
     let mut ret = Vec::new();
     let f = match File::open(filename) {
         Ok(f) => f,
@@ -130,7 +130,7 @@ pub fn load_energies(filename: &str) -> Vec<f64> {
     for line in lines.map(|x| x.unwrap()) {
         ret.push(line.trim().parse().unwrap());
     }
-    ret
+    na::DVector::from(ret)
 }
 
 /// parse a file containing lines like:
@@ -410,11 +410,14 @@ pub fn drain<S: Submit>(jobs: &mut Vec<Job>, dst: &mut [f64], _submitter: S) {
 }
 
 /// compute the semi-empirical energies of `moles` for the given `params`
-pub fn semi_empirical(moles: &Vec<Vec<Atom>>, params: &Params) -> Vec<f64> {
+pub fn semi_empirical(
+    moles: &Vec<Vec<Atom>>,
+    params: &Params,
+) -> na::DVector<f64> {
     let mut jobs = build_jobs(moles, params, 0, 1.0, 0);
     let mut got = vec![0.0; jobs.len()];
     drain(&mut jobs, &mut got, LocalQueue {});
-    got
+    na::DVector::from(got)
 }
 
 /// Compute the numerical Jacobian for the geomeries in `moles` and the
@@ -467,7 +470,7 @@ pub struct Stats {
 impl Stats {
     /// compute the Stats between `v` and `w` in cm-1 under the assumption they
     /// started out in Ht
-    pub fn new(v: &Vec<f64>, w: &Vec<f64>) -> Self {
+    pub fn new(v: &na::DVector<f64>, w: &na::DVector<f64>) -> Self {
         let count = v.len();
         assert_eq!(count, w.len());
         let mut sq_diffs = 0.0;
@@ -496,8 +499,7 @@ impl Stats {
         );
     }
 
-    // TODO bring time back in last column
-    pub fn print_step(&self, iter: usize, last: &Self) {
+    pub fn print_step(&self, iter: usize, last: &Self, time_milli: u128) {
         print!(
             "{:5}{:12.4}{:12.4}{:12.4}{:12.4}{:12.4}{:12.1}\n",
             iter,
@@ -506,7 +508,7 @@ impl Stats {
             self.rmsd,
             self.rmsd - last.rmsd,
             self.max,
-            0.0
+            time_milli as f64 / 1000.,
         );
     }
 }
@@ -522,20 +524,11 @@ impl Default for Stats {
 }
 
 /// return `energies` relative to its minimum element
-pub fn relative(energies: &Vec<f64>) -> Vec<f64> {
-    let mut ret = Vec::with_capacity(energies.len());
-    let mut min = energies[0];
-    // compute the min
-    for e in energies {
-        if e < &min {
-            min = *e
-        }
-    }
-
-    for e in energies {
-        ret.push(e - min);
-    }
-    ret
+pub fn relative(energies: &na::DVector<f64>) -> na::DVector<f64> {
+    let min = energies.min();
+    let min = na::DVector::from(vec![min; energies.len()]);
+    let ret = energies.clone();
+    ret - min
 }
 
 #[cfg(test)]
@@ -609,7 +602,7 @@ mod tests {
     #[test]
     fn test_load_energies() {
         let got = load_energies("test_files/small.dat");
-        let want = vec![
+        let want = na::DVector::from(vec![
             0.000000000000,
             0.000453458157,
             0.000258906149,
@@ -639,8 +632,8 @@ mod tests {
             0.000176137923,
             0.000127547307,
             0.000128059983,
-        ];
-        assert!(comp_vec(&got, &want, 1e-12));
+        ]);
+        assert!(comp_dvec(got, want, 1e-12));
     }
 
     #[test]
@@ -700,15 +693,15 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let names = vec!["C", "C", "C", "H", "H"];
         let moles = load_geoms("test_files/three07", names);
         let params = load_params("test_files/params.dat");
-        let want = vec![
+        let want = na::DVector::from(vec![
             0.20374485388911504,
             0.20541305733965845,
             0.20511337069030972,
-        ];
+        ]);
         setup();
         let got = semi_empirical(&moles, &params);
-        let eps = 6e-15;
-        assert!(comp_vec(&got, &want, eps));
+        let eps = 1e-14;
+        assert!(comp_dvec(got, want, eps));
         takedown();
     }
 
@@ -747,6 +740,21 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         ret
     }
 
+    /// report whether or not the euclidean norm of the difference between `got`
+    /// and `want` is less than epsilon
+    fn comp_dvec(
+        got: na::DVector<f64>,
+        want: na::DVector<f64>,
+        eps: f64,
+    ) -> bool {
+        let norm = (got - want).norm();
+        if norm < eps {
+            return true;
+        }
+        eprintln!("comp_vec: norm = {}", norm);
+        false
+    }
+
     fn comp_mat(
         got: na::DMatrix<f64>,
         want: na::DMatrix<f64>,
@@ -760,6 +768,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         false
     }
 
+    #[ignore]
     #[test]
     fn test_num_jac() {
         let names = vec!["C", "C", "C", "H", "H"];
@@ -772,43 +781,56 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         takedown();
     }
 
+    #[ignore]
     #[test]
     fn test_lev_mar() {
-	// loading everything
+        // loading everything
         let names = vec!["C", "C", "C", "H", "H"];
         let moles = load_geoms("test_files/small07", names);
-        let params = load_params("test_files/small.params");
+        let mut params = load_params("test_files/small.params");
         let ai = load_energies("test_files/25.dat");
         setup();
-	// initial semi-empirical energies and stats
-        let se = semi_empirical(&moles, &params);
+        // initial semi-empirical energies and stats
+        let mut se = semi_empirical(&moles, &params);
         let rel = relative(&se);
         let mut stats = Stats::new(&ai, &rel);
         let mut last_stats = Stats::default();
         Stats::print_header();
-        stats.print_step(0, &last_stats);
-	// start looping
+        stats.print_step(0, &last_stats, 0);
+        // start looping
         let mut iter = 1;
-        // TODO make this and ai vectors from the start
-        let v_ai = na::DVector::from(ai.clone());
-        let v_se = na::DVector::from(se);
+        let start = std::time::SystemTime::now();
         while iter <= 1 {
             let jac_t = num_jac(&moles, &params, LocalQueue {});
-            let step = lev_mar(jac_t, &v_ai, &v_se, 1.0);
+            let step = lev_mar(jac_t, &ai, &se, 1.0);
             let try_params = Params::new(
                 params.names.clone(),
                 params.atoms.clone(),
                 &params.values + &step,
             );
             let new_se = semi_empirical(&moles, &try_params);
-            let new_rel = relative(&new_se);
-            stats = Stats::new(&ai, &new_rel);
-            stats.print_step(iter, &last_stats);
+            let rel = relative(&new_se);
+            stats = Stats::new(&ai, &rel);
+            let time = if let Ok(elapsed) = start.elapsed() {
+                elapsed.as_millis()
+            } else {
+                0
+            };
+            stats.print_step(iter, &last_stats, time);
+            // end of loop updates
+            se = new_se;
+            params = try_params;
             last_stats = stats;
             iter += 1;
         }
         takedown();
     }
+    /*
+       current output:
+    Iter        Norm       ΔNorm        RMSD       ΔRMSD         Max        Time
+       0    828.6919    828.6919    165.7384    165.7384    266.6057         0.0
+       1    390.4499    390.4499     78.0900     78.0900    201.8921        32.3
+     */
 }
 
 /// Solve (JᵀJ + λI)δ = Jᵀ[y - f(β)] for δ. y is the vector of "true" training

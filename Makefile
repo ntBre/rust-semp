@@ -1,12 +1,18 @@
 BASE = /home/brent/Projects/rust-semp
-FLAGS =
+ARGS =
+TESTFLAGS = --test-threads=1 --nocapture
+SHORT = 0
+
+ifeq ($(SHORT),0)
+TESTFLAGS += --include-ignored
+endif
 
 eland:
 	RUSTFLAGS='-C target-feature=+crt-static' cargo build --release
 	scp -C ${BASE}/target/release/rust-semp 'eland:semp/rust/.'
 
 test:
-	RUST_BACKTRACE=1 cargo test -- --test-threads=1 --nocapture ${FLAGS}
+	RUST_BACKTRACE=1 cargo test -- ${TESTFLAGS} ${ARGS}
 
 profile = RUSTFLAGS='-g' cargo build --release --bin $(1); \
 	valgrind --tool=callgrind --callgrind-out-file=callgrind.out	\

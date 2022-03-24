@@ -21,7 +21,7 @@ fn main() {
     let start = std::time::SystemTime::now();
     while iter <= 5 {
         let jac_t = num_jac(&moles, &params, &queue);
-        let step = lev_mar(jac_t, &ai, &se, LAMBDA0);
+        let step = lev_mar(&jac_t, &ai, &se, LAMBDA0);
         let try_params = Params::new(
             params.names.clone(),
             params.atoms.clone(),

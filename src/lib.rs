@@ -18,11 +18,14 @@ pub mod queue;
 
 static DIRS: &'static [&str] = &["inp", "tmparam"];
 static DELTA: f64 = 1e-8;
-pub static LAMBDA0: f64 = 1e-8;
 static DELTA_FWD: f64 = 5e7; // 1 / 2Δ
 static DELTA_BWD: f64 = -5e7; // -1 / 2Δ
 static DEBUG: bool = false;
 static HT_TO_CM: f64 = 219_474.5459784;
+
+pub static LAMBDA0: f64 = 1e-8;
+pub static NU: f64 = 2.0;
+pub static MAX_TRIES: usize = 5;
 
 /// set up the directories needed for the program after deleting existing ones
 pub fn setup() {
@@ -680,10 +683,14 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         last_stats = stats;
         // start looping
         let mut iter = 1;
+        let mut lambda = LAMBDA0;
         while iter <= 1 {
             let start = std::time::SystemTime::now();
-            let jac_t = num_jac(&moles, &params, &LocalQueue);
-            let step = lev_mar(jac_t, &ai, &se, LAMBDA0);
+            // TODO if Broyden do broyden
+            let jac = num_jac(&moles, &params, &LocalQueue);
+
+            // BEGIN copy-paste
+            let step = lev_mar(&jac, &ai, &se, lambda / NU);
             let try_params = Params::new(
                 params.names.clone(),
                 params.atoms.clone(),
@@ -692,6 +699,64 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             let new_se = semi_empirical(&moles, &try_params, &LocalQueue);
             let rel = relative(&new_se);
             stats = Stats::new(&ai, &rel);
+            // END copy-paste
+
+            // cases ii. and iii. from Marquardt63; first iteration is case ii.
+            let mut i = 0;
+            let mut bad = false;
+            while stats.norm > last_stats.norm {
+                lambda *= NU;
+                let dnorm = stats.norm - last_stats.norm;
+
+                // BCP
+                let step = lev_mar(&jac, &ai, &se, lambda);
+                let try_params = Params::new(
+                    params.names.clone(),
+                    params.atoms.clone(),
+                    &params.values + &step,
+                );
+                let new_se = semi_empirical(&moles, &try_params, &LocalQueue);
+                let rel = relative(&new_se);
+                stats = Stats::new(&ai, &rel);
+                // ECP
+
+                eprintln!(
+                    "\tλ_{} to {:e} with ΔNorm = {}",
+                    i,
+                    lambda,
+                    stats.norm - last_stats.norm
+                );
+                i += 1;
+                if stats.norm - last_stats.norm > dnorm || i > MAX_TRIES {
+                    bad = true;
+                    break;
+                }
+            }
+            let mut k = 1.0;
+            let mut i = 2;
+            while bad && stats.norm > last_stats.norm && k > 1e-14 {
+                k = 1.0 / 10.0_f64.powf(i as f64);
+
+                // BCP
+                let step = lev_mar(&jac, &ai, &se, lambda);
+                let try_params = Params::new(
+                    params.names.clone(),
+                    params.atoms.clone(),
+                    &params.values + k * &step,
+                );
+                let new_se = semi_empirical(&moles, &try_params, &LocalQueue);
+                let rel = relative(&new_se);
+                stats = Stats::new(&ai, &rel);
+                // ECP
+
+                eprintln!(
+                    "\tk_{} to {:e} with ΔNorm = {}",
+                    i,
+                    k,
+                    stats.norm - last_stats.norm
+                );
+                i += 1;
+            }
             let time = if let Ok(elapsed) = start.elapsed() {
                 elapsed.as_millis()
             } else {
@@ -709,18 +774,35 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
     /*
        current output:
     Iter        Norm       ΔNorm        RMSD       ΔRMSD         Max        Time
-       0    828.6919    828.6919    165.7384    165.7384    266.6057         0.0
-       1    325.2037   -503.4882     65.0407   -100.6976    126.9844        40.1
+    0    828.6919    828.6919    165.7384    165.7384    266.6057         0.0
+    1    325.2037   -503.4882     65.0407   -100.6976    126.9844        40.1
 
-       after scaling:
-       1    389.9481   -438.7438     77.9896    -87.7488    201.6500        34.2
+    after scaling:
+    1    389.9481   -438.7438     77.9896    -87.7488    201.6500        34.2
+
+    after fixing bounds and <= 5:
+    1     70.7093   -757.9826     14.1419   -151.5965     27.7492        29.3
+    2     28.7168    -41.9925      5.7434     -8.3985      8.0413        29.7
+    3     22.7316     -5.9852      4.5463     -1.1970      7.0542        29.8
+    4     22.8138      0.0823      4.5628      0.0165      6.2959        29.7
+    5     21.3078     -1.5061      4.2616     -0.3012      6.1055        30.6
+
+    this is weirdly better than the Go version, not sure it should be
+
+    after rest of lev mar:
+    1     70.5271   -758.1648     14.1054   -151.6330     27.1241        28.2
+    2     27.8114    -42.7157      5.5623     -8.5431      9.7420        29.2
+    3     21.9563     -5.8551      4.3913     -1.1710      7.0847        31.8
+    4     19.8039     -2.1523      3.9608     -0.4305      5.4642        30.5
+    5     19.1505     -0.6535      3.8301     -0.1307      5.3263        30.6
+
      */
 }
 
 /// Solve (JᵀJ + λI)δ = Jᵀ[y - f(β)] for δ. y is the vector of "true" training
 /// energies, and f(β) represents the current semi-empirical energies.
 pub fn lev_mar(
-    jac: na::DMatrix<f64>,
+    jac: &na::DMatrix<f64>,
     ai: &na::DVector<f64>,
     se: &na::DVector<f64>,
     lambda: f64,
@@ -728,13 +810,22 @@ pub fn lev_mar(
     let jac_t = jac.transpose();
     let (rows, _) = jac_t.shape();
     // compute scaled matrix, A*, from JᵀJ
-    let a = &jac_t * &jac;
+    let a = &jac_t * jac;
     let mut a_star = na::DMatrix::from_vec(rows, rows, vec![0.0; rows * rows]);
     for i in 0..rows {
         for j in 0..rows {
             a_star[(i, j)] = a[(i, j)] / (a[(i, i)].sqrt() * a[(j, j)].sqrt())
         }
     }
+    // compute scaled right side, g*, from b
+    let b = {
+        let b = &jac_t * (ai - se);
+        let mut g = na::DVector::from(vec![0.0; rows]);
+        for j in 0..rows {
+            g[j] = b[j] / a[(j, j)].sqrt()
+        }
+        g
+    };
     // compute λI
     let li = {
         let mut i = na::DMatrix::<f64>::identity(rows, rows);
@@ -748,15 +839,6 @@ pub fn lev_mar(
         None => {
             panic!("cholesky decomposition failed");
         }
-    };
-    // compute scaled right side, g*, from b
-    let b = {
-        let b = &jac_t * (ai - se);
-        let mut g = na::DVector::from(vec![0.0; rows]);
-        for j in 0..rows {
-            g[j] = b[j] / a[(j, j)].sqrt()
-        }
-        g
     };
     let mut d = lhs.solve(&b);
     // convert back from δ* to δ

@@ -14,11 +14,12 @@ use queue::Submit;
 
 pub mod mopac;
 pub mod queue;
+pub mod config;
 
 static DIRS: &'static [&str] = &["inp", "tmparam"];
 static JOB_LIMIT: usize = 1600;
 static CHUNK_SIZE: usize = 128;
-static SLEEP_INT: usize = 1;
+static SLEEP_INT: usize = 5;
 static DELTA: f64 = 1e-8;
 static DELTA_FWD: f64 = 5e7; // 1 / 2Δ
 static DELTA_BWD: f64 = -5e7; // -1 / 2Δ
@@ -164,6 +165,7 @@ pub fn load_params(filename: &str) -> Params {
 
 /// Slurm is a type for holding the information for submitting a slurm job.
 /// `filename` is the name of the Slurm submission script
+#[derive(Debug)]
 pub struct Slurm;
 
 impl queue::Submit for Slurm {
@@ -202,6 +204,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/\n",
 }
 
 /// Minimal implementation for testing MOPAC locally
+#[derive(Debug)]
 pub struct LocalQueue;
 
 impl queue::Submit for LocalQueue {
@@ -397,11 +400,6 @@ pub fn drain<S: Submit>(jobs: &mut Vec<Job>, dst: &mut [f64], _submitter: S) {
         }
         if finished == 0 {
             eprintln!("none finished, sleeping");
-            dbg!(
-                cur_jobs.len(),
-                &cur_jobs[0].mopac.filename,
-                &cur_jobs[0].pbs_file
-            );
             thread::sleep(time::Duration::from_secs(SLEEP_INT as u64));
         } else {
             eprintln!("finished {}", finished);
@@ -410,13 +408,14 @@ pub fn drain<S: Submit>(jobs: &mut Vec<Job>, dst: &mut [f64], _submitter: S) {
 }
 
 /// compute the semi-empirical energies of `moles` for the given `params`
-pub fn semi_empirical(
+pub fn semi_empirical<S: Submit>(
     moles: &Vec<Vec<Atom>>,
     params: &Params,
+    submitter: S,
 ) -> na::DVector<f64> {
     let mut jobs = build_jobs(moles, params, 0, 1.0, 0);
     let mut got = vec![0.0; jobs.len()];
-    drain(&mut jobs, &mut got, LocalQueue {});
+    drain(&mut jobs, &mut got, submitter);
     na::DVector::from(got)
 }
 
@@ -699,7 +698,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             0.20511337069030972,
         ]);
         setup();
-        let got = semi_empirical(&moles, &params);
+        let got = semi_empirical(&moles, &params, LocalQueue);
         let eps = 1e-14;
         assert!(comp_dvec(got, want, eps));
         takedown();
@@ -791,12 +790,13 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let ai = load_energies("test_files/25.dat");
         setup();
         // initial semi-empirical energies and stats
-        let mut se = semi_empirical(&moles, &params);
+        let mut se = semi_empirical(&moles, &params, LocalQueue);
         let rel = relative(&se);
         let mut stats = Stats::new(&ai, &rel);
         let mut last_stats = Stats::default();
         Stats::print_header();
         stats.print_step(0, &last_stats, 0);
+        last_stats = stats;
         // start looping
         let mut iter = 1;
         let start = std::time::SystemTime::now();
@@ -808,7 +808,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
                 params.atoms.clone(),
                 &params.values + &step,
             );
-            let new_se = semi_empirical(&moles, &try_params);
+            let new_se = semi_empirical(&moles, &try_params, LocalQueue);
             let rel = relative(&new_se);
             stats = Stats::new(&ai, &rel);
             let time = if let Ok(elapsed) = start.elapsed() {
@@ -829,7 +829,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
        current output:
     Iter        Norm       ΔNorm        RMSD       ΔRMSD         Max        Time
        0    828.6919    828.6919    165.7384    165.7384    266.6057         0.0
-       1    390.4499    390.4499     78.0900     78.0900    201.8921        32.3
+       1    325.2037   -503.4882     65.0407   -100.6976    126.9844        40.1
      */
 }
 
@@ -839,11 +839,18 @@ pub fn lev_mar(
     jac: na::DMatrix<f64>,
     ai: &na::DVector<f64>,
     se: &na::DVector<f64>,
-    _lambda: f64,
+    lambda: f64,
 ) -> na::DVector<f64> {
-    // TODO let lambda vary, try with lambda = 0 first
+    // TODO normalize
     let jac_t = jac.transpose();
     let a = &jac_t * &jac;
+    let (rows, cols) = a.shape();
+    let li = {
+        let mut i = na::DMatrix::<f64>::identity(rows, cols);
+        i.scale_mut(lambda);
+        i
+    };
+    let a = a + li;
     let a = match na::linalg::Cholesky::new(a) {
         Some(a) => a,
         None => {

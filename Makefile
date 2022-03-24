@@ -8,8 +8,9 @@ TESTFLAGS += --include-ignored
 endif
 
 eland:
-	RUSTFLAGS='-C target-feature=+crt-static' cargo build --release
-	scp -C ${BASE}/target/release/rust-semp 'eland:semp/rust/.'
+# see https://msfjarvis.dev/posts/building-static-rust-binaries-for-linux
+	RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --target x86_64-unknown-linux-gnu
+	scp -C ${BASE}/target/x86_64-unknown-linux-gnu/release/rust-semp 'eland:semp/rust/.'
 
 test:
 	RUST_BACKTRACE=1 cargo test -- ${TESTFLAGS} ${ARGS}

@@ -159,7 +159,7 @@ pub fn load_params(filename: &str) -> Params {
         atoms.push(fields[1].to_string());
         values.push(fields[2].parse().unwrap());
     }
-    Params::new(names, atoms, values)
+    Params::from(names, atoms, values)
 }
 
 /// Slurm is a type for holding the information for submitting a slurm job.
@@ -647,7 +647,7 @@ mod tests {
     fn test_load_params() {
         let got = load_params("test_files/params.dat");
         #[rustfmt::skip]
-	let want = Params::new_literal(
+	let want = Params::from_literal(
             vec![
                 "USS", "ZS", "BETAS", "GSS", "USS", "UPP", "ZS", "ZP", "BETAS",
                 "BETAP", "GSS", "GPP", "GSP", "GP2", "HSP",
@@ -774,17 +774,20 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
 
     #[test]
     fn test_lev_mar() {
+	// loading everything
         let names = vec!["C", "C", "C", "H", "H"];
         let moles = load_geoms("test_files/small07", names);
         let params = load_params("test_files/small.params");
         let ai = load_energies("test_files/25.dat");
         setup();
+	// initial semi-empirical energies and stats
         let se = semi_empirical(&moles, &params);
         let rel = relative(&se);
         let mut stats = Stats::new(&ai, &rel);
         let mut last_stats = Stats::default();
         Stats::print_header();
         stats.print_step(0, &last_stats);
+	// start looping
         let mut iter = 1;
         // TODO make this and ai vectors from the start
         let v_ai = na::DVector::from(ai.clone());
@@ -792,9 +795,14 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         while iter <= 1 {
             let jac_t = num_jac(&moles, &params, LocalQueue {});
             let step = lev_mar(jac_t, &v_ai, &v_se, 1.0);
-            let try_params = &params.values + &step;
-            dbg!(&params.values, step, try_params);
-            stats = Stats::new(&ai, &rel);
+            let try_params = Params::new(
+                params.names.clone(),
+                params.atoms.clone(),
+                &params.values + &step,
+            );
+            let new_se = semi_empirical(&moles, &try_params);
+            let new_rel = relative(&new_se);
+            stats = Stats::new(&ai, &new_rel);
             stats.print_step(iter, &last_stats);
             last_stats = stats;
             iter += 1;

@@ -70,6 +70,17 @@ impl Params {
     pub fn new(
         names: Vec<String>,
         atoms: Vec<String>,
+        values: na::DVector<f64>,
+    ) -> Self {
+        Self {
+            names,
+            atoms,
+            values,
+        }
+    }
+    pub fn from(
+        names: Vec<String>,
+        atoms: Vec<String>,
         values: Vec<f64>,
     ) -> Self {
         Self {
@@ -79,7 +90,7 @@ impl Params {
         }
     }
 
-    pub fn new_literal(
+    pub fn from_literal(
         names: Vec<&str>,
         atoms: Vec<&str>,
         values: Vec<f64>,
@@ -243,7 +254,7 @@ mod tests {
         ];
         Mopac::new(
             String::from("/tmp/test"),
-            Params::new(
+            Params::from(
                 names.iter().map(|s| s.to_string()).collect(),
                 atoms.iter().map(|s| s.to_string()).collect(),
                 values,

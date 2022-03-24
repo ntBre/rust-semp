@@ -542,7 +542,7 @@ mod tests {
 
     #[test]
     fn test_load_geoms() {
-        let got = load_geoms("three07", vec!["C", "C", "C", "H", "H"]);
+        let got = load_geoms("test_files/three07", vec!["C", "C", "C", "H", "H"]);
         let want = vec![
             vec![
                 Atom::new("C", vec![0.0000000000, 0.0000000000, -1.6794733900]),
@@ -603,7 +603,7 @@ mod tests {
 
     #[test]
     fn test_load_energies() {
-        let got = load_energies("small.dat");
+        let got = load_energies("test_files/small.dat");
         let want = vec![
             0.000000000000,
             0.000453458157,
@@ -640,7 +640,7 @@ mod tests {
 
     #[test]
     fn test_load_params() {
-        let got = load_params("params.dat");
+        let got = load_params("test_files/params.dat");
         let want = vec![
             Param::new("USS", "H", -11.246958000000),
             Param::new("ZS", "H", 1.268641000000),
@@ -692,8 +692,8 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
     #[test]
     fn test_one_iter() {
         let names = vec!["C", "C", "C", "H", "H"];
-        let moles = load_geoms("three07", names);
-        let params = load_params("params.dat");
+        let moles = load_geoms("test_files/three07", names);
+        let params = load_params("test_files/params.dat");
         let want = vec![
             0.20374485388911504,
             0.20541305733965845,
@@ -740,9 +740,9 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
     #[test]
     fn test_num_jac() {
         let names = vec!["C", "C", "C", "H", "H"];
-        let moles = load_geoms("small07", names);
-        let params = load_params("small.params");
-        let want = transpose(&load_mat("small.jac"), moles.len(), params.len());
+        let moles = load_geoms("test_files/small07", names);
+        let params = load_params("test_files/small.params");
+        let want = transpose(&load_mat("test_files/small.jac"), moles.len(), params.len());
         setup();
         let got = num_jac(&moles, &params, LocalQueue {});
         assert!(comp_vec(&got, &want, 2e-6));
@@ -752,9 +752,9 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
     #[test]
     fn test_lev_mar() {
         let names = vec!["C", "C", "C", "H", "H"];
-        let moles = load_geoms("small07", names);
-        let params = load_params("small.params");
-        let ai = load_energies("25.dat");
+        let moles = load_geoms("test_files/small07", names);
+        let params = load_params("test_files/small.params");
+        let ai = load_energies("test_files/25.dat");
         setup();
         let se = semi_empirical(&moles, &params);
         let rel = relative(&se);

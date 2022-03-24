@@ -701,10 +701,8 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         ];
         setup();
         let got = semi_empirical(&moles, &params);
-        let eps = 1e-20;
-        for i in 0..want.len() {
-            assert!((got[i] - want[i]).abs() < eps);
-        }
+        let eps = 6e-15;
+	assert!(comp_vec(&got, &want, eps));
         takedown();
     }
 

@@ -18,6 +18,7 @@ pub mod queue;
 
 static DIRS: &'static [&str] = &["inp", "tmparam"];
 static DELTA: f64 = 1e-8;
+pub static LAMBDA0: f64 = 1e-8;
 static DELTA_FWD: f64 = 5e7; // 1 / 2Δ
 static DELTA_BWD: f64 = -5e7; // -1 / 2Δ
 static DEBUG: bool = false;
@@ -682,7 +683,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         while iter <= 1 {
             let start = std::time::SystemTime::now();
             let jac_t = num_jac(&moles, &params, &LocalQueue);
-            let step = lev_mar(jac_t, &ai, &se, 1.0);
+            let step = lev_mar(jac_t, &ai, &se, LAMBDA0);
             let try_params = Params::new(
                 params.names.clone(),
                 params.atoms.clone(),
@@ -710,7 +711,8 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
     Iter        Norm       ΔNorm        RMSD       ΔRMSD         Max        Time
        0    828.6919    828.6919    165.7384    165.7384    266.6057         0.0
        1    325.2037   -503.4882     65.0407   -100.6976    126.9844        40.1
-    after scaling:
+
+       after scaling:
        1    389.9481   -438.7438     77.9896    -87.7488    201.6500        34.2
      */
 }
@@ -729,7 +731,7 @@ pub fn lev_mar(
     let a = &jac_t * &jac;
     let mut a_star = na::DMatrix::from_vec(rows, rows, vec![0.0; rows * rows]);
     for i in 0..rows {
-        for j in 0..i {
+        for j in 0..rows {
             a_star[(i, j)] = a[(i, j)] / (a[(i, i)].sqrt() * a[(j, j)].sqrt())
         }
     }

@@ -9,7 +9,7 @@ use std::{
 
 use nalgebra as na;
 
-use mopac::{Mopac, Param};
+use mopac::{Mopac, Params};
 use queue::Submit;
 
 pub mod mopac;
@@ -139,8 +139,7 @@ pub fn load_energies(filename: &str) -> Vec<f64> {
 ///   ZS             H      1.268641000000
 ///
 /// into a vec of Params
-pub fn load_params(filename: &str) -> Vec<mopac::Param> {
-    let mut ret = Vec::new();
+pub fn load_params(filename: &str) -> Params {
     let f = match File::open(filename) {
         Ok(f) => f,
         Err(e) => {
@@ -151,15 +150,16 @@ pub fn load_params(filename: &str) -> Vec<mopac::Param> {
         }
     };
     let lines = BufReader::new(f).lines();
+    let mut names = Vec::new();
+    let mut atoms = Vec::new();
+    let mut values = Vec::new();
     for line in lines.map(|x| x.unwrap()) {
         let fields: Vec<&str> = line.split_whitespace().collect();
-        ret.push(mopac::Param::new(
-            fields[0],
-            fields[1],
-            fields[2].parse().unwrap(),
-        ))
+        names.push(fields[0].to_string());
+        atoms.push(fields[1].to_string());
+        values.push(fields[2].parse().unwrap());
     }
-    ret
+    Params::new(names, atoms, values)
 }
 
 /// Slurm is a type for holding the information for submitting a slurm job.
@@ -235,7 +235,7 @@ pub struct Job {
 }
 
 impl Job {
-    pub fn new(mopac: mopac::Mopac, index: usize) -> Self {
+    pub fn new(mopac: Mopac, index: usize) -> Self {
         Self {
             mopac,
             pbs_file: String::new(),
@@ -282,7 +282,7 @@ pub fn build_chunk<'a, S: Submit>(
 /// files yet
 pub fn build_jobs(
     moles: &Vec<Vec<Atom>>,
-    params: &Vec<Param>,
+    params: &Params,
     start_index: usize,
     coeff: f64,
     job_num: usize,
@@ -410,7 +410,7 @@ pub fn drain<S: Submit>(jobs: &mut Vec<Job>, dst: &mut [f64], _submitter: S) {
 }
 
 /// compute the semi-empirical energies of `moles` for the given `params`
-pub fn semi_empirical(moles: &Vec<Vec<Atom>>, params: &Vec<Param>) -> Vec<f64> {
+pub fn semi_empirical(moles: &Vec<Vec<Atom>>, params: &Params) -> Vec<f64> {
     let mut jobs = build_jobs(moles, params, 0, 1.0, 0);
     let mut got = vec![0.0; jobs.len()];
     drain(&mut jobs, &mut got, LocalQueue {});
@@ -422,10 +422,10 @@ pub fn semi_empirical(moles: &Vec<Vec<Atom>>, params: &Vec<Param>) -> Vec<f64> {
 /// actually computed and returned
 pub fn num_jac<S: Submit>(
     moles: &Vec<Vec<Atom>>,
-    params: &Vec<Param>,
+    params: &Params,
     submitter: S,
 ) -> na::DMatrix<f64> {
-    let rows = params.len();
+    let rows = params.values.len();
     let cols = moles.len();
     let mut jac_t = vec![0.; rows * cols];
     // front and back for each row and col
@@ -437,12 +437,12 @@ pub fn num_jac<S: Submit>(
         let mut pb = params.clone();
         let idx = row * cols;
         // TODO do I really have to clone here?
-        pf[row].value += DELTA;
+        pf.values[row] += DELTA;
         let fwd_jobs = build_jobs(&moles.clone(), &pf, idx, DELTA_FWD, job_num);
         job_num += fwd_jobs.len();
         jobs.extend_from_slice(&fwd_jobs);
 
-        pb[row].value -= DELTA;
+        pb.values[row] -= DELTA;
         let bwd_jobs = build_jobs(&moles.clone(), &pb, idx, DELTA_BWD, job_num);
         job_num += bwd_jobs.len();
         jobs.extend_from_slice(&bwd_jobs);
@@ -543,7 +543,6 @@ mod tests {
     use std::fs;
 
     use super::*;
-    use crate::mopac::*;
 
     #[test]
     fn test_load_geoms() {
@@ -647,23 +646,24 @@ mod tests {
     #[test]
     fn test_load_params() {
         let got = load_params("test_files/params.dat");
-        let want = vec![
-            Param::new("USS", "H", -11.246958000000),
-            Param::new("ZS", "H", 1.268641000000),
-            Param::new("BETAS", "H", -8.352984000000),
-            Param::new("GSS", "H", 14.448686000000),
-            Param::new("USS", "C", -51.089653000000),
-            Param::new("UPP", "C", -39.937920000000),
-            Param::new("ZS", "C", 2.047558000000),
-            Param::new("ZP", "C", 1.702841000000),
-            Param::new("BETAS", "C", -15.385236000000),
-            Param::new("BETAP", "C", -7.471929000000),
-            Param::new("GSS", "C", 13.335519000000),
-            Param::new("GPP", "C", 10.778326000000),
-            Param::new("GSP", "C", 11.528134000000),
-            Param::new("GP2", "C", 9.486212000000),
-            Param::new("HSP", "C", 0.717322000000),
-        ];
+        #[rustfmt::skip]
+	let want = Params::new_literal(
+            vec![
+                "USS", "ZS", "BETAS", "GSS", "USS", "UPP", "ZS", "ZP", "BETAS",
+                "BETAP", "GSS", "GPP", "GSP", "GP2", "HSP",
+            ],
+            vec![
+                "H", "H", "H", "H", "C", "C", "C", "C", "C", "C", "C", "C",
+                "C", "C", "C",
+            ],
+            vec![
+                -11.246958000000, 1.268641000000, -8.352984000000,
+                14.448686000000, -51.089653000000, -39.937920000000,
+                2.047558000000, 1.702841000000, -15.385236000000,
+                -7.471929000000, 13.335519000000, 10.778326000000,
+                11.528134000000, 9.486212000000, 0.717322000000,
+            ],
+        );
         assert_eq!(got, want);
     }
 
@@ -792,7 +792,8 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         while iter <= 1 {
             let jac_t = num_jac(&moles, &params, LocalQueue {});
             let step = lev_mar(jac_t, &v_ai, &v_se, 1.0);
-	    dbg!(step);
+            let try_params = &params.values + &step;
+            dbg!(&params.values, step, try_params);
             stats = Stats::new(&ai, &rel);
             stats.print_step(iter, &last_stats);
             last_stats = stats;

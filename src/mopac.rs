@@ -8,32 +8,86 @@ use std::io::{BufReader, Write};
 const KCALHT: f64 = 627.5091809;
 
 #[derive(Debug, Clone)]
-pub struct Param {
-    name: String,
-    atom: String,
-    pub value: f64,
+pub struct Params {
+    pub names: Vec<String>,
+    pub atoms: Vec<String>,
+    pub values: na::DVector<f64>,
 }
 
-impl ToString for Param {
-    fn to_string(&self) -> String {
-        format!("{:<8}{:>8}{:20.12}\n", self.name, self.atom, self.value)
-    }
-}
-
-impl PartialEq for Param {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-            && self.atom == other.atom
-            && (self.value - other.value).abs() < 1e-12
-    }
-}
-
-impl Param {
-    pub fn new(name: &str, atom: &str, value: f64) -> Self {
+impl Default for Params {
+    fn default() -> Self {
         Self {
-            name: name.to_string(),
-            atom: atom.to_string(),
-            value,
+            names: Default::default(),
+            atoms: Default::default(),
+            values: na::DVector::from(vec![0.; 0]),
+        }
+    }
+}
+
+impl ToString for Params {
+    fn to_string(&self) -> String {
+        let mut ret = String::new();
+        for (i, n) in self.names.iter().enumerate() {
+            ret.push_str(
+                &format!(
+                    "{:<8}{:>8}{:20.12}\n",
+                    n, self.atoms[i], self.values[i]
+                )
+                .to_string(),
+            );
+        }
+        ret
+    }
+}
+
+// TODO these prints are really for testing, they don't really belong in the
+// actual code
+impl PartialEq for Params {
+    fn eq(&self, other: &Self) -> bool {
+        for (i, n) in self.names.iter().enumerate() {
+            if *n != other.names[i] {
+                eprintln!("{}: {} != {}", i, *n, other.names[i]);
+                return false;
+            }
+            if self.atoms[i] != other.atoms[i] {
+                eprintln!("{}: {} != {}", i, self.atoms[i], other.atoms[i]);
+                return false;
+            }
+            let diff = (self.values[i] - other.values[i]).abs();
+            if diff >= 1e-12 {
+                eprintln!(
+                    "{}: {} != {}, diff = {}",
+                    i, self.values[i], other.values[i], diff
+                );
+                return false;
+            }
+        }
+        true
+    }
+}
+
+impl Params {
+    pub fn new(
+        names: Vec<String>,
+        atoms: Vec<String>,
+        values: Vec<f64>,
+    ) -> Self {
+        Self {
+            names,
+            atoms,
+            values: na::DVector::from(values),
+        }
+    }
+
+    pub fn new_literal(
+        names: Vec<&str>,
+        atoms: Vec<&str>,
+        values: Vec<f64>,
+    ) -> Self {
+        Self {
+            names: names.iter().map(|s| s.to_string()).collect(),
+            atoms: atoms.iter().map(|s| s.to_string()).collect(),
+            values: na::DVector::from(values),
         }
     }
 }
@@ -44,14 +98,14 @@ impl Param {
 #[derive(Debug, Clone)]
 pub struct Mopac {
     pub filename: String,
-    pub params: Vec<Param>,
+    pub params: Params,
     pub geom: Vec<Atom>,
     pub param_file: String,
     pub param_dir: String,
 }
 
 impl Mopac {
-    pub fn new(filename: String, params: Vec<Param>, geom: Vec<Atom>) -> Self {
+    pub fn new(filename: String, params: Params, geom: Vec<Atom>) -> Self {
         Self {
             filename,
             params,
@@ -63,9 +117,7 @@ impl Mopac {
 
     fn write_params(&self) {
         let mut body = String::new();
-        for p in &self.params {
-            body.push_str(&p.to_string());
-        }
+        body.push_str(&self.params.to_string());
         let mut file = match File::create(&self.param_file) {
             Ok(f) => f,
             Err(e) => panic!("failed to create {} with {}", self.param_file, e),
@@ -164,25 +216,38 @@ mod tests {
     use super::*;
 
     fn test_mopac() -> Mopac {
+        let names = vec![
+            "USS", "ZS", "BETAS", "GSS", "USS", "UPP", "ZS", "ZP", "BETAS",
+            "BETAP", "GSS", "GPP", "GSP", "GP2", "HSP",
+        ];
+        let atoms = vec![
+            "H", "H", "H", "H", "C", "C", "C", "C", "C", "C", "C", "C", "C",
+            "C", "C",
+        ];
+        let values = vec![
+            -11.246958000000,
+            1.268641000000,
+            -8.352984000000,
+            14.448686000000,
+            -51.089653000000,
+            -39.937920000000,
+            2.047558000000,
+            1.702841000000,
+            -15.385236000000,
+            -7.471929000000,
+            13.335519000000,
+            10.778326000000,
+            11.528134000000,
+            9.486212000000,
+            0.717322000000,
+        ];
         Mopac::new(
             String::from("/tmp/test"),
-            vec![
-                Param::new("USS", "H", -11.246958000000),
-                Param::new("ZS", "H", 1.268641000000),
-                Param::new("BETAS", "H", -8.352984000000),
-                Param::new("GSS", "H", 14.448686000000),
-                Param::new("USS", "C", -51.089653000000),
-                Param::new("UPP", "C", -39.937920000000),
-                Param::new("ZS", "C", 2.047558000000),
-                Param::new("ZP", "C", 1.702841000000),
-                Param::new("BETAS", "C", -15.385236000000),
-                Param::new("BETAP", "C", -7.471929000000),
-                Param::new("GSS", "C", 13.335519000000),
-                Param::new("GPP", "C", 10.778326000000),
-                Param::new("GSP", "C", 11.528134000000),
-                Param::new("GP2", "C", 9.486212000000),
-                Param::new("HSP", "C", 0.717322000000),
-            ],
+            Params::new(
+                names.iter().map(|s| s.to_string()).collect(),
+                atoms.iter().map(|s| s.to_string()).collect(),
+                values,
+            ),
             Vec::new(),
         )
     }
@@ -232,18 +297,30 @@ HSP            C      0.717322000000
     #[test]
     fn test_read_output() {
         // success
-        let mp = Mopac::new(String::from("test_files/job"), Vec::new(), Vec::new());
+        let mp = Mopac::new(
+            String::from("test_files/job"),
+            Params::default(),
+            Vec::new(),
+        );
         let got = mp.read_output().expect("expected a value");
         let want = 0.97127947459164715838e+02 / KCALHT;
         assert!((got - want).abs() < 1e-20);
 
         // failure in output
-        let mp = Mopac::new(String::from("test_files/nojob"), Vec::new(), Vec::new());
+        let mp = Mopac::new(
+            String::from("test_files/nojob"),
+            Params::default(),
+            Vec::new(),
+        );
         let got = mp.read_output();
         assert_eq!(got, None);
 
         // failure in aux
-        let mp = Mopac::new(String::from("test_files/noaux"), Vec::new(), Vec::new());
+        let mp = Mopac::new(
+            String::from("test_files/noaux"),
+            Params::default(),
+            Vec::new(),
+        );
         let got = mp.read_output();
         assert_eq!(got, None);
     }

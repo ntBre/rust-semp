@@ -768,7 +768,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let want = load_mat("test_files/small.jac");
         setup();
         let got = num_jac(&moles, &params, LocalQueue {});
-        assert!(comp_mat(dbg!(got), dbg!(want), 1e-5));
+        assert!(comp_mat(got, want, 1e-5));
         takedown();
     }
 
@@ -786,9 +786,13 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         Stats::print_header();
         stats.print_step(0, &last_stats);
         let mut iter = 1;
+        // TODO make this and ai vectors from the start
+        let v_ai = na::DVector::from(ai.clone());
+        let v_se = na::DVector::from(se);
         while iter <= 1 {
             let jac_t = num_jac(&moles, &params, LocalQueue {});
-            lev_mar(jac_t, &ai, &se, 1.0);
+            let step = lev_mar(jac_t, &v_ai, &v_se, 1.0);
+	    dbg!(step);
             stats = Stats::new(&ai, &rel);
             stats.print_step(iter, &last_stats);
             last_stats = stats;
@@ -801,13 +805,21 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
 /// Solve (JᵀJ + λI)δ = Jᵀ[y - f(β)] for δ. y is the vector of "true" training
 /// energies, and f(β) represents the current semi-empirical energies.
 pub fn lev_mar(
-    _jac_t: na::DMatrix<f64>,
-    _ai: &[f64],
-    _se: &[f64],
+    jac: na::DMatrix<f64>,
+    ai: &na::DVector<f64>,
+    se: &na::DVector<f64>,
     _lambda: f64,
-) -> Vec<f64> {
-    // TODO take as Matrix or convert to matrix here? Probably better for
-    // num_jac to give a matrix
-    // each row is a parameter, so cols is ai.len()
-    vec![]
+) -> na::DVector<f64> {
+    // TODO let lambda vary, try with lambda = 0 first
+    let jac_t = jac.transpose();
+    let a = &jac_t * &jac;
+    let a = match na::linalg::Cholesky::new(a) {
+        Some(a) => a,
+        None => {
+            panic!("cholesky decomposition failed");
+        }
+    };
+    let b = &jac_t * (ai - se);
+    let d = a.solve(&b);
+    d
 }

@@ -7,6 +7,8 @@ use std::{
     thread, time,
 };
 
+use nalgebra as na;
+
 use mopac::{Mopac, Param};
 use queue::Submit;
 
@@ -422,7 +424,7 @@ pub fn num_jac<S: Submit>(
     moles: &Vec<Vec<Atom>>,
     params: &Vec<Param>,
     submitter: S,
-) -> Vec<f64> {
+) -> na::DMatrix<f64> {
     let rows = params.len();
     let cols = moles.len();
     let mut jac_t = vec![0.; rows * cols];
@@ -449,7 +451,10 @@ pub fn num_jac<S: Submit>(
         eprintln!("num_jac: running {} jobs", jobs.len());
     }
     drain(&mut jobs, &mut jac_t, submitter);
-    jac_t
+    // nalgebra does from_vec in col-major order, so lead with cols and I get
+    // jac_t_t or jac back
+    let jac = na::DMatrix::from_vec(cols, rows, jac_t);
+    jac
 }
 
 #[derive(Debug)]
@@ -542,7 +547,8 @@ mod tests {
 
     #[test]
     fn test_load_geoms() {
-        let got = load_geoms("test_files/three07", vec!["C", "C", "C", "H", "H"]);
+        let got =
+            load_geoms("test_files/three07", vec!["C", "C", "C", "H", "H"]);
         let want = vec![
             vec![
                 Atom::new("C", vec![0.0000000000, 0.0000000000, -1.6794733900]),
@@ -702,11 +708,11 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         setup();
         let got = semi_empirical(&moles, &params);
         let eps = 6e-15;
-	assert!(comp_vec(&got, &want, eps));
+        assert!(comp_vec(&got, &want, eps));
         takedown();
     }
 
-    fn load_mat(filename: &str) -> Vec<f64> {
+    fn load_mat(filename: &str) -> na::DMatrix<f64> {
         let f = match File::open(filename) {
             Ok(f) => f,
             Err(e) => {
@@ -715,6 +721,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         };
         let lines = BufReader::new(f).lines().map(|x| x.unwrap());
         let mut ret = Vec::new();
+        let mut rows = 0;
         for line in lines {
             let sp: Vec<f64> = line
                 .trim()
@@ -723,8 +730,11 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
                 .map(|x| x.parse().unwrap())
                 .collect();
             ret.extend_from_slice(&sp);
+            rows += 1;
         }
-        ret
+        let cols = ret.len() / rows;
+        let ret = transpose(&ret, rows, cols);
+        na::DMatrix::from_vec(rows, cols, ret)
     }
 
     fn transpose(orig: &[f64], rows: usize, cols: usize) -> Vec<f64> {
@@ -737,15 +747,28 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         ret
     }
 
+    fn comp_mat(
+        got: na::DMatrix<f64>,
+        want: na::DMatrix<f64>,
+        eps: f64,
+    ) -> bool {
+        let norm = (got - want).norm();
+        if norm < eps {
+            return true;
+        }
+        eprintln!("comp_mat: norm = {}", norm);
+        false
+    }
+
     #[test]
     fn test_num_jac() {
         let names = vec!["C", "C", "C", "H", "H"];
         let moles = load_geoms("test_files/small07", names);
         let params = load_params("test_files/small.params");
-        let want = transpose(&load_mat("test_files/small.jac"), moles.len(), params.len());
+        let want = load_mat("test_files/small.jac");
         setup();
         let got = num_jac(&moles, &params, LocalQueue {});
-        assert!(comp_vec(&got, &want, 2e-6));
+        assert!(comp_mat(dbg!(got), dbg!(want), 1e-5));
         takedown();
     }
 
@@ -763,9 +786,9 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         Stats::print_header();
         stats.print_step(0, &last_stats);
         let mut iter = 1;
-        while iter < 5 {
-	    // let jac_t = num_jac(&moles, &params, LocalQueue{});
-	    // TODO write lev_mar and call it with jac_t
+        while iter <= 1 {
+            let jac_t = num_jac(&moles, &params, LocalQueue {});
+            lev_mar(jac_t, &ai, &se, 1.0);
             stats = Stats::new(&ai, &rel);
             stats.print_step(iter, &last_stats);
             last_stats = stats;
@@ -773,4 +796,18 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         }
         takedown();
     }
+}
+
+/// Solve (JᵀJ + λI)δ = Jᵀ[y - f(β)] for δ. y is the vector of "true" training
+/// energies, and f(β) represents the current semi-empirical energies.
+pub fn lev_mar(
+    _jac_t: na::DMatrix<f64>,
+    _ai: &[f64],
+    _se: &[f64],
+    _lambda: f64,
+) -> Vec<f64> {
+    // TODO take as Matrix or convert to matrix here? Probably better for
+    // num_jac to give a matrix
+    // each row is a parameter, so cols is ai.len()
+    vec![]
 }

@@ -1,3 +1,5 @@
+use crate::queue::Program;
+
 use super::*;
 use std::collections::hash_map::DefaultHasher;
 use std::fs::File;
@@ -115,31 +117,15 @@ pub struct Mopac {
     pub param_dir: String,
 }
 
-impl Mopac {
-    pub fn new(filename: String, params: Params, geom: Vec<Atom>) -> Self {
-        Self {
-            filename,
-            params,
-            geom,
-            param_file: String::new(),
-            param_dir: "tmparam".to_string(),
-        }
-    }
-
-    fn write_params(&self) {
-        let mut body = String::new();
-        body.push_str(&self.params.to_string());
-        let mut file = match File::create(&self.param_file) {
-            Ok(f) => f,
-            Err(e) => panic!("failed to create {} with {}", self.param_file, e),
-        };
-        write!(file, "{}", body).expect("failed to write params file");
+impl Program for Mopac {
+    fn filename(&self) -> String {
+        self.filename.clone()
     }
 
     /// Writes the parameters of self to a parameter file, then writes the MOPAC
     /// input file with external=paramfile. Also update self.paramfile to point
     /// to the generated name for the parameter file
-    pub fn write_input(&mut self) {
+    fn write_input(&mut self) {
         let mut s = DefaultHasher::new();
         self.filename.hash(&mut s);
         let paramfile = format!("{}/{}", self.param_dir, s.finish());
@@ -162,7 +148,7 @@ Comment line 2
     /// reading the `.aux` file to extract the energy from there. This function
     /// panics if an error is found in the output file. If a non-fatal error
     /// occurs (file not found, not written to yet, etc) None is returned.
-    pub fn read_output(&self) -> Option<f64> {
+    fn read_output(&self) -> Option<f64> {
         let outfile = format!("{}.out", &self.filename);
         let f = match File::open(&outfile) {
             Ok(file) => file,
@@ -187,6 +173,39 @@ Comment line 2
             line.clear();
         }
         None
+    }
+
+    fn associated_files(&self) -> Vec<String> {
+        let fname = self.filename();
+        vec![
+            format!("{}.mop", fname),
+            format!("{}.out", fname),
+            format!("{}.arc", fname),
+            format!("{}.aux", fname),
+            self.param_file.clone(),
+        ]
+    }
+}
+
+impl Mopac {
+    pub fn new(filename: String, params: Params, geom: Vec<Atom>) -> Self {
+        Self {
+            filename,
+            params,
+            geom,
+            param_file: String::new(),
+            param_dir: "tmparam".to_string(),
+        }
+    }
+
+    fn write_params(&self) {
+        let mut body = String::new();
+        body.push_str(&self.params.to_string());
+        let mut file = match File::create(&self.param_file) {
+            Ok(f) => f,
+            Err(e) => panic!("failed to create {} with {}", self.param_file, e),
+        };
+        write!(file, "{}", body).expect("failed to write params file");
     }
 
     /// return the heat of formation from a MOPAC aux file in Hartrees
@@ -339,7 +358,7 @@ HSP            C      0.717322000000
     /// minimal queue for testing general submission
     struct TestQueue;
 
-    impl Submit for TestQueue {
+    impl Queue<Mopac> for TestQueue {
         fn write_submit_script(&self, infiles: Vec<String>, filename: &str) {
             let mut body = String::new();
             for f in infiles {
@@ -354,8 +373,16 @@ HSP            C      0.717322000000
             "bash"
         }
 
-        fn new() -> Self {
-            Self {}
+        fn chunk_size(&self) -> usize {
+            128
+        }
+
+        fn job_limit(&self) -> usize {
+            1600
+        }
+
+        fn sleep_int(&self) -> usize {
+            1
         }
     }
 

@@ -1,25 +1,22 @@
 use std::{
-    collections::HashMap,
+    clone::Clone,
     fs::{self, File},
     io::BufRead,
     io::BufReader,
     io::Write,
-    thread, time,
 };
 
 use nalgebra as na;
 
 use mopac::{Mopac, Params};
-use queue::Submit;
+use queue::{Job, Program, Queue};
 
+pub mod config;
+pub mod dump;
 pub mod mopac;
 pub mod queue;
-pub mod config;
 
 static DIRS: &'static [&str] = &["inp", "tmparam"];
-static JOB_LIMIT: usize = 1600;
-static CHUNK_SIZE: usize = 128;
-static SLEEP_INT: usize = 5;
 static DELTA: f64 = 1e-8;
 static DELTA_FWD: f64 = 5e7; // 1 / 2Δ
 static DELTA_BWD: f64 = -5e7; // -1 / 2Δ
@@ -166,9 +163,31 @@ pub fn load_params(filename: &str) -> Params {
 /// Slurm is a type for holding the information for submitting a slurm job.
 /// `filename` is the name of the Slurm submission script
 #[derive(Debug)]
-pub struct Slurm;
+pub struct Slurm {
+    chunk_size: usize,
+    job_limit: usize,
+    sleep_int: usize,
+}
 
-impl queue::Submit for Slurm {
+impl Slurm {
+    pub fn new(chunk_size: usize, job_limit: usize, sleep_int: usize) -> Self {
+        Self {
+            chunk_size,
+            job_limit,
+            sleep_int,
+        }
+    }
+
+    pub fn default() -> Self {
+        Self {
+            chunk_size: 128,
+            job_limit: 1600,
+            sleep_int: 5,
+        }
+    }
+}
+
+impl Queue<Mopac> for Slurm {
     fn write_submit_script(&self, infiles: Vec<String>, filename: &str) {
         let mut body = format!(
             "#!/bin/bash
@@ -198,8 +217,16 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/\n",
         "sbatch"
     }
 
-    fn new() -> Self {
-        Slurm {}
+    fn chunk_size(&self) -> usize {
+        self.chunk_size
+    }
+
+    fn job_limit(&self) -> usize {
+        self.job_limit
+    }
+
+    fn sleep_int(&self) -> usize {
+        self.sleep_int
     }
 }
 
@@ -207,7 +234,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/\n",
 #[derive(Debug)]
 pub struct LocalQueue;
 
-impl queue::Submit for LocalQueue {
+impl<P: Program + Clone> Queue<P> for LocalQueue {
     fn write_submit_script(&self, infiles: Vec<String>, filename: &str) {
         let mut body = String::from("export LD_LIBRARY_PATH=/opt/mopac/\n");
         for f in infiles {
@@ -223,62 +250,17 @@ impl queue::Submit for LocalQueue {
         "bash"
     }
 
-    fn new() -> Self {
-        Self {}
+    fn chunk_size(&self) -> usize {
+        128
     }
-}
 
-#[derive(Debug, Clone)]
-pub struct Job {
-    pub mopac: mopac::Mopac,
-    pub pbs_file: String,
-    pub job_id: String,
-    pub index: usize,
-    pub coeff: f64,
-}
+    fn job_limit(&self) -> usize {
+        1600
+    }
 
-impl Job {
-    pub fn new(mopac: Mopac, index: usize) -> Self {
-        Self {
-            mopac,
-            pbs_file: String::new(),
-            job_id: String::new(),
-            index,
-            coeff: 1.0,
-        }
+    fn sleep_int(&self) -> usize {
+        1
     }
-}
-
-/// Build a chunk of jobs by writing the MOPAC input file and the corresponding
-/// submission script and submitting the script
-pub fn build_chunk<'a, S: Submit>(
-    jobs: &'a [Job],
-    chunk_num: usize,
-    slurm_jobs: &'a mut HashMap<String, usize>,
-    queue: S,
-) -> Vec<Job> {
-    let queue_file = format!("inp/main{}.slurm", chunk_num);
-    let mut chunk_jobs = Vec::new();
-    for job in jobs {
-        let mut job = (*job).clone();
-        job.mopac.write_input();
-        job.pbs_file = queue_file.to_string();
-        chunk_jobs.push(job);
-    }
-    slurm_jobs.insert(queue_file.clone(), chunk_jobs.len());
-    queue.write_submit_script(
-        chunk_jobs
-            .iter()
-            .map(|j| j.mopac.filename.clone())
-            .collect(),
-        &queue_file,
-    );
-    // run jobs
-    let job_id = queue.submit(&queue_file);
-    for job in &mut chunk_jobs {
-        job.job_id = job_id.clone();
-    }
-    chunk_jobs
 }
 
 /// Build the jobs described by `moles` in memory, but don't write any of their
@@ -289,7 +271,7 @@ pub fn build_jobs(
     start_index: usize,
     coeff: f64,
     job_num: usize,
-) -> Vec<Job> {
+) -> Vec<Job<Mopac>> {
     let mut count: usize = start_index;
     let mut job_num = job_num;
     let mut jobs = Vec::new();
@@ -305,127 +287,25 @@ pub fn build_jobs(
     jobs
 }
 
-struct Dump {
-    buf: Vec<String>,
-    ptr: usize,
-    max: usize,
-}
-
-impl Dump {
-    fn new(size: usize) -> Self {
-        Self {
-            buf: vec![String::new(); size],
-            ptr: 0,
-            max: size,
-        }
-    }
-    fn add(&mut self, files: Vec<String>) {
-        for file in files {
-            if self.ptr == self.max - 1 {
-                self.dump();
-            }
-            self.buf[self.ptr] = file;
-            self.ptr += 1;
-        }
-    }
-
-    fn dump(&mut self) {
-        for file in &self.buf {
-            let _ = std::fs::remove_file(file);
-        }
-        self.ptr = 0;
-    }
-}
-
-pub fn drain<S: Submit>(jobs: &mut Vec<Job>, dst: &mut [f64], _submitter: S) {
-    let mut chunk_num: usize = 0;
-    let mut cur_jobs = Vec::new();
-    let mut slurm_jobs = HashMap::new();
-    let mut cur = 0; // current index into jobs
-    let tot_jobs = jobs.len();
-    let mut dump = Dump::new(CHUNK_SIZE * 5);
-    loop {
-        let mut finished = 0;
-        while cur_jobs.len() < JOB_LIMIT && cur < tot_jobs {
-            let new_chunk = build_chunk(
-                &mut jobs[cur..std::cmp::min(cur + CHUNK_SIZE, tot_jobs)],
-                chunk_num,
-                &mut slurm_jobs,
-                S::new(),
-            );
-            if DEBUG {
-                eprintln!("submitted chunk {}", chunk_num);
-            }
-            chunk_num += 1;
-            cur += new_chunk.len();
-            cur_jobs.extend(new_chunk);
-        }
-        // collect output
-        let mut to_remove = Vec::new();
-        for (i, job) in cur_jobs.iter_mut().enumerate() {
-            match job.mopac.read_output() {
-                Some(val) => {
-                    to_remove.push(i);
-                    dst[job.index] += job.coeff * val;
-                    dump.add(vec![
-                        format!("{}.mop", job.mopac.filename),
-                        format!("{}.out", job.mopac.filename),
-                        format!("{}.arc", job.mopac.filename),
-                        format!("{}.aux", job.mopac.filename),
-                        job.mopac.param_file.clone(),
-                    ]);
-                    finished += 1;
-                    let job_name = job.pbs_file.as_str();
-                    let count = slurm_jobs.get_mut(job_name).unwrap();
-                    *count -= 1;
-                    if *count == 0 {
-                        // delete the submit script
-                        dump.add(vec![
-                            job_name.to_string(),
-                            format!("{}.out", job_name),
-                        ]);
-                    }
-                }
-                None => (),
-            }
-        }
-        // have to remove the highest index first so sort and reverse
-        to_remove.sort();
-        to_remove.reverse();
-        for i in to_remove {
-            cur_jobs.swap_remove(i);
-        }
-        if cur_jobs.len() == 0 && cur == tot_jobs {
-            return;
-        }
-        if finished == 0 {
-            eprintln!("none finished, sleeping");
-            thread::sleep(time::Duration::from_secs(SLEEP_INT as u64));
-        } else {
-            eprintln!("finished {}", finished);
-        }
-    }
-}
-
 /// compute the semi-empirical energies of `moles` for the given `params`
-pub fn semi_empirical<S: Submit>(
+pub fn semi_empirical<Q: Queue<Mopac>>(
     moles: &Vec<Vec<Atom>>,
     params: &Params,
-    submitter: S,
+    submitter: &Q,
 ) -> na::DVector<f64> {
     let mut jobs = build_jobs(moles, params, 0, 1.0, 0);
     let mut got = vec![0.0; jobs.len()];
-    drain(&mut jobs, &mut got, submitter);
+    submitter.drain(&mut jobs, &mut got);
     na::DVector::from(got)
 }
 
 /// Compute the numerical Jacobian for the geomeries in `moles` and the
 /// parameters in `params`. For convenience of indexing, the transpose is
 /// actually computed and returned
-pub fn num_jac<S: Submit>(
+pub fn num_jac<Q: Queue<Mopac>>(
     moles: &Vec<Vec<Atom>>,
     params: &Params,
-    submitter: S,
+    submitter: &Q,
 ) -> na::DMatrix<f64> {
     let rows = params.values.len();
     let cols = moles.len();
@@ -452,7 +332,7 @@ pub fn num_jac<S: Submit>(
     if DEBUG {
         eprintln!("num_jac: running {} jobs", jobs.len());
     }
-    drain(&mut jobs, &mut jac_t, submitter);
+    submitter.drain(&mut jobs, &mut jac_t);
     // nalgebra does from_vec in col-major order, so lead with cols and I get
     // jac_t_t or jac back
     let jac = na::DMatrix::from_vec(cols, rows, jac_t);
@@ -661,7 +541,7 @@ mod tests {
 
     #[test]
     fn test_write_submit_script() {
-        Slurm {}.write_submit_script(
+        Slurm::default().write_submit_script(
             vec![
                 String::from("input1"),
                 String::from("input2"),
@@ -698,7 +578,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             0.20511337069030972,
         ]);
         setup();
-        let got = semi_empirical(&moles, &params, LocalQueue);
+        let got = semi_empirical(&moles, &params, &LocalQueue);
         let eps = 1e-14;
         assert!(comp_dvec(got, want, eps));
         takedown();
@@ -775,7 +655,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let params = load_params("test_files/small.params");
         let want = load_mat("test_files/small.jac");
         setup();
-        let got = num_jac(&moles, &params, LocalQueue {});
+        let got = num_jac(&moles, &params, &LocalQueue);
         assert!(comp_mat(got, want, 1e-5));
         takedown();
     }
@@ -790,7 +670,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let ai = load_energies("test_files/25.dat");
         setup();
         // initial semi-empirical energies and stats
-        let mut se = semi_empirical(&moles, &params, LocalQueue);
+        let mut se = semi_empirical(&moles, &params, &LocalQueue);
         let rel = relative(&se);
         let mut stats = Stats::new(&ai, &rel);
         let mut last_stats = Stats::default();
@@ -801,14 +681,14 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let mut iter = 1;
         let start = std::time::SystemTime::now();
         while iter <= 1 {
-            let jac_t = num_jac(&moles, &params, LocalQueue {});
+            let jac_t = num_jac(&moles, &params, &LocalQueue);
             let step = lev_mar(jac_t, &ai, &se, 1.0);
             let try_params = Params::new(
                 params.names.clone(),
                 params.atoms.clone(),
                 &params.values + &step,
             );
-            let new_se = semi_empirical(&moles, &try_params, LocalQueue);
+            let new_se = semi_empirical(&moles, &try_params, &LocalQueue);
             let rel = relative(&new_se);
             stats = Stats::new(&ai, &rel);
             let time = if let Ok(elapsed) = start.elapsed() {

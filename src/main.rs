@@ -8,7 +8,8 @@ fn main() {
     let ai = load_energies("rel.dat");
     setup();
     // initial semi-empirical energies and stats
-    let mut se = semi_empirical(&moles, &params, Slurm);
+    let queue = Slurm::default(); // TODO use config
+    let mut se = semi_empirical(&moles, &params, &queue);
     let rel = relative(&se);
     let mut stats = Stats::new(&ai, &rel);
     let mut last_stats = Stats::default();
@@ -19,14 +20,14 @@ fn main() {
     let mut iter = 1;
     let start = std::time::SystemTime::now();
     while iter <= 5 {
-        let jac_t = num_jac(&moles, &params, Slurm);
+        let jac_t = num_jac(&moles, &params, &queue);
         let step = lev_mar(jac_t, &ai, &se, 1.0);
         let try_params = Params::new(
             params.names.clone(),
             params.atoms.clone(),
             &params.values + &step,
         );
-        let new_se = semi_empirical(&moles, &try_params, Slurm);
+        let new_se = semi_empirical(&moles, &try_params, &queue);
         let rel = relative(&new_se);
         stats = Stats::new(&ai, &rel);
         let time = if let Ok(elapsed) = start.elapsed() {

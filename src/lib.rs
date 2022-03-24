@@ -679,8 +679,8 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         last_stats = stats;
         // start looping
         let mut iter = 1;
-        let start = std::time::SystemTime::now();
         while iter <= 1 {
+            let start = std::time::SystemTime::now();
             let jac_t = num_jac(&moles, &params, &LocalQueue);
             let step = lev_mar(jac_t, &ai, &se, 1.0);
             let try_params = Params::new(
@@ -710,6 +710,8 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
     Iter        Norm       ΔNorm        RMSD       ΔRMSD         Max        Time
        0    828.6919    828.6919    165.7384    165.7384    266.6057         0.0
        1    325.2037   -503.4882     65.0407   -100.6976    126.9844        40.1
+    after scaling:
+       1    389.9481   -438.7438     77.9896    -87.7488    201.6500        34.2
      */
 }
 
@@ -721,23 +723,43 @@ pub fn lev_mar(
     se: &na::DVector<f64>,
     lambda: f64,
 ) -> na::DVector<f64> {
-    // TODO normalize
     let jac_t = jac.transpose();
+    let (rows, _) = jac_t.shape();
+    // compute scaled matrix, A*, from JᵀJ
     let a = &jac_t * &jac;
-    let (rows, cols) = a.shape();
+    let mut a_star = na::DMatrix::from_vec(rows, rows, vec![0.0; rows * rows]);
+    for i in 0..rows {
+        for j in 0..i {
+            a_star[(i, j)] = a[(i, j)] / (a[(i, i)].sqrt() * a[(j, j)].sqrt())
+        }
+    }
+    // compute λI
     let li = {
-        let mut i = na::DMatrix::<f64>::identity(rows, cols);
+        let mut i = na::DMatrix::<f64>::identity(rows, rows);
         i.scale_mut(lambda);
         i
     };
-    let a = a + li;
-    let a = match na::linalg::Cholesky::new(a) {
+    // add A* to λI (left-hand side) and compute the Cholesky decomposition
+    let lhs = a_star + li;
+    let lhs = match na::linalg::Cholesky::new(lhs) {
         Some(a) => a,
         None => {
             panic!("cholesky decomposition failed");
         }
     };
-    let b = &jac_t * (ai - se);
-    let d = a.solve(&b);
+    // compute scaled right side, g*, from b
+    let b = {
+        let b = &jac_t * (ai - se);
+        let mut g = na::DVector::from(vec![0.0; rows]);
+        for j in 0..rows {
+            g[j] = b[j] / a[(j, j)].sqrt()
+        }
+        g
+    };
+    let mut d = lhs.solve(&b);
+    // convert back from δ* to δ
+    for j in 0..rows {
+        d[j] /= a[(j, j)].sqrt()
+    }
     d
 }

@@ -1,4 +1,9 @@
-use std::{clone::Clone, fs::File, io::BufRead, io::BufReader};
+use std::{
+    clone::Clone,
+    fs::File,
+    io::BufReader,
+    io::{BufRead, Write},
+};
 
 use nalgebra as na;
 
@@ -273,7 +278,13 @@ pub fn relative(energies: &na::DVector<f64>) -> na::DVector<f64> {
     ret - min
 }
 
-pub fn run_algo<Q: Queue<Mopac>>(
+fn log_params<W: Write>(w: &mut W, iter: usize, params: &Params) {
+    let _ = writeln!(w, "Iter {}", iter);
+    let _ = writeln!(w, "{}", params.to_string());
+}
+
+pub fn run_algo<Q: Queue<Mopac>, W: Write>(
+    param_log: &mut W,
     atom_names: Vec<&str>,
     geom_file: &str,
     param_file: &str,
@@ -283,6 +294,7 @@ pub fn run_algo<Q: Queue<Mopac>>(
 ) -> Stats {
     let moles = load_geoms(geom_file, atom_names);
     let mut params = load_params(param_file);
+    log_params(param_log, 0, &params);
     let ai = load_energies(energy_file);
     // initial semi-empirical energies and stats
     let mut se = semi_empirical(&moles, &params, &queue);
@@ -377,6 +389,7 @@ pub fn run_algo<Q: Queue<Mopac>>(
         // end of loop updates
         se = new_se;
         params = try_params;
+        log_params(param_log, iter, &params);
         last_stats = stats;
         iter += 1;
     }
@@ -641,7 +654,15 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let geom_file = "test_files/small07";
         let param_file = "test_files/small.params";
         let energy_file = "test_files/25.dat";
-        let got = run_algo(names, geom_file, param_file, energy_file, 1, queue);
+        let got = run_algo(
+            &mut std::io::stdout(),
+            names,
+            geom_file,
+            param_file,
+            energy_file,
+            1,
+            queue,
+        );
         let want = Stats {
             norm: 70.5271,
             rmsd: 14.1054,

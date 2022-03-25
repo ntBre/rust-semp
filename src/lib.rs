@@ -253,7 +253,8 @@ pub fn lev_mar(
     let lhs = match na::linalg::Cholesky::new(lhs) {
         Some(a) => a,
         None => {
-            panic!("cholesky decomposition failed");
+            eprintln!("cholesky decomposition failed");
+            std::process::exit(1);
         }
     };
     let mut d = lhs.solve(&b);
@@ -277,6 +278,7 @@ pub fn run_algo<Q: Queue<Mopac>>(
     geom_file: &str,
     param_file: &str,
     energy_file: &str,
+    max_iter: usize,
     queue: Q,
 ) -> Stats {
     let moles = load_geoms(geom_file, atom_names);
@@ -293,7 +295,7 @@ pub fn run_algo<Q: Queue<Mopac>>(
     // start looping
     let mut iter = 1;
     let mut lambda = LAMBDA0;
-    while iter <= 1 {
+    while iter <= max_iter {
         let start = std::time::SystemTime::now();
         // TODO if Broyden do broyden
         let jac = num_jac(&moles, &params, &queue);
@@ -559,7 +561,8 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let f = match File::open(filename) {
             Ok(f) => f,
             Err(e) => {
-                panic!("failed to open {} with {}", filename, e);
+                eprintln!("failed to open {} with {}", filename, e);
+                std::process::exit(1);
             }
         };
         let lines = BufReader::new(f).lines().map(|x| x.unwrap());
@@ -638,7 +641,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let geom_file = "test_files/small07";
         let param_file = "test_files/small.params";
         let energy_file = "test_files/25.dat";
-        let got = run_algo(names, geom_file, param_file, energy_file, queue);
+        let got = run_algo(names, geom_file, param_file, energy_file, 1, queue);
         let want = Stats {
             norm: 70.5271,
             rmsd: 14.1054,

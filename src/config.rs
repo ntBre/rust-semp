@@ -5,16 +5,7 @@ pub struct Config {
     pub job_limit: usize,
     pub chunk_size: usize,
     pub sleep_int: usize,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            job_limit: 2usize.pow(14),
-            chunk_size: 128,
-            sleep_int: 5,
-        }
-    }
+    pub max_iter: usize,
 }
 
 impl Config {
@@ -36,6 +27,7 @@ mod tests {
             job_limit: 10000,
             chunk_size: 128,
             sleep_int: 5,
+            max_iter: 5,
         };
         assert_eq!(got, want);
     }

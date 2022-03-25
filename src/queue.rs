@@ -48,7 +48,10 @@ pub fn setup() {
     for dir in DIRS {
         match fs::create_dir(dir) {
             Ok(_) => (),
-            Err(_) => panic!("can't create '{}'", dir),
+            Err(_) => {
+                eprintln!("can't create '{}'", dir);
+                std::process::exit(1);
+            }
         }
     }
 }
@@ -60,7 +63,10 @@ pub fn takedown() {
         if path.is_dir() {
             match fs::remove_dir_all(dir) {
                 Ok(_) => (),
-                Err(_) => panic!("can't remove '{}'", dir),
+                Err(_) => {
+                    eprintln!("can't remove '{}'", dir);
+                    std::process::exit(1);
+                }
             }
         }
     }

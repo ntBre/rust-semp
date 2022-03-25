@@ -164,9 +164,11 @@ Comment line 2
             }
             line.make_ascii_uppercase();
             if let Some(_) = line.find("PANIC") {
-                panic!("panic requested in read_output");
+                eprintln!("panic requested in read_output");
+                std::process::exit(1)
             } else if let Some(_) = line.find("ERROR") {
-                panic!("error found in {}, exiting", self.filename);
+                eprintln!("error found in {}, exiting", self.filename);
+                std::process::exit(1)
             } else if let Some(_) = line.find(" == MOPAC DONE ==") {
                 return self.read_aux();
             }
@@ -203,7 +205,10 @@ impl Mopac {
         body.push_str(&self.params.to_string());
         let mut file = match File::create(&self.param_file) {
             Ok(f) => f,
-            Err(e) => panic!("failed to create {} with {}", self.param_file, e),
+            Err(e) => {
+                eprintln!("failed to create {} with {}", self.param_file, e);
+                std::process::exit(1);
+            }
         };
         write!(file, "{}", body).expect("failed to write params file");
     }

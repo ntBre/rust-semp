@@ -50,7 +50,8 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/\n",
         let mut file = match File::create(filename) {
             Ok(f) => f,
             Err(_) => {
-                panic!("write_submit_script: failed to create {filename}");
+                eprintln!("write_submit_script: failed to create {filename}");
+                std::process::exit(1);
             }
         };
         write!(file, "{}", body).expect("failed to write params file");

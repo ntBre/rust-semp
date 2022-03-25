@@ -26,5 +26,5 @@ fn main() {
     }
     let conf = Config::load(&conf_name);
     let queue = Slurm::new(conf.chunk_size, conf.job_limit, conf.sleep_int);
-    run_algo(names, "file07", "params.dat", "rel.dat", queue);
+    run_algo(names, "file07", "params.dat", "rel.dat", conf.max_iter, queue);
 }

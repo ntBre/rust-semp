@@ -228,8 +228,8 @@ impl Mopac {
                 match fields[1].replace("D", "E").parse::<f64>() {
                     Ok(f) => return Some(f / KCALHT),
                     Err(_) => {
-                        eprintln!("failed to parse '{}'", fields[1]);
-                        return None;
+                        panic!("failed to parse '{}'", fields[1]);
+			// TODO return more useful enum than Option
                     }
                 }
             }

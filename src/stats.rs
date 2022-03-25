@@ -1,4 +1,6 @@
 static HT_TO_CM: f64 = 219_474.5459784;
+use std::io::Write;
+
 use nalgebra as na;
 
 #[derive(Debug)]
@@ -29,20 +31,29 @@ impl Stats {
             max: max * HT_TO_CM,
         }
     }
-    pub fn print_header() {
-        println!(
+    pub fn print_header<W: Write>(w: &mut W) {
+        let _ = writeln!(
+            w,
             "{:>17}{:>12}{:>12}{:>12}{:>12}{:>12}",
             "cm-1", "cm-1", "cm-1", "cm-1", "cm-1", "s"
         );
-        println!(
+        let _ = writeln!(
+            w,
             "{:>5}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
             "Iter", "Norm", "ΔNorm", "RMSD", "ΔRMSD", "Max", "Time"
         );
     }
 
-    pub fn print_step(&self, iter: usize, last: &Self, time_milli: u128) {
-        print!(
-            "{:5}{:12.4}{:12.4}{:12.4}{:12.4}{:12.4}{:12.1}\n",
+    pub fn print_step<W: Write>(
+        &self,
+        w: &mut W,
+        iter: usize,
+        last: &Self,
+        time_milli: u128,
+    ) {
+        let _ = writeln!(
+            w,
+            "{:5}{:12.4}{:12.4}{:12.4}{:12.4}{:12.4}{:12.1}",
             iter,
             self.norm,
             self.norm - last.norm,

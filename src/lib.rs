@@ -1,4 +1,9 @@
-use std::{clone::Clone, fs::File, io::BufRead, io::BufReader};
+use std::{
+    clone::Clone,
+    fs::File,
+    io::BufReader,
+    io::{BufRead, Write},
+};
 
 use nalgebra as na;
 
@@ -164,24 +169,26 @@ pub fn build_jobs(
 }
 
 /// compute the semi-empirical energies of `moles` for the given `params`
-pub fn semi_empirical<Q: Queue<Mopac>>(
+pub fn semi_empirical<Q: Queue<Mopac>, W: Write>(
     moles: &Vec<Vec<Atom>>,
     params: &Params,
     submitter: &Q,
+    errors: &mut W,
 ) -> na::DVector<f64> {
     let mut jobs = build_jobs(moles, params, 0, 1.0, 0);
     let mut got = vec![0.0; jobs.len()];
-    submitter.drain(&mut jobs, &mut got);
+    submitter.drain(&mut jobs, &mut got, errors);
     na::DVector::from(got)
 }
 
 /// Compute the numerical Jacobian for the geomeries in `moles` and the
 /// parameters in `params`. For convenience of indexing, the transpose is
 /// actually computed and returned
-pub fn num_jac<Q: Queue<Mopac>>(
+pub fn num_jac<Q: Queue<Mopac>, W: Write>(
     moles: &Vec<Vec<Atom>>,
     params: &Params,
     submitter: &Q,
+    errors: &mut W,
 ) -> na::DMatrix<f64> {
     let rows = params.values.len();
     let cols = moles.len();
@@ -206,9 +213,9 @@ pub fn num_jac<Q: Queue<Mopac>>(
         jobs.extend_from_slice(&bwd_jobs);
     }
     if DEBUG {
-        eprintln!("num_jac: running {} jobs", jobs.len());
+        let _ = writeln!(errors, "num_jac: running {} jobs", jobs.len());
     }
-    submitter.drain(&mut jobs, &mut jac_t);
+    submitter.drain(&mut jobs, &mut jac_t, errors);
     // nalgebra does from_vec in col-major order, so lead with cols and I get
     // jac_t_t or jac back
     let jac = na::DMatrix::from_vec(cols, rows, jac_t);
@@ -274,7 +281,7 @@ pub fn relative(energies: &na::DVector<f64>) -> na::DVector<f64> {
 
 #[cfg(test)]
 mod tests {
-    use std::fs;
+    use std::{fs, io};
 
     use crate::{local::LocalQueue, slurm::Slurm, stats::Stats};
 
@@ -441,7 +448,12 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             0.20541305733965845,
             0.20511337069030972,
         ]);
-        let got = semi_empirical(&moles, &params, &LocalQueue);
+        let got = semi_empirical(
+            &moles,
+            &params,
+            &LocalQueue,
+            &mut std::io::stderr(),
+        );
         let eps = 1e-14;
         assert!(comp_dvec(got, want, eps));
     }
@@ -516,7 +528,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let moles = load_geoms("test_files/small07", names);
         let params = load_params("test_files/small.params");
         let want = load_mat("test_files/small.jac");
-        let got = num_jac(&moles, &params, &LocalQueue);
+        let got = num_jac(&moles, &params, &LocalQueue, &mut std::io::stderr());
         assert!(comp_mat(got, want, 1e-5));
     }
 
@@ -529,7 +541,15 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let geom_file = "test_files/small07";
         let param_file = "test_files/small.params";
         let energy_file = "test_files/25.dat";
-        let got = run_algo(names, geom_file, param_file, energy_file, queue);
+        let got = run_algo(
+            names,
+            geom_file,
+            param_file,
+            energy_file,
+            queue,
+            &mut io::stdout(),
+            &mut io::stderr(),
+        );
         let want = Stats {
             norm: 70.5271,
             rmsd: 14.1054,
@@ -565,23 +585,25 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
      */
 }
 
-pub fn run_algo<Q: Queue<Mopac>>(
+pub fn run_algo<Q: Queue<Mopac>, W: Write, V: Write>(
     atom_names: Vec<&str>,
     geom_file: &str,
     param_file: &str,
     energy_file: &str,
     queue: Q,
+    output: &mut W,
+    error: &mut V,
 ) -> Stats {
     let moles = load_geoms(geom_file, atom_names);
     let mut params = load_params(param_file);
     let ai = load_energies(energy_file);
     // initial semi-empirical energies and stats
-    let mut se = semi_empirical(&moles, &params, &queue);
+    let mut se = semi_empirical(&moles, &params, &queue, error);
     let rel = relative(&se);
     let mut stats = Stats::new(&ai, &rel);
     let mut last_stats = Stats::default();
-    Stats::print_header();
-    stats.print_step(0, &last_stats, 0);
+    Stats::print_header(output);
+    stats.print_step(output, 0, &last_stats, 0);
     last_stats = stats;
     // start looping
     let mut iter = 1;
@@ -589,7 +611,7 @@ pub fn run_algo<Q: Queue<Mopac>>(
     while iter <= 1 {
         let start = std::time::SystemTime::now();
         // TODO if Broyden do broyden
-        let jac = num_jac(&moles, &params, &queue);
+        let jac = num_jac(&moles, &params, &queue, error);
         lambda /= NU;
         // BEGIN copy-paste
         let step = lev_mar(&jac, &ai, &se, lambda);
@@ -598,7 +620,7 @@ pub fn run_algo<Q: Queue<Mopac>>(
             params.atoms.clone(),
             &params.values + &step,
         );
-        let new_se = semi_empirical(&moles, &try_params, &queue);
+        let new_se = semi_empirical(&moles, &try_params, &queue, error);
         let rel = relative(&new_se);
         stats = Stats::new(&ai, &rel);
         // END copy-paste
@@ -617,12 +639,13 @@ pub fn run_algo<Q: Queue<Mopac>>(
                 params.atoms.clone(),
                 &params.values + &step,
             );
-            let new_se = semi_empirical(&moles, &try_params, &queue);
+            let new_se = semi_empirical(&moles, &try_params, &queue, error);
             let rel = relative(&new_se);
             stats = Stats::new(&ai, &rel);
             // ECP
 
-            eprintln!(
+            let _ = writeln!(
+                error,
                 "\tλ_{} to {:e} with ΔNorm = {}",
                 i,
                 lambda,
@@ -646,12 +669,13 @@ pub fn run_algo<Q: Queue<Mopac>>(
                 params.atoms.clone(),
                 &params.values + k * &step,
             );
-            let new_se = semi_empirical(&moles, &try_params, &queue);
+            let new_se = semi_empirical(&moles, &try_params, &queue, error);
             let rel = relative(&new_se);
             stats = Stats::new(&ai, &rel);
             // ECP
 
-            eprintln!(
+            let _ = writeln!(
+                error,
                 "\tk_{} to {:e} with ΔNorm = {}",
                 i,
                 k,
@@ -664,7 +688,7 @@ pub fn run_algo<Q: Queue<Mopac>>(
         } else {
             0
         };
-        stats.print_step(iter, &last_stats, time);
+        stats.print_step(output, iter, &last_stats, time);
         // end of loop updates
         se = new_se;
         params = try_params;

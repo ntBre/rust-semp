@@ -1,7 +1,8 @@
 use core::time;
 // this is going to make my psandqs (Ps and Qs) crate - programs and queues
 use std::{
-    collections::HashMap, fs, path::Path, process::Command, str, thread,
+    collections::HashMap, fs, io::Write, path::Path, process::Command, str,
+    thread,
 };
 
 use crate::{dump::Dump, DEBUG};
@@ -118,12 +119,18 @@ where
         chunk_jobs
     }
 
-    fn drain(&self, jobs: &mut Vec<Job<P>>, dst: &mut [f64]) {
+    fn drain<W: Write>(
+        &self,
+        jobs: &mut Vec<Job<P>>,
+        dst: &mut [f64],
+        err_stream: &mut W,
+    ) {
         let mut chunk_num: usize = 0;
         let mut cur_jobs = Vec::new();
         let mut slurm_jobs = HashMap::new();
         let mut cur = 0; // current index into jobs
         let tot_jobs = jobs.len();
+        let mut remaining = tot_jobs;
         let mut dump = Dump::new(self.chunk_size() * 5);
         setup();
         loop {
@@ -136,7 +143,8 @@ where
                     &mut slurm_jobs,
                 );
                 if DEBUG {
-                    eprintln!("submitted chunk {}", chunk_num);
+                    let _ =
+                        writeln!(err_stream, "submitted chunk {}", chunk_num);
                 }
                 chunk_num += 1;
                 cur += new_chunk.len();
@@ -151,6 +159,7 @@ where
                         dst[job.index] += job.coeff * val;
                         dump.add(job.program.associated_files());
                         finished += 1;
+                        remaining -= 1;
                         let job_name = job.pbs_file.as_str();
                         let count = slurm_jobs.get_mut(job_name).unwrap();
                         *count -= 1;
@@ -176,12 +185,10 @@ where
                 return;
             }
             if finished == 0 {
-                eprintln!("none finished, sleeping");
+                let _ = writeln!(err_stream, "{} jobs remaining", remaining);
                 thread::sleep(time::Duration::from_secs(
                     self.sleep_int() as u64
                 ));
-            } else {
-                eprintln!("finished {}", finished);
             }
         }
     }

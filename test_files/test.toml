@@ -2,3 +2,4 @@ job_limit = 10000
 chunk_size = 128
 sleep_int = 5
 max_iter = 5
+atom_names = ["C", "C", "C", "H", "H"]

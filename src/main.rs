@@ -12,8 +12,6 @@ fn main() {
     if args.len() == 2 {
         conf_name = args[1].clone();
     }
-    // TODO take from toml
-    let names = vec!["C", "C", "C", "H", "H"];
     // TODO take these names from conf_name
     let outfile = File::create("rust.out").expect("failed to create outfile");
     let logfile = File::create("rust.log").expect("failed to create log file");
@@ -30,7 +28,7 @@ fn main() {
         .expect("failed to create parameter log file");
     run_algo(
         &mut param_log,
-        names,
+        conf.atom_names,
         "file07",
         "params.dat",
         "rel.dat",

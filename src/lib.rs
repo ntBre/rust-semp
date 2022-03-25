@@ -28,6 +28,18 @@ pub static LAMBDA0: f64 = 1e-8;
 pub static NU: f64 = 2.0;
 pub static MAX_TRIES: usize = 5;
 
+/// from https://stackoverflow.com/a/45145246
+#[macro_export]
+macro_rules! string {
+    // match a list of expressions separated by comma:
+    ($($str:expr),*) => ({
+        // create a Vec with this list of expressions,
+        // calling String::from on each:
+        vec![$(String::from($str),)*] as Vec<String>
+    });
+}
+
+
 #[derive(Debug, Clone)]
 pub struct Atom {
     pub label: String,
@@ -62,7 +74,7 @@ pub fn geom_string(geom: &Vec<Atom>) -> String {
 }
 
 /// Take an INTDER-style `file07` file and parse it into a Vec of geometries
-pub fn load_geoms(filename: &str, atom_names: Vec<&str>) -> Vec<Vec<Atom>> {
+pub fn load_geoms(filename: &str, atom_names: Vec<String>) -> Vec<Vec<Atom>> {
     let f = match File::open(filename) {
         Ok(f) => f,
         Err(e) => {
@@ -285,7 +297,7 @@ fn log_params<W: Write>(w: &mut W, iter: usize, params: &Params) {
 
 pub fn run_algo<Q: Queue<Mopac>, W: Write>(
     param_log: &mut W,
-    atom_names: Vec<&str>,
+    atom_names: Vec<String>,
     geom_file: &str,
     param_file: &str,
     energy_file: &str,
@@ -410,7 +422,7 @@ mod tests {
     #[test]
     fn test_load_geoms() {
         let got =
-            load_geoms("test_files/three07", vec!["C", "C", "C", "H", "H"]);
+            load_geoms("test_files/three07", string!["C", "C", "C", "H", "H"]);
         let want = vec![
             vec![
                 Atom::new("C", vec![0.0000000000, 0.0000000000, -1.6794733900]),
@@ -560,7 +572,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
 
     #[test]
     fn test_one_iter() {
-        let names = vec!["C", "C", "C", "H", "H"];
+        let names = string!["C", "C", "C", "H", "H"];
         let moles = load_geoms("test_files/three07", names);
         let params = load_params("test_files/params.dat");
         let want = na::DVector::from(vec![
@@ -640,7 +652,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
     #[ignore]
     #[test]
     fn test_num_jac() {
-        let names = vec!["C", "C", "C", "H", "H"];
+        let names = string!["C", "C", "C", "H", "H"];
         let moles = load_geoms("test_files/small07", names);
         let params = load_params("test_files/small.params");
         let want = load_mat("test_files/small.jac");
@@ -652,7 +664,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
     #[test]
     fn test_lev_mar() {
         // loading everything
-        let names = vec!["C", "C", "C", "H", "H"];
+        let names = string!["C", "C", "C", "H", "H"];
         let queue = LocalQueue;
         let geom_file = "test_files/small07";
         let param_file = "test_files/small.params";

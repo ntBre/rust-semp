@@ -3,7 +3,7 @@ use rust_semp::local::LocalQueue;
 use rust_semp::queue::Queue;
 
 fn main() {
-    let names = vec!["C", "C", "C", "H", "H"];
+    let names = string!["C", "C", "C", "H", "H"];
     let moles = load_geoms("test_files/quarter07", names);
     let ml = moles.len();
     let params = load_params("test_files/params.dat");

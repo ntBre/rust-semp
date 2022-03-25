@@ -6,6 +6,7 @@ pub struct Config {
     pub chunk_size: usize,
     pub sleep_int: usize,
     pub max_iter: usize,
+    pub atom_names: Vec<String>,
 }
 
 impl Config {
@@ -28,6 +29,10 @@ mod tests {
             chunk_size: 128,
             sleep_int: 5,
             max_iter: 5,
+            atom_names: vec!["C", "C", "C", "H", "H"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
         };
         assert_eq!(got, want);
     }

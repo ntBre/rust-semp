@@ -688,9 +688,9 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             let start = std::time::SystemTime::now();
             // TODO if Broyden do broyden
             let jac = num_jac(&moles, &params, &LocalQueue);
-
+            lambda /= NU;
             // BEGIN copy-paste
-            let step = lev_mar(&jac, &ai, &se, lambda / NU);
+            let step = lev_mar(&jac, &ai, &se, lambda);
             let try_params = Params::new(
                 params.names.clone(),
                 params.atoms.clone(),

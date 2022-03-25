@@ -307,7 +307,8 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
     // start looping
     let mut iter = 1;
     let mut lambda = LAMBDA0;
-    while iter <= max_iter {
+    let mut del_norm: f64 = 1.0;
+    while iter <= max_iter && del_norm.abs() > 1e-4 {
         let start = std::time::SystemTime::now();
         // TODO if Broyden do broyden
         let jac = num_jac(&moles, &params, &queue);
@@ -390,9 +391,11 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
         se = new_se;
         params = try_params;
         log_params(param_log, iter, &params);
+        del_norm = stats.norm - last_stats.norm;
         last_stats = stats;
         iter += 1;
     }
+    println!("\nconvergence reached after {} iterations", iter);
     last_stats
 }
 

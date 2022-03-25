@@ -4,6 +4,7 @@ use nalgebra as na;
 
 use mopac::{Mopac, Params};
 use queue::{Job, Queue};
+use stats::Stats;
 
 pub mod config;
 pub mod dump;
@@ -524,105 +525,14 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
     fn test_lev_mar() {
         // loading everything
         let names = vec!["C", "C", "C", "H", "H"];
-        let moles = load_geoms("test_files/small07", names);
-        let mut params = load_params("test_files/small.params");
-        let ai = load_energies("test_files/25.dat");
-        // initial semi-empirical energies and stats
-        let mut se = semi_empirical(&moles, &params, &LocalQueue);
-        let rel = relative(&se);
-        let mut stats = Stats::new(&ai, &rel);
-        let mut last_stats = Stats::default();
-        Stats::print_header();
-        stats.print_step(0, &last_stats, 0);
-        last_stats = stats;
-        // start looping
-        let mut iter = 1;
-        let mut lambda = LAMBDA0;
-        while iter <= 1 {
-            let start = std::time::SystemTime::now();
-            // TODO if Broyden do broyden
-            let jac = num_jac(&moles, &params, &LocalQueue);
-            lambda /= NU;
-            // BEGIN copy-paste
-            let step = lev_mar(&jac, &ai, &se, lambda);
-            let try_params = Params::new(
-                params.names.clone(),
-                params.atoms.clone(),
-                &params.values + &step,
-            );
-            let new_se = semi_empirical(&moles, &try_params, &LocalQueue);
-            let rel = relative(&new_se);
-            stats = Stats::new(&ai, &rel);
-            // END copy-paste
-
-            // cases ii. and iii. from Marquardt63; first iteration is case ii.
-            let mut i = 0;
-            let mut bad = false;
-            while stats.norm > last_stats.norm {
-                lambda *= NU;
-                let dnorm = stats.norm - last_stats.norm;
-
-                // BCP
-                let step = lev_mar(&jac, &ai, &se, lambda);
-                let try_params = Params::new(
-                    params.names.clone(),
-                    params.atoms.clone(),
-                    &params.values + &step,
-                );
-                let new_se = semi_empirical(&moles, &try_params, &LocalQueue);
-                let rel = relative(&new_se);
-                stats = Stats::new(&ai, &rel);
-                // ECP
-
-                eprintln!(
-                    "\tλ_{} to {:e} with ΔNorm = {}",
-                    i,
-                    lambda,
-                    stats.norm - last_stats.norm
-                );
-                i += 1;
-                if stats.norm - last_stats.norm > dnorm || i > MAX_TRIES {
-                    bad = true;
-                    break;
-                }
-            }
-            let mut k = 1.0;
-            let mut i = 2;
-            while bad && stats.norm > last_stats.norm && k > 1e-14 {
-                k = 1.0 / 10.0_f64.powf(i as f64);
-
-                // BCP
-                let step = lev_mar(&jac, &ai, &se, lambda);
-                let try_params = Params::new(
-                    params.names.clone(),
-                    params.atoms.clone(),
-                    &params.values + k * &step,
-                );
-                let new_se = semi_empirical(&moles, &try_params, &LocalQueue);
-                let rel = relative(&new_se);
-                stats = Stats::new(&ai, &rel);
-                // ECP
-
-                eprintln!(
-                    "\tk_{} to {:e} with ΔNorm = {}",
-                    i,
-                    k,
-                    stats.norm - last_stats.norm
-                );
-                i += 1;
-            }
-            let time = if let Ok(elapsed) = start.elapsed() {
-                elapsed.as_millis()
-            } else {
-                0
-            };
-            stats.print_step(iter, &last_stats, time);
-            // end of loop updates
-            se = new_se;
-            params = try_params;
-            last_stats = stats;
-            iter += 1;
-        }
+        let queue = LocalQueue;
+        let got = run_algo(names, queue);
+        let want = Stats {
+            norm: 70.5271,
+            rmsd: 14.1054,
+            max: 27.1241,
+        };
+        assert_eq!(got, want);
     }
     /*
        current output:
@@ -650,4 +560,107 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
     5     19.1505     -0.6535      3.8301     -0.1307      5.3263        30.6
 
      */
+}
+
+pub fn run_algo<Q: Queue<Mopac>>(atom_names: Vec<&str>, queue: Q) -> Stats {
+    let moles = load_geoms("test_files/small07", atom_names);
+    let mut params = load_params("test_files/small.params");
+    let ai = load_energies("test_files/25.dat");
+    // initial semi-empirical energies and stats
+    let mut se = semi_empirical(&moles, &params, &queue);
+    let rel = relative(&se);
+    let mut stats = Stats::new(&ai, &rel);
+    let mut last_stats = Stats::default();
+    Stats::print_header();
+    stats.print_step(0, &last_stats, 0);
+    last_stats = stats;
+    // start looping
+    let mut iter = 1;
+    let mut lambda = LAMBDA0;
+    while iter <= 1 {
+        let start = std::time::SystemTime::now();
+        // TODO if Broyden do broyden
+        let jac = num_jac(&moles, &params, &queue);
+        lambda /= NU;
+        // BEGIN copy-paste
+        let step = lev_mar(&jac, &ai, &se, lambda);
+        let try_params = Params::new(
+            params.names.clone(),
+            params.atoms.clone(),
+            &params.values + &step,
+        );
+        let new_se = semi_empirical(&moles, &try_params, &queue);
+        let rel = relative(&new_se);
+        stats = Stats::new(&ai, &rel);
+        // END copy-paste
+
+        // cases ii. and iii. from Marquardt63; first iteration is case ii.
+        let mut i = 0;
+        let mut bad = false;
+        while stats.norm > last_stats.norm {
+            lambda *= NU;
+            let dnorm = stats.norm - last_stats.norm;
+
+            // BCP
+            let step = lev_mar(&jac, &ai, &se, lambda);
+            let try_params = Params::new(
+                params.names.clone(),
+                params.atoms.clone(),
+                &params.values + &step,
+            );
+            let new_se = semi_empirical(&moles, &try_params, &queue);
+            let rel = relative(&new_se);
+            stats = Stats::new(&ai, &rel);
+            // ECP
+
+            eprintln!(
+                "\tλ_{} to {:e} with ΔNorm = {}",
+                i,
+                lambda,
+                stats.norm - last_stats.norm
+            );
+            i += 1;
+            if stats.norm - last_stats.norm > dnorm || i > MAX_TRIES {
+                bad = true;
+                break;
+            }
+        }
+        let mut k = 1.0;
+        let mut i = 2;
+        while bad && stats.norm > last_stats.norm && k > 1e-14 {
+            k = 1.0 / 10.0_f64.powf(i as f64);
+
+            // BCP
+            let step = lev_mar(&jac, &ai, &se, lambda);
+            let try_params = Params::new(
+                params.names.clone(),
+                params.atoms.clone(),
+                &params.values + k * &step,
+            );
+            let new_se = semi_empirical(&moles, &try_params, &queue);
+            let rel = relative(&new_se);
+            stats = Stats::new(&ai, &rel);
+            // ECP
+
+            eprintln!(
+                "\tk_{} to {:e} with ΔNorm = {}",
+                i,
+                k,
+                stats.norm - last_stats.norm
+            );
+            i += 1;
+        }
+        let time = if let Ok(elapsed) = start.elapsed() {
+            elapsed.as_millis()
+        } else {
+            0
+        };
+        stats.print_step(iter, &last_stats, time);
+        // end of loop updates
+        se = new_se;
+        params = try_params;
+        last_stats = stats;
+        iter += 1;
+    }
+    last_stats
 }

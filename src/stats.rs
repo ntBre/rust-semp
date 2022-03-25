@@ -63,3 +63,18 @@ impl Default for Stats {
         }
     }
 }
+
+impl PartialEq for Stats {
+    fn eq(&self, other: &Self) -> bool {
+        fn close(a: f64, b: f64, eps: f64) -> bool {
+            if (a - b).abs() < eps {
+                return true;
+            }
+            false
+        }
+        let eps = 1e-4;
+        close(self.norm, other.norm, eps)
+            && close(self.rmsd, other.rmsd, eps)
+            && close(self.max, other.max, eps)
+    }
+}

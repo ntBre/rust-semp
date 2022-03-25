@@ -124,6 +124,7 @@ where
         let mut slurm_jobs = HashMap::new();
         let mut cur = 0; // current index into jobs
         let tot_jobs = jobs.len();
+        let mut remaining = tot_jobs;
         let mut dump = Dump::new(self.chunk_size() * 5);
         setup();
         loop {
@@ -151,6 +152,7 @@ where
                         dst[job.index] += job.coeff * val;
                         dump.add(job.program.associated_files());
                         finished += 1;
+                        remaining -= 1;
                         let job_name = job.pbs_file.as_str();
                         let count = slurm_jobs.get_mut(job_name).unwrap();
                         *count -= 1;
@@ -176,12 +178,10 @@ where
                 return;
             }
             if finished == 0 {
-                eprintln!("none finished, sleeping");
+                eprintln!("{} jobs remaining", remaining);
                 thread::sleep(time::Duration::from_secs(
                     self.sleep_int() as u64
                 ));
-            } else {
-                eprintln!("finished {}", finished);
             }
         }
     }

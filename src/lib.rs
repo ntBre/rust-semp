@@ -3,25 +3,26 @@ use std::{
     fs::{self, File},
     io::BufRead,
     io::BufReader,
-    io::Write,
 };
 
 use nalgebra as na;
 
 use mopac::{Mopac, Params};
-use queue::{Job, Program, Queue};
+use queue::{Job, Queue};
 
 pub mod config;
 pub mod dump;
 pub mod mopac;
 pub mod queue;
+pub mod stats;
+pub mod slurm;
+pub mod local;
 
 static DIRS: &'static [&str] = &["inp", "tmparam"];
 static DELTA: f64 = 1e-8;
 static DELTA_FWD: f64 = 5e7; // 1 / 2Δ
 static DELTA_BWD: f64 = -5e7; // -1 / 2Δ
 static DEBUG: bool = false;
-static HT_TO_CM: f64 = 219_474.5459784;
 
 pub static LAMBDA0: f64 = 1e-8;
 pub static NU: f64 = 2.0;
@@ -164,109 +165,6 @@ pub fn load_params(filename: &str) -> Params {
     Params::from(names, atoms, values)
 }
 
-/// Slurm is a type for holding the information for submitting a slurm job.
-/// `filename` is the name of the Slurm submission script
-#[derive(Debug)]
-pub struct Slurm {
-    chunk_size: usize,
-    job_limit: usize,
-    sleep_int: usize,
-}
-
-impl Slurm {
-    pub fn new(chunk_size: usize, job_limit: usize, sleep_int: usize) -> Self {
-        Self {
-            chunk_size,
-            job_limit,
-            sleep_int,
-        }
-    }
-
-    pub fn default() -> Self {
-        Self {
-            chunk_size: 128,
-            job_limit: 1600,
-            sleep_int: 5,
-        }
-    }
-}
-
-impl Queue<Mopac> for Slurm {
-    fn write_submit_script(&self, infiles: Vec<String>, filename: &str) {
-        let mut body = format!(
-            "#!/bin/bash
-#SBATCH --job-name=semp
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=1
-#SBATCH -o {filename}.out
-#SBATCH --no-requeue
-#SBATCH --mem=1gb
-export LD_LIBRARY_PATH=/home/qc/mopac2016/\n",
-        );
-        for f in infiles {
-            body.push_str(&format!(
-                "/home/qc/mopac2016/MOPAC2016.exe {f}.mop\n"
-            ));
-        }
-        let mut file = match File::create(filename) {
-            Ok(f) => f,
-            Err(_) => {
-                panic!("write_submit_script: failed to create {filename}");
-            }
-        };
-        write!(file, "{}", body).expect("failed to write params file");
-    }
-
-    fn submit_command(&self) -> &str {
-        "sbatch"
-    }
-
-    fn chunk_size(&self) -> usize {
-        self.chunk_size
-    }
-
-    fn job_limit(&self) -> usize {
-        self.job_limit
-    }
-
-    fn sleep_int(&self) -> usize {
-        self.sleep_int
-    }
-}
-
-/// Minimal implementation for testing MOPAC locally
-#[derive(Debug)]
-pub struct LocalQueue;
-
-impl<P: Program + Clone> Queue<P> for LocalQueue {
-    fn write_submit_script(&self, infiles: Vec<String>, filename: &str) {
-        let mut body = String::from("export LD_LIBRARY_PATH=/opt/mopac/\n");
-        for f in infiles {
-            body.push_str(&format!("/opt/mopac/mopac {f}.mop\n"));
-        }
-        body.push_str(&format!("date +%s\n"));
-        let mut file =
-            File::create(filename).expect("failed to create params file");
-        write!(file, "{}", body).expect("failed to write params file");
-    }
-
-    fn submit_command(&self) -> &str {
-        "bash"
-    }
-
-    fn chunk_size(&self) -> usize {
-        128
-    }
-
-    fn job_limit(&self) -> usize {
-        1600
-    }
-
-    fn sleep_int(&self) -> usize {
-        1
-    }
-}
-
 /// Build the jobs described by `moles` in memory, but don't write any of their
 /// files yet
 pub fn build_jobs(
@@ -343,67 +241,53 @@ pub fn num_jac<Q: Queue<Mopac>>(
     jac
 }
 
-#[derive(Debug)]
-pub struct Stats {
-    pub norm: f64,
-    pub rmsd: f64,
-    pub max: f64,
-}
-
-impl Stats {
-    /// compute the Stats between `v` and `w` in cm-1 under the assumption they
-    /// started out in Ht
-    pub fn new(v: &na::DVector<f64>, w: &na::DVector<f64>) -> Self {
-        let count = v.len();
-        assert_eq!(count, w.len());
-        let mut sq_diffs = 0.0;
-        let mut max = v[0] - w[0];
-        for i in 0..count {
-            let diff = v[i] - w[i];
-            sq_diffs += diff * diff;
-            if diff.abs() > max {
-                max = diff.abs();
-            }
-        }
-        Self {
-            norm: sq_diffs.sqrt() * HT_TO_CM,
-            rmsd: (sq_diffs / count as f64).sqrt() * HT_TO_CM,
-            max: max * HT_TO_CM,
+/// Solve (JᵀJ + λI)δ = Jᵀ[y - f(β)] for δ. y is the vector of "true" training
+/// energies, and f(β) represents the current semi-empirical energies.
+pub fn lev_mar(
+    jac: &na::DMatrix<f64>,
+    ai: &na::DVector<f64>,
+    se: &na::DVector<f64>,
+    lambda: f64,
+) -> na::DVector<f64> {
+    let jac_t = jac.transpose();
+    let (rows, _) = jac_t.shape();
+    // compute scaled matrix, A*, from JᵀJ
+    let a = &jac_t * jac;
+    let mut a_star = na::DMatrix::from_vec(rows, rows, vec![0.0; rows * rows]);
+    for i in 0..rows {
+        for j in 0..rows {
+            a_star[(i, j)] = a[(i, j)] / (a[(i, i)].sqrt() * a[(j, j)].sqrt())
         }
     }
-    pub fn print_header() {
-        println!(
-            "{:>17}{:>12}{:>12}{:>12}{:>12}{:>12}",
-            "cm-1", "cm-1", "cm-1", "cm-1", "cm-1", "s"
-        );
-        println!(
-            "{:>5}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
-            "Iter", "Norm", "ΔNorm", "RMSD", "ΔRMSD", "Max", "Time"
-        );
-    }
-
-    pub fn print_step(&self, iter: usize, last: &Self, time_milli: u128) {
-        print!(
-            "{:5}{:12.4}{:12.4}{:12.4}{:12.4}{:12.4}{:12.1}\n",
-            iter,
-            self.norm,
-            self.norm - last.norm,
-            self.rmsd,
-            self.rmsd - last.rmsd,
-            self.max,
-            time_milli as f64 / 1000.,
-        );
-    }
-}
-
-impl Default for Stats {
-    fn default() -> Self {
-        Self {
-            norm: 0.0,
-            rmsd: 0.0,
-            max: 0.0,
+    // compute scaled right side, g*, from b
+    let b = {
+        let b = &jac_t * (ai - se);
+        let mut g = na::DVector::from(vec![0.0; rows]);
+        for j in 0..rows {
+            g[j] = b[j] / a[(j, j)].sqrt()
         }
+        g
+    };
+    // compute λI
+    let li = {
+        let mut i = na::DMatrix::<f64>::identity(rows, rows);
+        i.scale_mut(lambda);
+        i
+    };
+    // add A* to λI (left-hand side) and compute the Cholesky decomposition
+    let lhs = a_star + li;
+    let lhs = match na::linalg::Cholesky::new(lhs) {
+        Some(a) => a,
+        None => {
+            panic!("cholesky decomposition failed");
+        }
+    };
+    let mut d = lhs.solve(&b);
+    // convert back from δ* to δ
+    for j in 0..rows {
+        d[j] /= a[(j, j)].sqrt()
     }
+    d
 }
 
 /// return `energies` relative to its minimum element
@@ -417,6 +301,8 @@ pub fn relative(energies: &na::DVector<f64>) -> na::DVector<f64> {
 #[cfg(test)]
 mod tests {
     use std::fs;
+
+    use crate::{slurm::Slurm, local::LocalQueue, stats::Stats};
 
     use super::*;
 
@@ -799,51 +685,3 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
      */
 }
 
-/// Solve (JᵀJ + λI)δ = Jᵀ[y - f(β)] for δ. y is the vector of "true" training
-/// energies, and f(β) represents the current semi-empirical energies.
-pub fn lev_mar(
-    jac: &na::DMatrix<f64>,
-    ai: &na::DVector<f64>,
-    se: &na::DVector<f64>,
-    lambda: f64,
-) -> na::DVector<f64> {
-    let jac_t = jac.transpose();
-    let (rows, _) = jac_t.shape();
-    // compute scaled matrix, A*, from JᵀJ
-    let a = &jac_t * jac;
-    let mut a_star = na::DMatrix::from_vec(rows, rows, vec![0.0; rows * rows]);
-    for i in 0..rows {
-        for j in 0..rows {
-            a_star[(i, j)] = a[(i, j)] / (a[(i, i)].sqrt() * a[(j, j)].sqrt())
-        }
-    }
-    // compute scaled right side, g*, from b
-    let b = {
-        let b = &jac_t * (ai - se);
-        let mut g = na::DVector::from(vec![0.0; rows]);
-        for j in 0..rows {
-            g[j] = b[j] / a[(j, j)].sqrt()
-        }
-        g
-    };
-    // compute λI
-    let li = {
-        let mut i = na::DMatrix::<f64>::identity(rows, rows);
-        i.scale_mut(lambda);
-        i
-    };
-    // add A* to λI (left-hand side) and compute the Cholesky decomposition
-    let lhs = a_star + li;
-    let lhs = match na::linalg::Cholesky::new(lhs) {
-        Some(a) => a,
-        None => {
-            panic!("cholesky decomposition failed");
-        }
-    };
-    let mut d = lhs.solve(&b);
-    // convert back from δ* to δ
-    for j in 0..rows {
-        d[j] /= a[(j, j)].sqrt()
-    }
-    d
-}

@@ -1,4 +1,5 @@
 use rust_semp::*;
+use rust_semp::local::LocalQueue;
 use rust_semp::queue::Queue;
 
 fn main() {

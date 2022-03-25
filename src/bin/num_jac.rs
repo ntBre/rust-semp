@@ -1,3 +1,4 @@
+use crate::local::LocalQueue;
 use rust_semp::*;
 
 fn main() {

@@ -526,7 +526,10 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         // loading everything
         let names = vec!["C", "C", "C", "H", "H"];
         let queue = LocalQueue;
-        let got = run_algo(names, queue);
+        let geom_file = "test_files/small07";
+        let param_file = "test_files/small.params";
+        let energy_file = "test_files/25.dat";
+        let got = run_algo(names, geom_file, param_file, energy_file, queue);
         let want = Stats {
             norm: 70.5271,
             rmsd: 14.1054,
@@ -562,10 +565,16 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
      */
 }
 
-pub fn run_algo<Q: Queue<Mopac>>(atom_names: Vec<&str>, queue: Q) -> Stats {
-    let moles = load_geoms("test_files/small07", atom_names);
-    let mut params = load_params("test_files/small.params");
-    let ai = load_energies("test_files/25.dat");
+pub fn run_algo<Q: Queue<Mopac>>(
+    atom_names: Vec<&str>,
+    geom_file: &str,
+    param_file: &str,
+    energy_file: &str,
+    queue: Q,
+) -> Stats {
+    let moles = load_geoms(geom_file, atom_names);
+    let mut params = load_params(param_file);
+    let ai = load_energies(energy_file);
     // initial semi-empirical energies and stats
     let mut se = semi_empirical(&moles, &params, &queue);
     let rel = relative(&se);

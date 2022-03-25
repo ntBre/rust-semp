@@ -8,7 +8,6 @@ fn main() {
     let moles = load_geoms("file07", names);
     let mut params = load_params("params.dat");
     let ai = load_energies("rel.dat");
-    setup();
     // initial semi-empirical energies and stats
     let queue = Slurm::default(); // TODO use config
     let mut se = semi_empirical(&moles, &params, &queue);

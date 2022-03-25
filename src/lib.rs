@@ -1,9 +1,4 @@
-use std::{
-    clone::Clone,
-    fs::{self, File},
-    io::BufRead,
-    io::BufReader,
-};
+use std::{clone::Clone, fs::File, io::BufRead, io::BufReader};
 
 use nalgebra as na;
 
@@ -12,13 +7,12 @@ use queue::{Job, Queue};
 
 pub mod config;
 pub mod dump;
+pub mod local;
 pub mod mopac;
 pub mod queue;
-pub mod stats;
 pub mod slurm;
-pub mod local;
+pub mod stats;
 
-static DIRS: &'static [&str] = &["inp", "tmparam"];
 static DELTA: f64 = 1e-8;
 static DELTA_FWD: f64 = 5e7; // 1 / 2Δ
 static DELTA_BWD: f64 = -5e7; // -1 / 2Δ
@@ -27,27 +21,6 @@ static DEBUG: bool = false;
 pub static LAMBDA0: f64 = 1e-8;
 pub static NU: f64 = 2.0;
 pub static MAX_TRIES: usize = 5;
-
-/// set up the directories needed for the program after deleting existing ones
-pub fn setup() {
-    takedown();
-    for dir in DIRS {
-        match fs::create_dir(dir) {
-            Ok(_) => (),
-            Err(_) => (),
-        }
-    }
-}
-
-// TODO don't do this if -nodel flag
-pub fn takedown() {
-    for dir in DIRS {
-        match fs::remove_dir_all(dir) {
-            Ok(_) => (),
-            Err(_) => (),
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct Atom {
@@ -302,7 +275,7 @@ pub fn relative(energies: &na::DVector<f64>) -> na::DVector<f64> {
 mod tests {
     use std::fs;
 
-    use crate::{slurm::Slurm, local::LocalQueue, stats::Stats};
+    use crate::{local::LocalQueue, slurm::Slurm, stats::Stats};
 
     use super::*;
 
@@ -467,11 +440,9 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             0.20541305733965845,
             0.20511337069030972,
         ]);
-        setup();
         let got = semi_empirical(&moles, &params, &LocalQueue);
         let eps = 1e-14;
         assert!(comp_dvec(got, want, eps));
-        takedown();
     }
 
     fn load_mat(filename: &str) -> na::DMatrix<f64> {
@@ -544,10 +515,8 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let moles = load_geoms("test_files/small07", names);
         let params = load_params("test_files/small.params");
         let want = load_mat("test_files/small.jac");
-        setup();
         let got = num_jac(&moles, &params, &LocalQueue);
         assert!(comp_mat(got, want, 1e-5));
-        takedown();
     }
 
     #[ignore]
@@ -558,7 +527,6 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let moles = load_geoms("test_files/small07", names);
         let mut params = load_params("test_files/small.params");
         let ai = load_energies("test_files/25.dat");
-        setup();
         // initial semi-empirical energies and stats
         let mut se = semi_empirical(&moles, &params, &LocalQueue);
         let rel = relative(&se);
@@ -655,7 +623,6 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             last_stats = stats;
             iter += 1;
         }
-        takedown();
     }
     /*
        current output:
@@ -684,4 +651,3 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
 
      */
 }
-

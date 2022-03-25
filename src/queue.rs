@@ -1,6 +1,8 @@
 use core::time;
 // this is going to make my psandqs (Ps and Qs) crate - programs and queues
-use std::{collections::HashMap, process::Command, str, thread};
+use std::{
+    collections::HashMap, fs, path::Path, process::Command, str, thread,
+};
 
 use crate::{dump::Dump, DEBUG};
 
@@ -33,6 +35,33 @@ impl<P: Program> Job<P> {
             job_id: String::new(),
             index,
             coeff: 1.0,
+        }
+    }
+}
+
+// TODO this really doesn't belong here
+static DIRS: &'static [&str] = &["inp", "tmparam"];
+
+/// set up the directories needed for the program after deleting existing ones
+pub fn setup() {
+    takedown();
+    for dir in DIRS {
+        match fs::create_dir(dir) {
+            Ok(_) => (),
+            Err(_) => panic!("can't create '{}'", dir),
+        }
+    }
+}
+
+// TODO don't do this if -nodel flag
+pub fn takedown() {
+    for dir in DIRS {
+        let path = Path::new(dir);
+        if path.is_dir() {
+            match fs::remove_dir_all(dir) {
+                Ok(_) => (),
+                Err(_) => panic!("can't remove '{}'", dir),
+            }
         }
     }
 }
@@ -96,6 +125,7 @@ where
         let mut cur = 0; // current index into jobs
         let tot_jobs = jobs.len();
         let mut dump = Dump::new(self.chunk_size() * 5);
+        setup();
         loop {
             let mut finished = 0;
             while cur_jobs.len() < self.job_limit() && cur < tot_jobs {
@@ -142,6 +172,7 @@ where
                 cur_jobs.swap_remove(i);
             }
             if cur_jobs.len() == 0 && cur == tot_jobs {
+                takedown();
                 return;
             }
             if finished == 0 {

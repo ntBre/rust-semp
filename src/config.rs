@@ -35,13 +35,4 @@ mod tests {
         };
         assert_eq!(got, want);
     }
-
-    // TODO have to implement Deserialize myself if I want partial ones
-    //      - or have Option<T> fields so the parse can return None
-
-    // #[test]
-    // fn test_load_part() {
-    //     let got = Config::load("test_files/part.toml");
-    //     dbg!(got);
-    // }
 }

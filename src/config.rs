@@ -2,12 +2,30 @@ use serde::Deserialize;
 
 #[derive(Deserialize, Debug, PartialEq)]
 pub struct Config {
+    /// The maximum number of jobs that should be written/submitted to the Queue
+    /// at one time.
     pub job_limit: usize,
+    /// The number of jobs to group into a single Queue submission script. The
+    /// higher this number, the less strain on the submission system. The lower
+    /// this number, the more jobs that can theoretically run at one time.
     pub chunk_size: usize,
+    /// The time in seconds to sleep between iterations of polling running jobs
+    /// when no jobs finished on the previous iteration
     pub sleep_int: usize,
+    /// The maximum number of iterations to run the Levenberg-Marquardt
+    /// algorithm for
     pub max_iter: usize,
+    /// Array of string atomic symbols like ["C", "C", "C", "H", "H"]
     pub atom_names: Vec<String>,
+    /// String containing the initial parameters to be optimized
     pub params: String,
+    /// Whether or not to use [Broyden's approximate update
+    /// method](https://en.wikipedia.org/wiki/Broyden%27s_method) to update the
+    /// Jacobian matrix
+    pub broyden: bool,
+    /// If `broyden` is true, the interval at which to calculate a numerical
+    /// Jacobian instead of using Broyden's method
+    pub broyd_int: usize,
 }
 
 impl Config {
@@ -52,6 +70,8 @@ HSP        C      0.717322000000
 FN11       C      0.046302000000
 ",
             ),
+            broyden: false,
+	    broyd_int: 10,
         };
         assert_eq!(got, want);
     }

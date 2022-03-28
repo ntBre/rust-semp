@@ -19,6 +19,8 @@ impl Config {
 
 #[cfg(test)]
 mod tests {
+    use crate::string;
+
     use super::*;
 
     #[test]
@@ -29,15 +31,13 @@ mod tests {
             chunk_size: 128,
             sleep_int: 5,
             max_iter: 5,
-            atom_names: vec!["C", "C", "C", "H", "H"]
-                .iter()
-                .map(|s| s.to_string())
-                .collect(),
+            atom_names: string!["C", "C", "C", "H", "H"],
         };
         assert_eq!(got, want);
     }
 
     // TODO have to implement Deserialize myself if I want partial ones
+    //      - or have Option<T> fields so the parse can return None
 
     // #[test]
     // fn test_load_part() {

@@ -39,7 +39,6 @@ macro_rules! string {
     });
 }
 
-
 #[derive(Debug, Clone)]
 pub struct Atom {
     pub label: String,
@@ -149,9 +148,11 @@ pub fn load_params(filename: &str) -> Params {
     let mut values = Vec::new();
     for line in lines.map(|x| x.unwrap()) {
         let fields: Vec<&str> = line.split_whitespace().collect();
-        names.push(fields[0].to_string());
-        atoms.push(fields[1].to_string());
-        values.push(fields[2].parse().unwrap());
+        if fields.len() == 3 {
+            names.push(fields[0].to_string());
+            atoms.push(fields[1].to_string());
+            values.push(fields[2].parse().unwrap());
+        }
     }
     Params::from(names, atoms, values)
 }

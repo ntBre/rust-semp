@@ -295,12 +295,16 @@ pub fn lev_mar(
 /// minus the old), and Δx is the step (δ) determined by the last lev_mar
 /// iteration
 pub fn broyden_update(
-    _jac: &na::DMatrix<f64>,
-    _se_old: &na::DVector<f64>,
-    _se_new: &na::DVector<f64>,
-    _step: &na::DVector<f64>,
+    jac: &na::DMatrix<f64>,
+    se_old: &na::DVector<f64>,
+    se_new: &na::DVector<f64>,
+    step: &na::DVector<f64>,
 ) -> na::DMatrix<f64> {
-    todo!()
+    let df = se_new - se_old;
+    let numerator = (df - jac * step) * step.transpose();
+    let denominator = 1.0 / step.norm();
+    let update = numerator.scale(denominator);
+    jac + update
 }
 
 /// return `energies` relative to its minimum element
@@ -344,16 +348,18 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
     let mut iter = 1;
     let mut lambda = LAMBDA0;
     let mut del_norm: f64 = 1.0;
+    let mut start = std::time::SystemTime::now();
     let mut jac = num_jac(&moles, &params, &queue);
     // have to "initialize" this to satisfy compiler, but any use should panic
     // since it has zero length
     let mut step = na::DVector::from(vec![]);
     while iter <= max_iter && del_norm.abs() > 1e-4 {
-        let start = std::time::SystemTime::now();
-        if broyden && iter > 1 && iter % broyd_int != 0 {
+        if broyden && iter > 1 && iter % broyd_int != 1 {
             eprintln!("broyden on iter {}", iter);
+            start = std::time::SystemTime::now();
             jac = broyden_update(&jac, &old_se, &se, &step);
         } else if iter > 1 {
+            start = std::time::SystemTime::now();
             jac = num_jac(&moles, &params, &queue);
         } // else (first iteration) use jac from outside loop
         lambda /= NU;
@@ -703,20 +709,20 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let param_file = "test_files/small.params";
         let energy_file = "test_files/25.dat";
         let got = run_algo(
-            &mut std::io::stdout(),
+            &mut std::io::sink(),
             names,
             geom_file,
             load_params(param_file),
             energy_file,
-            1,
-            false,
-            0,
+            5,
+            true,
+            5,
             queue,
         );
         let want = Stats {
-            norm: 70.5271,
-            rmsd: 14.1054,
-            max: 27.1241,
+            norm: 16.1347,
+            rmsd: 3.2269,
+            max: 9.2995,
         };
         assert_eq!(got, want);
     }
@@ -744,6 +750,17 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
     3     21.9563     -5.8551      4.3913     -1.1710      7.0847        31.8
     4     19.8039     -2.1523      3.9608     -0.4305      5.4642        30.5
     5     19.1505     -0.6535      3.8301     -0.1307      5.3263        30.6
+
+    after broyden:
+    1     70.5271   -758.1648     14.1054   -151.6330     27.1241        26.7
+    2     66.8706     -3.6565     13.3741     -0.7313     29.8608         1.5
+    3     55.3589    -11.5117     11.0718     -2.3023     23.5758         4.3
+    4    246.9214    191.5625     49.3843     38.3125     97.3837        12.5
+    5     16.1347   -230.7867      3.2269    -46.1573      9.2995         0.9
+
+    absolutely disastrous 4th iteration, but it recovers very nicely on the 5th,
+    and it does all four of its iterations faster than one more numerical
+    Jacobian so I guess it's worth it
 
      */
 }

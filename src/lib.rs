@@ -287,6 +287,22 @@ pub fn lev_mar(
     d
 }
 
+/// Approximately update the Jacobian matrix using Broyden's method:
+///
+/// Jₙ = Jₙ₋₁ + /// (Δfₙ - Jₙ₋₁Δxₙ)Δxₙᵀ / ||Δxₙ||², where Jₙ is the updated
+/// Jacobian, Jₙ₋₁ is the Jacobian from the previous iteration, Δf is the change
+/// in the function value between iterations (the new semi-empirical energies
+/// minus the old), and Δx is the step (δ) determined by the last lev_mar
+/// iteration
+pub fn broyden_update(
+    _jac: &na::DMatrix<f64>,
+    _se_old: &na::DVector<f64>,
+    _se_new: &na::DVector<f64>,
+    _step: &na::DVector<f64>,
+) -> na::DMatrix<f64> {
+    todo!()
+}
+
 /// return `energies` relative to its minimum element
 pub fn relative(energies: &na::DVector<f64>) -> na::DVector<f64> {
     let min = energies.min();
@@ -307,6 +323,8 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
     params: Params,
     energy_file: &str,
     max_iter: usize,
+    broyden: bool,
+    broyd_int: usize,
     queue: Q,
 ) -> Stats {
     let moles = load_geoms(geom_file, atom_names);
@@ -315,6 +333,7 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
     let ai = load_energies(energy_file);
     // initial semi-empirical energies and stats
     let mut se = semi_empirical(&moles, &params, &queue);
+    let mut old_se = se.clone();
     let rel = relative(&se);
     let mut stats = Stats::new(&ai, &rel);
     let mut last_stats = Stats::default();
@@ -325,13 +344,21 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
     let mut iter = 1;
     let mut lambda = LAMBDA0;
     let mut del_norm: f64 = 1.0;
+    let mut jac = num_jac(&moles, &params, &queue);
+    // have to "initialize" this to satisfy compiler, but any use should panic
+    // since it has zero length
+    let mut step = na::DVector::from(vec![]);
     while iter <= max_iter && del_norm.abs() > 1e-4 {
         let start = std::time::SystemTime::now();
-        // TODO if Broyden do broyden
-        let jac = num_jac(&moles, &params, &queue);
+        if broyden && iter > 1 && iter % broyd_int != 0 {
+            eprintln!("broyden on iter {}", iter);
+            jac = broyden_update(&jac, &old_se, &se, &step);
+        } else if iter > 1 {
+            jac = num_jac(&moles, &params, &queue);
+        } // else (first iteration) use jac from outside loop
         lambda /= NU;
         // BEGIN copy-paste
-        let step = lev_mar(&jac, &ai, &se, lambda);
+        step = lev_mar(&jac, &ai, &se, lambda);
         let try_params = Params::new(
             params.names.clone(),
             params.atoms.clone(),
@@ -350,7 +377,7 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
             let dnorm = stats.norm - last_stats.norm;
 
             // BCP
-            let step = lev_mar(&jac, &ai, &se, lambda);
+            step = lev_mar(&jac, &ai, &se, lambda);
             let try_params = Params::new(
                 params.names.clone(),
                 params.atoms.clone(),
@@ -379,7 +406,7 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
             k = 1.0 / 10.0_f64.powf(i as f64);
 
             // BCP
-            let step = lev_mar(&jac, &ai, &se, lambda);
+            step = lev_mar(&jac, &ai, &se, lambda);
             let try_params = Params::new(
                 params.names.clone(),
                 params.atoms.clone(),
@@ -405,6 +432,7 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
         };
         stats.print_step(iter, &last_stats, time);
         // end of loop updates
+        old_se = se;
         se = new_se;
         params = try_params;
         log_params(param_log, iter, &params);
@@ -681,6 +709,8 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             load_params(param_file),
             energy_file,
             1,
+            false,
+            0,
             queue,
         );
         let want = Stats {

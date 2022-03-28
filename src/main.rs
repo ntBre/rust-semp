@@ -33,6 +33,8 @@ fn main() {
         parse_params(&conf.params),
         "rel.dat",
         conf.max_iter,
+        conf.broyden,
+        conf.broyd_int,
         queue,
     );
 }

@@ -103,6 +103,12 @@ impl Params {
             values: na::DVector::from(values),
         }
     }
+
+    pub fn len(&self) -> usize {
+	assert_eq!(self.names.len(), self.atoms.len());
+	assert_eq!(self.names.len(), self.values.len());
+	self.names.len()
+    }
 }
 
 /// Mopac holds the information needed to write a MOPAC input file. `filename`

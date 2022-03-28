@@ -28,7 +28,7 @@ pub static LAMBDA0: f64 = 1e-8;
 pub static NU: f64 = 2.0;
 pub static MAX_TRIES: usize = 5;
 
-/// from https://stackoverflow.com/a/45145246
+/// from [StackOverflow](https://stackoverflow.com/a/45145246)
 #[macro_export]
 macro_rules! string {
     // match a list of expressions separated by comma:
@@ -126,27 +126,31 @@ pub fn load_energies(filename: &str) -> na::DVector<f64> {
     na::DVector::from(ret)
 }
 
-/// parse a file containing lines like:
-///
-///   USS            H    -11.246958000000
-///   ZS             H      1.268641000000
-///
-/// into a vec of Params
+/// Read `filename` into a string and then call [`parse_params`]
 pub fn load_params(filename: &str) -> Params {
-    let f = match File::open(filename) {
-        Ok(f) => f,
+    let params = match std::fs::read_to_string(filename) {
+        Ok(s) => s,
         Err(e) => {
-            eprintln!(
-                "failed to open {filename} for reading parameters with {e}"
-            );
+            eprintln!("failed to read {filename} with {e}");
             std::process::exit(1);
         }
     };
-    let lines = BufReader::new(f).lines();
+    parse_params(&params)
+}
+
+/// parse a string containing lines like:
+///
+/// ```text
+///   USS            H    -11.246958000000
+///   ZS             H      1.268641000000
+/// ```
+/// into a vec of Params
+pub fn parse_params(params: &str) -> Params {
+    let lines = params.split('\n');
     let mut names = Vec::new();
     let mut atoms = Vec::new();
     let mut values = Vec::new();
-    for line in lines.map(|x| x.unwrap()) {
+    for line in lines {
         let fields: Vec<&str> = line.split_whitespace().collect();
         if fields.len() == 3 {
             names.push(fields[0].to_string());
@@ -300,13 +304,13 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
     param_log: &mut W,
     atom_names: Vec<String>,
     geom_file: &str,
-    param_file: &str,
+    params: Params,
     energy_file: &str,
     max_iter: usize,
     queue: Q,
 ) -> Stats {
     let moles = load_geoms(geom_file, atom_names);
-    let mut params = load_params(param_file);
+    let mut params = params.clone();
     log_params(param_log, 0, &params);
     let ai = load_energies(energy_file);
     // initial semi-empirical energies and stats
@@ -674,7 +678,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             &mut std::io::stdout(),
             names,
             geom_file,
-            param_file,
+            load_params(param_file),
             energy_file,
             1,
             queue,

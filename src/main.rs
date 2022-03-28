@@ -30,7 +30,7 @@ fn main() {
         &mut param_log,
         conf.atom_names,
         "file07",
-        "params.dat",
+        parse_params(&conf.params),
         "rel.dat",
         conf.max_iter,
         queue,

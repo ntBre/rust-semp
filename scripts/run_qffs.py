@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3 -u
 
 import glob
 import os
@@ -47,8 +47,8 @@ def process_output(out):
             elif in_tab and "+" in line:
                 break
             elif in_tab:
-                sp = line.split()
-                funds.append(float(sp[9]))
+                sp = line.split("|")
+                funds.append(float(sp[5].strip()))
     return funds
 
 

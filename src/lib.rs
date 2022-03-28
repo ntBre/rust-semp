@@ -762,5 +762,12 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
     and it does all four of its iterations faster than one more numerical
     Jacobian so I guess it's worth it
 
+    also converges on iteration 8 after another num_jac on 6, so I'd say it's
+    working well
+
+    6     15.9826     -0.1521      3.1965     -0.0304      9.2602        34.9
+    7     14.2220     -1.7606      2.8444     -0.3521      5.4632         0.8
+    8     14.2220     -0.0000      2.8444     -0.0000      5.4632         9.2
+
      */
 }

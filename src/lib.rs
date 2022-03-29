@@ -26,7 +26,7 @@ static DEBUG: bool = false;
 
 pub static LAMBDA0: f64 = 1e-8;
 pub static NU: f64 = 2.0;
-pub static MAX_TRIES: usize = 5;
+pub static MAX_TRIES: usize = 10;
 
 /// from [StackOverflow](https://stackoverflow.com/a/45145246)
 #[macro_export]
@@ -348,20 +348,26 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
     let mut iter = 1;
     let mut lambda = LAMBDA0;
     let mut del_norm: f64 = 1.0;
+    let mut in_broyden = false;
+    let mut need_num_jac = false;
     let mut start = std::time::SystemTime::now();
     let mut jac = num_jac(&moles, &params, &queue);
     // have to "initialize" this to satisfy compiler, but any use should panic
     // since it has zero length
     let mut step = na::DVector::from(vec![]);
     while iter <= max_iter && del_norm.abs() > 1e-4 {
-        if broyden && iter > 1 && iter % broyd_int != 1 {
+        if broyden && !need_num_jac && iter > 1 && iter % broyd_int != 1 {
             eprintln!("broyden on iter {}", iter);
+            in_broyden = true;
             start = std::time::SystemTime::now();
             jac = broyden_update(&jac, &old_se, &se, &step);
         } else if iter > 1 {
+	    in_broyden = false;
+	    need_num_jac = false;
             start = std::time::SystemTime::now();
             jac = num_jac(&moles, &params, &queue);
         } // else (first iteration) use jac from outside loop
+	let lambda_init = lambda;
         lambda /= NU;
         // BEGIN copy-paste
         step = lev_mar(&jac, &ai, &se, lambda);
@@ -410,6 +416,7 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
         let mut i = 2;
         while bad && stats.norm > last_stats.norm && k > 1e-14 {
             k = 1.0 / 10.0_f64.powf(i as f64);
+            let dnorm = stats.norm - last_stats.norm;
 
             // BCP
             step = lev_mar(&jac, &ai, &se, lambda);
@@ -429,8 +436,17 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
                 k,
                 stats.norm - last_stats.norm
             );
+            if stats.norm - last_stats.norm > dnorm {
+                break;
+            }
             i += 1;
         }
+	if in_broyden && stats.norm > last_stats.norm {
+	    eprintln!("bad broyden step, doing num_jac");
+	    need_num_jac = true;
+	    lambda = lambda_init;
+	    continue
+	}
         let time = if let Ok(elapsed) = start.elapsed() {
             elapsed.as_millis()
         } else {
@@ -720,9 +736,9 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             queue,
         );
         let want = Stats {
-            norm: 16.1347,
-            rmsd: 3.2269,
-            max: 9.2995,
+            norm: 27.9356,
+            rmsd: 5.5871,
+            max: 11.5313,
         };
         assert_eq!(got, want);
     }
@@ -768,6 +784,16 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
     6     15.9826     -0.1521      3.1965     -0.0304      9.2602        34.9
     7     14.2220     -1.7606      2.8444     -0.3521      5.4632         0.8
     8     14.2220     -0.0000      2.8444     -0.0000      5.4632         9.2
+
+    after giving up on broyden for a bad step:
+    1     70.5271   -758.1648     14.1054   -151.6330     27.1241        27.8
+    2     66.8706     -3.6565     13.3741     -0.7313     29.8608         1.8
+    3     55.3589    -11.5117     11.0718     -2.3023     23.5758         4.4
+    4     36.8949    -18.4640      7.3790     -3.6928     20.8954        25.2
+    5     27.9356     -8.9593      5.5871     -1.7919     11.5313         0.8
+
+    gets rid of disastrous 4th iteration, obviously doesnt go down as far on 5,
+    but it converges to a norm of ~11 after a couple more iterations
 
      */
 }

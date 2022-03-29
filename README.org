@@ -103,3 +103,56 @@ see [[https://msfjarvis.dev/posts/building-static-rust-binaries-for-linux/][this
       single job finishes
     - delete Job.submit_script when all the jobs in a chunk finish
       - have to keep track of the jobs belonging to a chunk
+
+* Data
+  current output:
+  Iter        Norm       ΔNorm        RMSD       ΔRMSD         Max        Time
+  0    828.6919    828.6919    165.7384    165.7384    266.6057         0.0
+  1    325.2037   -503.4882     65.0407   -100.6976    126.9844        40.1
+
+  after scaling:
+  1    389.9481   -438.7438     77.9896    -87.7488    201.6500        34.2
+
+  after fixing bounds and <= 5:
+  1     70.7093   -757.9826     14.1419   -151.5965     27.7492        29.3
+  2     28.7168    -41.9925      5.7434     -8.3985      8.0413        29.7
+  3     22.7316     -5.9852      4.5463     -1.1970      7.0542        29.8
+  4     22.8138      0.0823      4.5628      0.0165      6.2959        29.7
+  5     21.3078     -1.5061      4.2616     -0.3012      6.1055        30.6
+
+  this is weirdly better than the Go version, not sure it should be
+
+  after rest of lev mar:
+  1     70.5271   -758.1648     14.1054   -151.6330     27.1241        28.2
+  2     27.8114    -42.7157      5.5623     -8.5431      9.7420        29.2
+  3     21.9563     -5.8551      4.3913     -1.1710      7.0847        31.8
+  4     19.8039     -2.1523      3.9608     -0.4305      5.4642        30.5
+  5     19.1505     -0.6535      3.8301     -0.1307      5.3263        30.6
+
+  after broyden:
+  1     70.5271   -758.1648     14.1054   -151.6330     27.1241        26.7
+  2     66.8706     -3.6565     13.3741     -0.7313     29.8608         1.5
+  3     55.3589    -11.5117     11.0718     -2.3023     23.5758         4.3
+  4    246.9214    191.5625     49.3843     38.3125     97.3837        12.5
+  5     16.1347   -230.7867      3.2269    -46.1573      9.2995         0.9
+
+  absolutely disastrous 4th iteration, but it recovers very nicely on the 5th,
+  and it does all four of its iterations faster than one more numerical
+  Jacobian so I guess it's worth it
+
+  also converges on iteration 8 after another num_jac on 6, so I'd say it's
+  working well
+
+  6     15.9826     -0.1521      3.1965     -0.0304      9.2602        34.9
+  7     14.2220     -1.7606      2.8444     -0.3521      5.4632         0.8
+  8     14.2220     -0.0000      2.8444     -0.0000      5.4632         9.2
+
+  after giving up on broyden for a bad step:
+  1     70.5271   -758.1648     14.1054   -151.6330     27.1241        27.8
+  2     66.8706     -3.6565     13.3741     -0.7313     29.8608         1.8
+  3     55.3589    -11.5117     11.0718     -2.3023     23.5758         4.4
+  4     36.8949    -18.4640      7.3790     -3.6928     20.8954        25.2
+  5     27.9356     -8.9593      5.5871     -1.7919     11.5313         0.8
+
+  gets rid of disastrous 4th iteration, obviously doesnt go down as far on 5,
+  but it converges to a norm of ~11 after a couple more iterations

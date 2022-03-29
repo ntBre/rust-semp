@@ -289,11 +289,10 @@ pub fn lev_mar(
 
 /// Approximately update the Jacobian matrix using Broyden's method:
 ///
-/// Jₙ = Jₙ₋₁ + /// (Δfₙ - Jₙ₋₁Δxₙ)Δxₙᵀ / ||Δxₙ||², where Jₙ is the updated
-/// Jacobian, Jₙ₋₁ is the Jacobian from the previous iteration, Δf is the change
-/// in the function value between iterations (the new semi-empirical energies
-/// minus the old), and Δx is the step (δ) determined by the last lev_mar
-/// iteration
+/// Jₙ = Jₙ₋₁ + (Δfₙ - Jₙ₋₁Δxₙ)Δxₙᵀ / ||Δxₙ||², where Jₙ is the updated Jacobian,
+/// Jₙ₋₁ is the Jacobian from the previous iteration, Δf is the change in the
+/// function value between iterations (the new semi-empirical energies minus the
+/// old), and Δx is the step (δ) determined by the last lev_mar iteration
 pub fn broyden_update(
     jac: &na::DMatrix<f64>,
     se_old: &na::DVector<f64>,
@@ -362,12 +361,12 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
             start = std::time::SystemTime::now();
             jac = broyden_update(&jac, &old_se, &se, &step);
         } else if iter > 1 {
-	    in_broyden = false;
-	    need_num_jac = false;
+            in_broyden = false;
+            need_num_jac = false;
             start = std::time::SystemTime::now();
             jac = num_jac(&moles, &params, &queue);
         } // else (first iteration) use jac from outside loop
-	let lambda_init = lambda;
+        let lambda_init = lambda;
         lambda /= NU;
         // BEGIN copy-paste
         step = lev_mar(&jac, &ai, &se, lambda);
@@ -385,6 +384,12 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
         let mut i = 0;
         let mut bad = false;
         while stats.norm > last_stats.norm {
+            eprintln!(
+                "\tλ_{} to {:e} with ΔNorm = {}",
+                i,
+                lambda,
+                stats.norm - last_stats.norm
+            );
             lambda *= NU;
             let dnorm = stats.norm - last_stats.norm;
 
@@ -400,12 +405,6 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
             stats = Stats::new(&ai, &rel);
             // ECP
 
-            eprintln!(
-                "\tλ_{} to {:e} with ΔNorm = {}",
-                i,
-                lambda,
-                stats.norm - last_stats.norm
-            );
             i += 1;
             if stats.norm - last_stats.norm > dnorm || i > MAX_TRIES {
                 bad = true;
@@ -415,6 +414,12 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
         let mut k = 1.0;
         let mut i = 2;
         while bad && stats.norm > last_stats.norm && k > 1e-14 {
+            eprintln!(
+                "\tk_{} to {:e} with ΔNorm = {}",
+                i - 2,
+                k,
+                stats.norm - last_stats.norm
+            );
             k = 1.0 / 10.0_f64.powf(i as f64);
             let dnorm = stats.norm - last_stats.norm;
 
@@ -430,28 +435,25 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
             stats = Stats::new(&ai, &rel);
             // ECP
 
-            eprintln!(
-                "\tk_{} to {:e} with ΔNorm = {}",
-                i,
-                k,
-                stats.norm - last_stats.norm
-            );
             if stats.norm - last_stats.norm > dnorm {
                 break;
             }
             i += 1;
         }
-	if in_broyden && stats.norm > last_stats.norm {
-	    eprintln!("bad broyden step, doing num_jac");
-	    need_num_jac = true;
-	    lambda = lambda_init;
-	    continue
-	}
         let time = if let Ok(elapsed) = start.elapsed() {
             elapsed.as_millis()
         } else {
             0
         };
+        if in_broyden && stats.norm > last_stats.norm {
+            eprintln!(
+                "bad broyden step, doing num_jac after {:.1} sec",
+                time as f64 / 1000.
+            );
+            need_num_jac = true;
+            lambda = lambda_init;
+            continue;
+        }
         stats.print_step(iter, &last_stats, time);
         // end of loop updates
         old_se = se;
@@ -713,6 +715,50 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let want = load_mat("test_files/small.jac");
         let got = num_jac(&moles, &params, &LocalQueue);
         assert!(comp_mat(got, want, 1e-5));
+    }
+
+    #[test]
+    fn test_norm() {
+        // making sure the nalgebra vector norm is what I think it is
+        let v = na::DVector::<f64>::from(vec![1.0, 2.0, 3.0]);
+        let got = v.norm();
+        let want = ((1.0 + 4.0 + 9.0) as f64).sqrt();
+        assert_eq!(got, want);
+    }
+
+    #[test]
+    fn test_broyden() {
+        let jac = load_mat("test_files/three.jac");
+        let se_old = na::DVector::from(vec![
+            0.000000000000,
+            0.001668203451,
+            0.001368516801,
+        ]);
+        let se_new = na::DVector::from(vec![
+            0.000000000000,
+            0.000375747088,
+            0.000113449727,
+        ]);
+        let step = na::DVector::from(vec![
+            0.879074952563,
+            -0.053372779748,
+            -0.386443051094,
+            -1.723741422927,
+            0.085500727064,
+            -0.083919956047,
+            -0.006440778691,
+            -0.008037008147,
+            -0.161085646344,
+            -0.106676930451,
+            0.083518030316,
+            0.454558059306,
+            0.599560620927,
+            -0.065880893329,
+            0.944895856082,
+        ]);
+        let got = broyden_update(&jac, &se_old, &se_new, &step);
+        let want = load_mat("test_files/broyden.jac");
+        assert!(comp_mat(got, want, 3e-8));
     }
 
     #[ignore]

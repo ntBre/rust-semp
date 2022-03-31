@@ -366,8 +366,9 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
             jac = num_jac(&moles, &params, &queue);
         } // else (first iteration) use jac from outside loop
         let lambda_init = lambda;
+
+	// first try with λ/ν
         lambda /= NU;
-        // BEGIN copy-paste
         step = lev_mar(&jac, &ai, &se, lambda);
         let mut try_params = Params::new(
             params.names.clone(),
@@ -376,9 +377,10 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
         );
         let mut new_se = semi_empirical(&moles, &try_params, &queue);
         stats = Stats::new(&ai, &relative(&new_se));
-        // END copy-paste
 
         // cases ii. and iii. from Marquardt63; first iteration is case ii.
+        // increase λ*ν until the norm improves or we hit MAX_TRIES or Δnorm
+        // increases
         let mut i = 0;
         let mut bad = false;
         while stats.norm > last_stats.norm {
@@ -391,7 +393,6 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
             lambda *= NU;
             let dnorm = stats.norm - last_stats.norm;
 
-            // BCP
             step = lev_mar(&jac, &ai, &se, lambda);
             try_params = Params::new(
                 params.names.clone(),
@@ -400,7 +401,6 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
             );
             new_se = semi_empirical(&moles, &try_params, &queue);
             stats = Stats::new(&ai, &relative(&new_se));
-            // ECP
 
             i += 1;
             if stats.norm - last_stats.norm > dnorm || i > MAX_TRIES {
@@ -408,6 +408,9 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
                 break;
             }
         }
+
+	// adjusting λ failed to decrease the norm. try decreasing the step size
+	// K until the norm improves or k ≈ 0 or Δnorm increases
         let mut k = 1.0;
         let mut i = 2;
         while bad && stats.norm > last_stats.norm && k > 1e-14 {
@@ -420,7 +423,6 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
             k = 1.0 / 10.0_f64.powf(i as f64);
             let dnorm = stats.norm - last_stats.norm;
 
-            // BCP
             step = lev_mar(&jac, &ai, &se, lambda);
             try_params = Params::new(
                 params.names.clone(),
@@ -429,18 +431,21 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
             );
             new_se = semi_empirical(&moles, &try_params, &queue);
             stats = Stats::new(&ai, &relative(&new_se));
-            // ECP
 
             if stats.norm - last_stats.norm > dnorm {
                 break;
             }
             i += 1;
         }
+
+	// log the time
         let time = if let Ok(elapsed) = start.elapsed() {
             elapsed.as_millis()
         } else {
             0
         };
+
+	// don't accept a bad step from broyden, do numjac
         if in_broyden && stats.norm > last_stats.norm {
             eprintln!(
                 "bad broyden step, doing num_jac after {:.1} sec",
@@ -450,8 +455,9 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
             lambda = lambda_init;
             continue;
         }
-        stats.print_step(iter, &last_stats, time);
+
         // end of loop updates
+        stats.print_step(iter, &last_stats, time);
         old_se = se;
         se = new_se;
         params = try_params;

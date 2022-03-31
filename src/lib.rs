@@ -367,7 +367,7 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
         } // else (first iteration) use jac from outside loop
         let lambda_init = lambda;
 
-	// first try with λ/ν
+        // first try with λ/ν
         lambda /= NU;
         step = lev_mar(&jac, &ai, &se, lambda);
         let mut try_params = Params::new(
@@ -409,8 +409,8 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
             }
         }
 
-	// adjusting λ failed to decrease the norm. try decreasing the step size
-	// K until the norm improves or k ≈ 0 or Δnorm increases
+        // adjusting λ failed to decrease the norm. try decreasing the step size
+        // K until the norm improves or k ≈ 0 or Δnorm increases
         let mut k = 1.0;
         let mut i = 2;
         while bad && stats.norm > last_stats.norm && k > 1e-14 {
@@ -438,14 +438,14 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
             i += 1;
         }
 
-	// log the time
+        // log the time
         let time = if let Ok(elapsed) = start.elapsed() {
             elapsed.as_millis()
         } else {
             0
         };
 
-	// don't accept a bad step from broyden, do numjac
+        // don't accept a bad step from broyden, do numjac
         if in_broyden && stats.norm > last_stats.norm {
             eprintln!(
                 "bad broyden step, doing num_jac after {:.1} sec",
@@ -763,9 +763,70 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         assert!(comp_mat(got, want, 3e-8));
     }
 
-    #[ignore]
     #[test]
     fn test_lev_mar() {
+        #[rustfmt::skip]
+        let jac = na::DMatrix::from_row_slice(
+            3,
+            15,
+            &vec![
+                -0.01497187, 0.20599543, 0.04540899,
+                0.00756891, -0.07643571, 0.09140773,
+                0.60444061, 1.26628464, 0.06613618,
+                0.14448434, -0.06807472, 0.00109413,
+                -0.05038686, 0.25973571, -0.04459836,
+                -0.01499217, 0.20528611, 0.04541537,
+                0.00754195, -0.07667805, 0.09167065,
+                0.60234264, 1.26036961, 0.06667231,
+                0.14533875, -0.06778818, -0.00037017,
+                -0.05114836, 0.26220718, -0.04444806,
+                -0.01500159, 0.20545540, 0.04541073,
+                0.00754602, -0.07681009, 0.09181124,
+                0.60351229, 1.26152476, 0.06675289,
+                0.14539846, -0.06789833, -0.00041525,
+                -0.05106372, 0.26227197, -0.04426863,
+            ],
+        );
+        let got = lev_mar(
+            &jac,
+            &na::DVector::from(vec![
+                0.000000000000,
+                0.000453458157,
+                0.000258906149,
+            ]),
+            &na::DVector::from(vec![
+                0.203744853890,
+                0.205413057340,
+                0.205113370691,
+            ]),
+            1e-8,
+        );
+        // TODO step from Go version, but the Go version doesn't even agree with
+        // itself on my work computer. Not going to take this as conclusive
+        // until I test again at home
+        let want = na::DVector::from(vec![
+            0.8793364881956335,
+            -0.05343438228119219,
+            -0.3876730694793621,
+            -1.6930039300925688,
+            0.08548233071843542,
+            -0.08400517766857815,
+            -0.006400331689714246,
+            -0.00804417516087943,
+            -0.16214050129884294,
+            -0.10658399691501548,
+            0.08445566317770617,
+            0.4540397253182285,
+            0.5998080632666416,
+            -0.06584927829662802,
+            0.9458948258793338,
+        ]);
+	assert!(comp_dvec(got, want, 1e-12));
+    }
+
+    #[ignore]
+    #[test]
+    fn test_algo() {
         // loading everything
         let names = string!["C", "C", "C", "H", "H"];
         let queue = LocalQueue;

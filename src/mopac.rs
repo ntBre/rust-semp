@@ -121,6 +121,7 @@ pub struct Mopac {
     pub geom: Vec<Atom>,
     pub param_file: String,
     pub param_dir: String,
+    // TODO add field for resub - linked list of jobs
 }
 
 impl Program for Mopac {

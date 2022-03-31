@@ -95,6 +95,25 @@ where
         };
     }
 
+    fn resubmit(&self, _filename: &str) -> String {
+	// filename is a job name - some mopac file - without an extension, so
+	// just copy over filename+.mop to filename+_redo.mop
+
+	// actually this shouldn't know the extension, might have to pass in the
+	// full filename
+
+	// I guess give it the full filename (job*.mop), chop extension, add
+	// _redo and then copy from the original to the _redo
+        todo!()
+    }
+
+    fn queue_status(&self) {
+	// run the qstat command for this queue type and parse it, probably into
+	// a hash of jobid: status where status can be an enum - really it can
+	// just be a bool - in the queue or not
+        todo!()
+    }
+
     /// Build a chunk of jobs by writing the Program input file and the
     /// corresponding submission script and then submitting the script
     fn build_chunk<'a>(
@@ -103,6 +122,8 @@ where
         chunk_num: usize,
         slurm_jobs: &'a mut HashMap<String, usize>,
     ) -> Vec<Job<P>> {
+	// TODO this shouldn't be .slurm here, and the dir probably shouldn't be
+	// hard-coded either
         let queue_file = format!("inp/main{}.slurm", chunk_num);
         let mut chunk_jobs = Vec::new();
         for job in jobs {
@@ -170,7 +191,11 @@ where
                             ]);
                         }
                     }
-                    None => (),
+                    None => {
+			// check if job was in the queue last time we checked,
+			// if not, resubmit
+			todo!()
+		    }
                 }
             }
             // have to remove the highest index first so sort and reverse
@@ -185,6 +210,7 @@ where
             }
             if finished == 0 {
                 eprintln!("{} jobs remaining", remaining);
+		self.queue_status();
                 thread::sleep(time::Duration::from_secs(
                     self.sleep_int() as u64
                 ));

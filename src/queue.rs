@@ -76,6 +76,11 @@ pub trait Queue<P>
 where
     P: Program + Clone,
 {
+    /// the extension to append to submit scripts for this type of Queue
+    const SCRIPT_EXT: &'static str;
+
+    const DIR: &'static str = "inp";
+
     fn write_submit_script(&self, infiles: Vec<String>, filename: &str);
 
     fn submit_command(&self) -> &str;
@@ -95,22 +100,25 @@ where
         };
     }
 
-    fn resubmit(&self, _filename: &str) -> String {
-	// filename is a job name - some mopac file - without an extension, so
-	// just copy over filename+.mop to filename+_redo.mop
-
-	// actually this shouldn't know the extension, might have to pass in the
-	// full filename
-
-	// I guess give it the full filename (job*.mop), chop extension, add
-	// _redo and then copy from the original to the _redo
-        todo!()
+    /// take a name of a Program input file with the extension attached, replace
+    /// the extension (ext) with _redo.ext and write _redo.SCRIPT_EXT, then
+    /// submit the redo script
+    fn resubmit(&self, filename: &str) -> String {
+        let path = Path::new(filename);
+        let dir = path.parent().unwrap().to_str().unwrap();
+        let ext = path.extension().unwrap().to_str().unwrap();
+        let base = path.file_stem().unwrap().to_str().unwrap();
+        let redo_inp = format!("{}/{}_redo.{}", dir, base, ext);
+        std::fs::copy(filename, &redo_inp).unwrap();
+        let redo_pbs = format!("{}/{}_redo.{}", dir, base, Self::SCRIPT_EXT);
+        self.write_submit_script(vec![String::from(redo_inp)], &redo_pbs);
+        self.submit(&redo_pbs)
     }
 
     fn queue_status(&self) {
-	// run the qstat command for this queue type and parse it, probably into
-	// a hash of jobid: status where status can be an enum - really it can
-	// just be a bool - in the queue or not
+        // run the qstat command for this queue type and parse it, probably into
+        // a hash of jobid: status where status can be an enum - really it can
+        // just be a bool - in the queue or not
         todo!()
     }
 
@@ -122,9 +130,8 @@ where
         chunk_num: usize,
         slurm_jobs: &'a mut HashMap<String, usize>,
     ) -> Vec<Job<P>> {
-	// TODO this shouldn't be .slurm here, and the dir probably shouldn't be
-	// hard-coded either
-        let queue_file = format!("inp/main{}.slurm", chunk_num);
+        let queue_file =
+            format!("{}/main{}.{}", Self::DIR, chunk_num, Self::SCRIPT_EXT);
         let mut chunk_jobs = Vec::new();
         for job in jobs {
             let mut job = (*job).clone();
@@ -192,10 +199,10 @@ where
                         }
                     }
                     None => {
-			// check if job was in the queue last time we checked,
-			// if not, resubmit
-			todo!()
-		    }
+                        // check if job was in the queue last time we checked,
+                        // if not, resubmit
+                        todo!()
+                    }
                 }
             }
             // have to remove the highest index first so sort and reverse
@@ -210,7 +217,7 @@ where
             }
             if finished == 0 {
                 eprintln!("{} jobs remaining", remaining);
-		self.queue_status();
+                self.queue_status();
                 thread::sleep(time::Duration::from_secs(
                     self.sleep_int() as u64
                 ));

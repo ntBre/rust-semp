@@ -105,9 +105,9 @@ impl Params {
     }
 
     pub fn len(&self) -> usize {
-	assert_eq!(self.names.len(), self.atoms.len());
-	assert_eq!(self.names.len(), self.values.len());
-	self.names.len()
+        assert_eq!(self.names.len(), self.atoms.len());
+        assert_eq!(self.names.len(), self.values.len());
+        self.names.len()
     }
 }
 
@@ -253,7 +253,7 @@ impl Mopac {
 
 #[cfg(test)]
 mod tests {
-    use std::fs;
+    use std::fs::{self, read_to_string};
 
     use super::*;
 
@@ -396,6 +396,8 @@ HSP            C      0.717322000000
         fn sleep_int(&self) -> usize {
             1
         }
+
+        const SCRIPT_EXT: &'static str = "pbs";
     }
 
     #[test]
@@ -411,5 +413,26 @@ HSP            C      0.717322000000
         let got = tq.submit("/tmp/main.pbs");
         let want = "input1.mop\ninput2.mop\ninput3.mop";
         assert_eq!(got, want);
+    }
+
+    #[test]
+    fn test_resubmit() {
+        use std::path::Path;
+        let tq = TestQueue;
+        std::fs::copy("test_files/job.mop", "/tmp/job.mop").unwrap();
+        let got = tq.resubmit("/tmp/job.mop");
+        assert!(Path::new("/tmp/job_redo.mop").exists());
+        assert!(Path::new("/tmp/job_redo.pbs").exists());
+        assert_eq!(
+            read_to_string("/tmp/job.mop").unwrap(),
+            read_to_string("/tmp/job_redo.mop").unwrap()
+        );
+        let want = "/tmp/job_redo.mop";
+        assert_eq!(got, want);
+
+        for f in vec!["/tmp/job.mop", "/tmp/job_redo.mop", "/tmp/job_redo.pbs"]
+        {
+            std::fs::remove_file(f).unwrap();
+        }
     }
 }

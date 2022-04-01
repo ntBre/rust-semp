@@ -72,4 +72,6 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/\n",
     fn sleep_int(&self) -> usize {
         self.sleep_int
     }
+
+    const SCRIPT_EXT: &'static str = "slurm";
 }

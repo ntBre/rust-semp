@@ -34,4 +34,6 @@ impl<P: Program + Clone> Queue<P> for LocalQueue {
     fn sleep_int(&self) -> usize {
         1
     }
+
+    const SCRIPT_EXT: &'static str = "slurm";
 }

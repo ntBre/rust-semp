@@ -901,9 +901,9 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             queue,
         );
         let want = Stats {
-            norm: 16.3906,
-            rmsd: 3.2781,
-            max: 7.7944,
+            norm: 7.1820,
+            rmsd: 1.4364,
+            max: 3.7770,
         };
         assert_eq!(got, want);
     }

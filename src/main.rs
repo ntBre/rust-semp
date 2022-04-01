@@ -13,8 +13,8 @@ fn main() {
         conf_name = args[1].clone();
     }
     // TODO take these names from conf_name
-    let outfile = File::create("rust.out").expect("failed to create outfile");
-    let logfile = File::create("rust.log").expect("failed to create log file");
+    let outfile = File::create("semp.out").expect("failed to create outfile");
+    let logfile = File::create("semp.log").expect("failed to create log file");
     let out_fd = outfile.as_raw_fd();
     let log_fd = logfile.as_raw_fd();
     // redirect stdout to outfile and stderr to logfile

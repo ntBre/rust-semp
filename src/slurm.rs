@@ -74,4 +74,21 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/\n",
     }
 
     const SCRIPT_EXT: &'static str = "slurm";
+
+    const DIR: &'static str = "inp";
+
+    fn stat_cmd(&self) -> String {
+        let user = std::env::vars()
+            .find(|x| x.0 == "USER")
+            .expect("couldn't find $USER env var");
+        let status = match std::process::Command::new("squeue")
+            .args(["-u", &user.1])
+            .output()
+        {
+            Ok(status) => status,
+            Err(e) => panic!("failed to run squeue with {}", e),
+        };
+        String::from_utf8(status.stdout)
+            .expect("failed to convert squeue output to String")
+    }
 }

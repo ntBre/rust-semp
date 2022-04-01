@@ -1,17 +1,30 @@
 use core::time;
 // this is going to make my psandqs (Ps and Qs) crate - programs and queues
 use std::{
-    collections::HashMap, fs, path::Path, process::Command, str, thread,
+    collections::{HashMap, HashSet},
+    fs,
+    path::Path,
+    process::Command,
+    str, thread,
 };
 
 use crate::{dump::Dump, DEBUG};
+
+#[derive(Debug, PartialEq)]
+pub enum ProgramStatus {
+    Success(f64),
+    FileNotFound,
+    ErrorInOutput,
+    EnergyNotFound,
+    EnergyParseError,
+}
 
 pub trait Program {
     fn filename(&self) -> String;
 
     fn write_input(&mut self);
 
-    fn read_output(&self) -> Option<f64>;
+    fn read_output(&self) -> ProgramStatus;
 
     /// Return all the filenames associated with the Program
     fn associated_files(&self) -> Vec<String>;
@@ -94,11 +107,15 @@ where
     fn submit(&self, filename: &str) -> String {
         match Command::new(self.submit_command()).arg(filename).output() {
             Ok(s) => {
-                return str::from_utf8(&s.stdout).unwrap().trim().to_string()
+                let raw = str::from_utf8(&s.stdout).unwrap().trim().to_string();
+                return raw.split_whitespace().last().unwrap().to_string();
             }
             Err(_) => todo!(),
         };
     }
+
+    /// the command to check the status of jobs in the queue
+    fn stat_cmd(&self) -> String;
 
     /// take a name of a Program input file with the extension attached, replace
     /// the extension (ext) with _redo.ext and write _redo.SCRIPT_EXT, then
@@ -115,11 +132,18 @@ where
         self.submit(&redo_pbs)
     }
 
-    fn queue_status(&self) {
-        // run the qstat command for this queue type and parse it, probably into
-        // a hash of jobid: status where status can be an enum - really it can
-        // just be a bool - in the queue or not
-        todo!()
+    /// return a HashSet of jobs found in the queue based on the output of
+    /// `stat_cmd`
+    fn status(&self) -> HashSet<String> {
+        let mut ret = HashSet::new();
+        let lines = self.stat_cmd();
+        let lines = lines.lines();
+        for line in lines {
+            if !line.contains("JOBID") {
+                ret.insert(line.split_whitespace().next().unwrap().to_string());
+            }
+        }
+        ret
     }
 
     /// Build a chunk of jobs by writing the Program input file and the
@@ -160,6 +184,7 @@ where
         let tot_jobs = jobs.len();
         let mut remaining = tot_jobs;
         let mut dump = Dump::new(self.chunk_size() * 5);
+        let mut qstat = HashSet::<String>::new();
         setup();
         loop {
             let mut finished = 0;
@@ -170,6 +195,8 @@ where
                     chunk_num,
                     &mut slurm_jobs,
                 );
+                let job_id = new_chunk[0].job_id.clone();
+                qstat.insert(job_id);
                 if DEBUG {
                     eprintln!("submitted chunk {}", chunk_num);
                 }
@@ -181,7 +208,7 @@ where
             let mut to_remove = Vec::new();
             for (i, job) in cur_jobs.iter_mut().enumerate() {
                 match job.program.read_output() {
-                    Some(val) => {
+                    ProgramStatus::Success(val) => {
                         to_remove.push(i);
                         dst[job.index] += job.coeff * val;
                         dump.add(job.program.associated_files());
@@ -198,10 +225,22 @@ where
                             ]);
                         }
                     }
-                    None => {
+                    e => {
                         // check if job was in the queue last time we checked,
-                        // if not, resubmit
-                        todo!()
+                        // if not (maybe depending on the type of issue),
+                        // resubmit
+                        if !qstat.contains(&job.job_id) {
+                            println!(
+                                "{} not in there with {:?}",
+                                job.job_id, e
+                            );
+                            // TODO actually figure out how to resub - have to
+                            // add a field on job to hold the resub and add a
+                            // check somewhere in here. I guess I could just
+                            // while resub != nil in this arm to traverse resub
+                            // linked list
+                            todo!()
+                        }
                     }
                 }
             }
@@ -217,7 +256,7 @@ where
             }
             if finished == 0 {
                 eprintln!("{} jobs remaining", remaining);
-                self.queue_status();
+                qstat = self.status();
                 thread::sleep(time::Duration::from_secs(
                     self.sleep_int() as u64
                 ));

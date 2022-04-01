@@ -36,4 +36,10 @@ impl<P: Program + Clone> Queue<P> for LocalQueue {
     }
 
     const SCRIPT_EXT: &'static str = "slurm";
+
+    const DIR: &'static str = "inp";
+
+    fn stat_cmd(&self) -> String {
+        todo!()
+    }
 }

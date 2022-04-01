@@ -1,4 +1,4 @@
-use crate::queue::Program;
+use crate::queue::{Program, ProgramStatus};
 
 use super::*;
 use std::collections::hash_map::DefaultHasher;
@@ -155,12 +155,12 @@ Comment line 2
     /// reading the `.aux` file to extract the energy from there. This function
     /// panics if an error is found in the output file. If a non-fatal error
     /// occurs (file not found, not written to yet, etc) None is returned.
-    fn read_output(&self) -> Option<f64> {
+    fn read_output(&self) -> ProgramStatus {
         let outfile = format!("{}.out", &self.filename);
         let f = match File::open(&outfile) {
             Ok(file) => file,
             Err(_) => {
-                return None;
+                return ProgramStatus::FileNotFound;
             } // file not found
         };
         let mut f = BufReader::new(f);
@@ -174,14 +174,13 @@ Comment line 2
                 eprintln!("panic requested in read_output");
                 std::process::exit(1)
             } else if let Some(_) = line.find("ERROR") {
-                eprintln!("error found in {}, exiting", self.filename);
-                std::process::exit(1)
+                return ProgramStatus::ErrorInOutput;
             } else if let Some(_) = line.find(" == MOPAC DONE ==") {
                 return self.read_aux();
             }
             line.clear();
         }
-        None
+        ProgramStatus::EnergyNotFound
     }
 
     fn associated_files(&self) -> Vec<String> {
@@ -221,12 +220,12 @@ impl Mopac {
     }
 
     /// return the heat of formation from a MOPAC aux file in Hartrees
-    fn read_aux(&self) -> Option<f64> {
+    fn read_aux(&self) -> ProgramStatus {
         let auxfile = format!("{}.aux", &self.filename);
         let f = if let Ok(file) = File::open(auxfile) {
             file
         } else {
-            return None;
+            return ProgramStatus::FileNotFound;
         };
         let mut f = BufReader::new(f);
         let mut line = String::new();
@@ -238,16 +237,15 @@ impl Mopac {
             if line.contains("HEAT_OF_FORMATION") {
                 let fields: Vec<&str> = line.trim().split("=").collect();
                 match fields[1].replace("D", "E").parse::<f64>() {
-                    Ok(f) => return Some(f / KCALHT),
+                    Ok(f) => return ProgramStatus::Success(f / KCALHT),
                     Err(_) => {
-                        eprintln!("failed to parse '{}'", fields[1]);
-                        return None;
+                        return ProgramStatus::EnergyParseError;
                     }
                 }
             }
             line.clear();
         }
-        None
+        ProgramStatus::EnergyNotFound
     }
 }
 
@@ -344,7 +342,11 @@ HSP            C      0.717322000000
             Params::default(),
             Vec::new(),
         );
-        let got = mp.read_output().expect("expected a value");
+        let got = if let ProgramStatus::Success(v) = mp.read_output() {
+            v
+        } else {
+            panic!()
+        };
         let want = 0.97127947459164715838e+02 / KCALHT;
         assert!((got - want).abs() < 1e-20);
 
@@ -355,7 +357,7 @@ HSP            C      0.717322000000
             Vec::new(),
         );
         let got = mp.read_output();
-        assert_eq!(got, None);
+        assert_eq!(got, ProgramStatus::EnergyNotFound);
 
         // failure in aux
         let mp = Mopac::new(
@@ -364,7 +366,7 @@ HSP            C      0.717322000000
             Vec::new(),
         );
         let got = mp.read_output();
-        assert_eq!(got, None);
+        assert_eq!(got, ProgramStatus::EnergyNotFound);
     }
 
     /// minimal queue for testing general submission
@@ -398,6 +400,12 @@ HSP            C      0.717322000000
         }
 
         const SCRIPT_EXT: &'static str = "pbs";
+
+        const DIR: &'static str = "inp";
+
+        fn stat_cmd(&self) -> String {
+            todo!()
+        }
     }
 
     #[test]
@@ -411,7 +419,7 @@ HSP            C      0.717322000000
             "/tmp/main.pbs",
         );
         let got = tq.submit("/tmp/main.pbs");
-        let want = "input1.mop\ninput2.mop\ninput3.mop";
+        let want = "input3.mop";
         assert_eq!(got, want);
     }
 

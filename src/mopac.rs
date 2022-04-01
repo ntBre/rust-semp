@@ -129,6 +129,14 @@ impl Program for Mopac {
         self.filename.clone()
     }
 
+    fn set_filename(&mut self, filename: &str) {
+        self.filename = String::from(filename);
+    }
+
+    fn extension(&self) -> String {
+        String::from("mop")
+    }
+
     /// Writes the parameters of self to a parameter file, then writes the MOPAC
     /// input file with external=paramfile. Also update self.paramfile to point
     /// to the generated name for the parameter file
@@ -147,7 +155,7 @@ impl Program for Mopac {
 Comment line 1
 Comment line 2
 {geom}
-", paramfile=&self.param_file)
+", paramfile=self.param_file)
         .expect("failed to write input file");
     }
 
@@ -435,7 +443,11 @@ HSP            C      0.717322000000
             read_to_string("/tmp/job.mop").unwrap(),
             read_to_string("/tmp/job_redo.mop").unwrap()
         );
-        let want = "/tmp/job_redo.mop";
+        let want = queue::Resubmit {
+            inp_file: String::from("/tmp/job_redo.mop"),
+            pbs_file: String::from("/tmp/job_redo.pbs"),
+            job_id: String::from("/tmp/job_redo.mop"),
+        };
         assert_eq!(got, want);
 
         for f in vec!["/tmp/job.mop", "/tmp/job_redo.mop", "/tmp/job_redo.pbs"]

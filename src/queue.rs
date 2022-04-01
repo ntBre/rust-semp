@@ -22,6 +22,10 @@ pub enum ProgramStatus {
 pub trait Program {
     fn filename(&self) -> String;
 
+    fn set_filename(&mut self, filename: &str);
+
+    fn extension(&self) -> String;
+
     fn write_input(&mut self);
 
     fn read_output(&self) -> ProgramStatus;
@@ -85,6 +89,13 @@ pub fn takedown() {
     }
 }
 
+#[derive(PartialEq, Debug)]
+pub struct Resubmit {
+    pub inp_file: String,
+    pub pbs_file: String,
+    pub job_id: String,
+}
+
 pub trait Queue<P>
 where
     P: Program + Clone,
@@ -104,6 +115,7 @@ where
 
     fn sleep_int(&self) -> usize;
 
+    /// submit `filename` to the queue and return the jobid
     fn submit(&self, filename: &str) -> String {
         match Command::new(self.submit_command()).arg(filename).output() {
             Ok(s) => {
@@ -120,16 +132,21 @@ where
     /// take a name of a Program input file with the extension attached, replace
     /// the extension (ext) with _redo.ext and write _redo.SCRIPT_EXT, then
     /// submit the redo script
-    fn resubmit(&self, filename: &str) -> String {
+    fn resubmit(&self, filename: &str) -> Resubmit {
         let path = Path::new(filename);
         let dir = path.parent().unwrap().to_str().unwrap();
         let ext = path.extension().unwrap().to_str().unwrap();
         let base = path.file_stem().unwrap().to_str().unwrap();
-        let redo_inp = format!("{}/{}_redo.{}", dir, base, ext);
-        std::fs::copy(filename, &redo_inp).unwrap();
-        let redo_pbs = format!("{}/{}_redo.{}", dir, base, Self::SCRIPT_EXT);
-        self.write_submit_script(vec![String::from(redo_inp)], &redo_pbs);
-        self.submit(&redo_pbs)
+        let inp_file = format!("{}/{}_redo.{}", dir, base, ext);
+        std::fs::copy(filename, &inp_file).unwrap();
+        let pbs_file = format!("{}/{}_redo.{}", dir, base, Self::SCRIPT_EXT);
+        self.write_submit_script(vec![String::from(&inp_file)], &pbs_file);
+        let job_id = self.submit(&pbs_file);
+        Resubmit {
+            inp_file,
+            pbs_file,
+            job_id,
+        }
     }
 
     /// return a HashSet of jobs found in the queue based on the output of
@@ -226,20 +243,28 @@ where
                         }
                     }
                     e => {
-                        // check if job was in the queue last time we checked,
-                        // if not (maybe depending on the type of issue),
-                        // resubmit
+                        // just overwrite the existing job with the resubmitted
+                        // version
                         if !qstat.contains(&job.job_id) {
                             println!(
-                                "{} not in there with {:?}",
-                                job.job_id, e
+                                "resubmitting {} for {:?}",
+                                job.program.filename(),
+                                e
                             );
-                            // TODO actually figure out how to resub - have to
-                            // add a field on job to hold the resub and add a
-                            // check somewhere in here. I guess I could just
-                            // while resub != nil in this arm to traverse resub
-                            // linked list
-                            todo!()
+                            let resub = format!(
+                                "{}.{}",
+                                job.program.filename(),
+                                job.program.extension()
+                            );
+                            let Resubmit {
+                                inp_file,
+                                pbs_file,
+                                job_id,
+                            } = self.resubmit(&resub);
+                            job.program.set_filename(&inp_file);
+                            job.pbs_file = pbs_file;
+                            qstat.insert(job_id.clone());
+                            job.job_id = job_id;
                         }
                     }
                 }

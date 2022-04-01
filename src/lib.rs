@@ -73,7 +73,7 @@ pub fn geom_string(geom: &Vec<Atom>) -> String {
 }
 
 /// Take an INTDER-style `file07` file and parse it into a Vec of geometries
-pub fn load_geoms(filename: &str, atom_names: Vec<String>) -> Vec<Vec<Atom>> {
+pub fn load_geoms(filename: &str, atom_names: &Vec<String>) -> Vec<Vec<Atom>> {
     let f = match File::open(filename) {
         Ok(f) => f,
         Err(e) => {
@@ -256,7 +256,7 @@ pub fn lev_mar(
         }
     }
     // compute scaled right side, g*, from b
-    let b = {
+    let g_star = {
         let b = &jac_t * (ai - se);
         let mut g = na::DVector::from(vec![0.0; rows]);
         for j in 0..rows {
@@ -279,7 +279,7 @@ pub fn lev_mar(
             std::process::exit(1);
         }
     };
-    let mut d = lhs.solve(&b);
+    let mut d = lhs.solve(&g_star);
     // convert back from δ* to δ
     for j in 0..rows {
         d[j] /= a[(j, j)].sqrt()
@@ -306,6 +306,24 @@ pub fn broyden_update(
     jac + update
 }
 
+pub fn dump_vec<W: Write>(w: &mut W, vec: &na::DVector<f64>) {
+    for (i, v) in vec.iter().enumerate() {
+        writeln!(w, "{:>5}{:>20.12}", i, v).unwrap();
+    }
+}
+
+pub fn dump_mat<W: Write>(w: &mut W, mat: &na::DMatrix<f64>) {
+    let (rows, cols) = mat.shape();
+    writeln!(w).unwrap();
+    for i in 0..rows {
+        write!(w, "{:>5}", i).unwrap();
+        for j in 0..cols {
+            write!(w, "{:>12.8}", mat[(i, j)]).unwrap();
+        }
+        writeln!(w).unwrap();
+    }
+}
+
 /// return `energies` relative to its minimum element
 pub fn relative(energies: &na::DVector<f64>) -> na::DVector<f64> {
     let min = energies.min();
@@ -330,14 +348,14 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
     broyd_int: usize,
     queue: Q,
 ) -> Stats {
-    let moles = load_geoms(geom_file, atom_names);
+    let moles = load_geoms(geom_file, &atom_names);
     let mut params = params.clone();
     log_params(param_log, 0, &params);
     let ai = load_energies(energy_file);
     // initial semi-empirical energies and stats
-    let mut se = semi_empirical(&moles, &params, &queue);
+    let mut se = relative(&semi_empirical(&moles, &params, &queue));
     let mut old_se = se.clone();
-    let mut stats = Stats::new(&ai, &relative(&se));
+    let mut stats = Stats::new(&ai, &se);
     let mut last_stats = Stats::default();
     Stats::print_header();
     stats.print_step(0, &last_stats, 0);
@@ -375,8 +393,8 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
             params.atoms.clone(),
             &params.values + &step,
         );
-        let mut new_se = semi_empirical(&moles, &try_params, &queue);
-        stats = Stats::new(&ai, &relative(&new_se));
+        let mut new_se = relative(&semi_empirical(&moles, &try_params, &queue));
+        stats = Stats::new(&ai, &new_se);
 
         // cases ii. and iii. from Marquardt63; first iteration is case ii.
         // increase λ*ν until the norm improves or we hit MAX_TRIES or Δnorm
@@ -399,8 +417,8 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
                 params.atoms.clone(),
                 &params.values + &step,
             );
-            new_se = semi_empirical(&moles, &try_params, &queue);
-            stats = Stats::new(&ai, &relative(&new_se));
+            new_se = relative(&semi_empirical(&moles, &try_params, &queue));
+            stats = Stats::new(&ai, &new_se);
 
             i += 1;
             if stats.norm - last_stats.norm > dnorm || i > MAX_TRIES {
@@ -429,8 +447,8 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
                 params.atoms.clone(),
                 &params.values + k * &step,
             );
-            new_se = semi_empirical(&moles, &try_params, &queue);
-            stats = Stats::new(&ai, &relative(&new_se));
+            new_se = relative(&semi_empirical(&moles, &try_params, &queue));
+            stats = Stats::new(&ai, &new_se);
 
             if stats.norm - last_stats.norm > dnorm {
                 break;
@@ -481,7 +499,7 @@ mod tests {
     #[test]
     fn test_load_geoms() {
         let got =
-            load_geoms("test_files/three07", string!["C", "C", "C", "H", "H"]);
+            load_geoms("test_files/three07", &string!["C", "C", "C", "H", "H"]);
         let want = vec![
             vec![
                 Atom::new("C", vec![0.0000000000, 0.0000000000, -1.6794733900]),
@@ -632,7 +650,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
     #[test]
     fn test_one_iter() {
         let names = string!["C", "C", "C", "H", "H"];
-        let moles = load_geoms("test_files/three07", names);
+        let moles = load_geoms("test_files/three07", &names);
         let params = load_params("test_files/params.dat");
         let want = na::DVector::from(vec![
             0.20374485388911504,
@@ -691,7 +709,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         if norm < eps {
             return true;
         }
-        eprintln!("comp_vec: norm = {}", norm);
+        eprintln!("comp_vec: norm = {:e}", norm);
         false
     }
 
@@ -712,11 +730,21 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
     #[test]
     fn test_num_jac() {
         let names = string!["C", "C", "C", "H", "H"];
-        let moles = load_geoms("test_files/small07", names);
-        let params = load_params("test_files/small.params");
-        let want = load_mat("test_files/small.jac");
-        let got = num_jac(&moles, &params, &LocalQueue);
-        assert!(comp_mat(got, want, 1e-5));
+        {
+            let moles = load_geoms("test_files/small07", &names);
+            let params = load_params("test_files/small.params");
+            let want = load_mat("test_files/small.jac");
+            let got = num_jac(&moles, &params, &LocalQueue);
+            assert!(comp_mat(got, want, 1e-5));
+        }
+        {
+	    // want jac straight from the Go version
+            let moles = load_geoms("test_files/three07", &names);
+            let params = load_params("test_files/three.params");
+            let want = load_mat("test_files/three.jac");
+            let got = num_jac(&moles, &params, &LocalQueue);
+            assert!(comp_mat(got, want, 1e-8));
+        }
     }
 
     #[test]
@@ -767,27 +795,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
     fn test_lev_mar() {
         // test input taken from the output of go TestLevMar
         #[rustfmt::skip]
-        let jac = na::DMatrix::from_row_slice(
-            3,
-            15,
-            &vec![
-                -0.01497188, 0.20599558, 0.04540870,
-                0.00756935, -0.07643601, 0.09140744,
-                0.60444017, 1.26628479, 0.06613604,
-                0.14448405, -0.06807515, 0.00109442,
-                -0.05038643, 0.25973557, -0.04459850,
-                -0.01499188, 0.20528582, 0.04541566,
-                0.00754239, -0.07667791, 0.09167065,
-                0.60234381, 1.26036888, 0.06667187,
-                0.14533904, -0.06778789, -0.00037060,
-                -0.05114822, 0.26220733, -0.04444806,
-                -0.01500130, 0.20545525, 0.04541131,
-                0.00754616, -0.07681023, 0.09181168,
-                0.60351258, 1.26152403, 0.06675347,
-                0.14539861, -0.06789877, -0.00041641,
-                -0.05106358, 0.26227226, -0.04426819,
-            ],
-        );
+        let jac = load_mat("test_files/levmar.jac");
         let got = lev_mar(
             &jac,
             &na::DVector::from(vec![
@@ -819,7 +827,57 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             -0.06588089332916275,
             0.9448958560822209,
         ]);
-        assert!(comp_dvec(got, want, 1e-12));
+        assert!(comp_dvec(got, want, 3.2e-7));
+    }
+
+    #[test]
+    fn test_solve() {
+        // try nalgebra matrix equation solution with input from Go version
+        #[rustfmt::skip]
+        let lhs = load_mat("test_files/go.lhs");
+        let rhs = na::dvector![
+            0.35423900602931,
+            -0.35423663730942,
+            -0.35423845555583,
+            -0.35423646488059,
+            0.35423942795133,
+            -0.35423939669513,
+            -0.35423686878446,
+            -0.35423575920428,
+            -0.35423924460534,
+            -0.35423965293655,
+            0.35423629270772,
+            -0.05025294054723,
+            0.35423682777338,
+            -0.35423906998699,
+            0.35423447419595
+        ];
+        let want = na::dvector![
+            0.022821308059,
+            -0.019004630312,
+            -0.030395950124,
+            -0.022549225832,
+            0.011349968251,
+            -0.013318764149,
+            -0.006731748989,
+            -0.017577820182,
+            -0.018559932276,
+            -0.026805396091,
+            0.009825237417,
+            0.000558292732,
+            0.052824051563,
+            -0.029828987570,
+            0.072728316382
+        ];
+        let lhs = match na::linalg::Cholesky::new(lhs) {
+            Some(a) => a,
+            None => {
+                eprintln!("cholesky decomposition failed");
+                std::process::exit(1);
+            }
+        };
+        let got = lhs.solve(&rhs);
+        assert!(comp_dvec(got, want, 1.04e-6));
     }
 
     #[ignore]

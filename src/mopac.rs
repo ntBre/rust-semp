@@ -42,21 +42,22 @@ impl ToString for Params {
     }
 }
 
-// TODO these prints are really for testing, they don't really belong in the
-// actual code
 impl PartialEq for Params {
     fn eq(&self, other: &Self) -> bool {
         for (i, n) in self.names.iter().enumerate() {
             if *n != other.names[i] {
+                #[cfg(test)]
                 eprintln!("{}: {} != {}", i, *n, other.names[i]);
                 return false;
             }
             if self.atoms[i] != other.atoms[i] {
+                #[cfg(test)]
                 eprintln!("{}: {} != {}", i, self.atoms[i], other.atoms[i]);
                 return false;
             }
             let diff = (self.values[i] - other.values[i]).abs();
             if diff >= 1e-12 {
+                #[cfg(test)]
                 eprintln!(
                     "{}: {} != {}, diff = {}",
                     i, self.values[i], other.values[i], diff

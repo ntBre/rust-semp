@@ -381,7 +381,7 @@ HSP            C      0.717322000000
     struct TestQueue;
 
     impl Queue<Mopac> for TestQueue {
-        fn write_submit_script(&self, infiles: Vec<String>, filename: &str) {
+        fn write_submit_script(&self, infiles: &[String], filename: &str) {
             let mut body = String::new();
             for f in infiles {
                 body.push_str(&format!("echo {f}\n"));
@@ -420,10 +420,7 @@ HSP            C      0.717322000000
     fn test_submit() {
         let tq = TestQueue;
         tq.write_submit_script(
-            vec!["input1.mop", "input2.mop", "input3.mop"]
-                .iter()
-                .map(|x| x.to_string())
-                .collect(),
+            &string!["input1.mop", "input2.mop", "input3.mop"],
             "/tmp/main.pbs",
         );
         let got = tq.submit("/tmp/main.pbs");

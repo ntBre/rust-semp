@@ -105,7 +105,7 @@ where
 
     const DIR: &'static str = "inp";
 
-    fn write_submit_script(&self, infiles: Vec<String>, filename: &str);
+    fn write_submit_script(&self, infiles: &[String], filename: &str);
 
     fn submit_command(&self) -> &str;
 
@@ -140,7 +140,7 @@ where
         let inp_file = format!("{}/{}_redo.{}", dir, base, ext);
         std::fs::copy(filename, &inp_file).unwrap();
         let pbs_file = format!("{}/{}_redo.{}", dir, base, Self::SCRIPT_EXT);
-        self.write_submit_script(vec![String::from(&inp_file)], &pbs_file);
+        self.write_submit_script(&[inp_file.clone()], &pbs_file);
         let job_id = self.submit(&pbs_file);
         Resubmit {
             inp_file,
@@ -181,10 +181,11 @@ where
             chunk_jobs.push(job);
         }
         slurm_jobs.insert(queue_file.clone(), chunk_jobs.len());
-        self.write_submit_script(
-            chunk_jobs.iter().map(|j| j.program.filename()).collect(),
-            &queue_file,
-        );
+        let filenames = chunk_jobs
+            .iter()
+            .map(|j| j.program.filename())
+            .collect::<Vec<String>>();
+        self.write_submit_script(&filenames, &queue_file);
         // run jobs
         let job_id = self.submit(&queue_file);
         for job in &mut chunk_jobs {

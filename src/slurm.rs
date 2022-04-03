@@ -31,7 +31,7 @@ impl Slurm {
 }
 
 impl Queue<Mopac> for Slurm {
-    fn write_submit_script(&self, infiles: Vec<String>, filename: &str) {
+    fn write_submit_script(&self, infiles: &[String], filename: &str) {
         let mut body = format!(
             "#!/bin/bash
 #SBATCH --job-name=semp

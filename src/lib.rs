@@ -73,7 +73,7 @@ pub fn geom_string(geom: &Vec<Atom>) -> String {
 }
 
 /// Take an INTDER-style `file07` file and parse it into a Vec of geometries
-pub fn load_geoms(filename: &str, atom_names: &Vec<String>) -> Vec<Vec<Atom>> {
+pub fn load_geoms(filename: &str, atom_names: &[String]) -> Vec<Vec<Atom>> {
     let f = match File::open(filename) {
         Ok(f) => f,
         Err(e) => {
@@ -622,11 +622,7 @@ mod tests {
     #[test]
     fn test_write_submit_script() {
         Slurm::default().write_submit_script(
-            vec![
-                String::from("input1"),
-                String::from("input2"),
-                String::from("input3"),
-            ],
+            &string!["input1", "input2", "input3"],
             "/tmp/submit.slurm",
         );
         let got = fs::read_to_string("/tmp/submit.slurm")
@@ -738,7 +734,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             assert!(comp_mat(got, want, 1e-5));
         }
         {
-	    // want jac straight from the Go version
+            // want jac straight from the Go version
             let moles = load_geoms("test_files/three07", &names);
             let params = load_params("test_files/three.params");
             let want = load_mat("test_files/three.jac");

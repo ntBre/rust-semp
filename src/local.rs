@@ -8,7 +8,7 @@ use crate::queue::{Program, Queue};
 pub struct LocalQueue;
 
 impl<P: Program + Clone> Queue<P> for LocalQueue {
-    fn write_submit_script(&self, infiles: Vec<String>, filename: &str) {
+    fn write_submit_script(&self, infiles: &[String], filename: &str) {
         let mut body = String::from("export LD_LIBRARY_PATH=/opt/mopac/\n");
         for f in infiles {
             body.push_str(&format!("/opt/mopac/mopac {f}.mop\n"));

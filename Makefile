@@ -10,8 +10,12 @@ endif
 ELAND_DEST = 'eland:programs/semp/.'
 eland:
 # see https://msfjarvis.dev/posts/building-static-rust-binaries-for-linux
-	RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --target x86_64-unknown-linux-gnu
+	RUSTFLAGS='-C target-feature=+crt-static' \
+	cargo build --release --target x86_64-unknown-linux-gnu
 	scp -C ${BASE}/target/x86_64-unknown-linux-gnu/release/rust-semp ${ELAND_DEST}
+
+eland.scripts: scripts/time.awk
+	scp -C $? ${ELAND_DEST}
 
 test:
 	RUST_BACKTRACE=1 cargo test -- ${TESTFLAGS} ${ARGS}

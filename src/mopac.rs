@@ -122,6 +122,7 @@ pub struct Mopac {
     pub geom: Vec<Atom>,
     pub param_file: String,
     pub param_dir: String,
+    pub charge: isize,
     // TODO add field for resub - linked list of jobs
 }
 
@@ -152,11 +153,15 @@ impl Program for Mopac {
             .expect("failed to create input file");
         write!(
             file,
-            "XYZ 1SCF A0 scfcrt=1.D-21 aux(precision=14) PM6 external={paramfile}
+            "XYZ 1SCF A0 scfcrt=1.D-21 aux(precision=14) PM6 \
+	     external={paramfile} charge={charge}
 Comment line 1
 Comment line 2
 {geom}
-", paramfile=self.param_file)
+",
+            paramfile = self.param_file,
+            charge = self.charge,
+        )
         .expect("failed to write input file");
     }
 
@@ -202,16 +207,26 @@ Comment line 2
             self.param_file.clone(),
         ]
     }
+
+    fn charge(&self) -> isize {
+        self.charge
+    }
 }
 
 impl Mopac {
-    pub fn new(filename: String, params: Params, geom: Vec<Atom>) -> Self {
+    pub fn new(
+        filename: String,
+        params: Params,
+        geom: Vec<Atom>,
+        charge: isize,
+    ) -> Self {
         Self {
             filename,
             params,
             geom,
             param_file: String::new(),
             param_dir: "tmparam".to_string(),
+            charge,
         }
     }
 
@@ -298,6 +313,7 @@ mod tests {
                 values,
             ),
             Vec::new(),
+            0,
         )
     }
 
@@ -307,7 +323,7 @@ mod tests {
         tm.param_dir = "/tmp".to_string();
         tm.write_input();
         let got = fs::read_to_string("/tmp/test.mop").expect("file not found");
-        let want = format!("XYZ 1SCF A0 scfcrt=1.D-21 aux(precision=14) PM6 external={paramfile}
+        let want = format!("XYZ 1SCF A0 scfcrt=1.D-21 aux(precision=14) PM6 external={paramfile} charge=0
 Comment line 1
 Comment line 2
 
@@ -350,6 +366,7 @@ HSP            C      0.717322000000
             String::from("test_files/job"),
             Params::default(),
             Vec::new(),
+            0,
         );
         let got = if let ProgramStatus::Success(v) = mp.read_output() {
             v
@@ -364,6 +381,7 @@ HSP            C      0.717322000000
             String::from("test_files/nojob"),
             Params::default(),
             Vec::new(),
+            0,
         );
         let got = mp.read_output();
         assert_eq!(got, ProgramStatus::EnergyNotFound);
@@ -373,6 +391,7 @@ HSP            C      0.717322000000
             String::from("test_files/noaux"),
             Params::default(),
             Vec::new(),
+            0,
         );
         let got = mp.read_output();
         assert_eq!(got, ProgramStatus::EnergyNotFound);

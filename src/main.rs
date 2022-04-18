@@ -36,5 +36,6 @@ fn main() {
         conf.broyden,
         conf.broyd_int,
         queue,
+        conf.charge,
     );
 }

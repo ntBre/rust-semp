@@ -26,6 +26,9 @@ pub struct Config {
     /// If `broyden` is true, the interval at which to calculate a numerical
     /// Jacobian instead of using Broyden's method
     pub broyd_int: usize,
+    /// charge on the molecule. 0 for neutral, +1 for cation, -1 for anion, and
+    /// so on
+    pub charge: isize,
 }
 
 impl Config {
@@ -71,7 +74,8 @@ FN11       C      0.046302000000
 ",
             ),
             broyden: false,
-	    broyd_int: 10,
+            broyd_int: 10,
+            charge: 0,
         };
         assert_eq!(got, want);
     }

@@ -169,6 +169,7 @@ pub fn build_jobs(
     start_index: usize,
     coeff: f64,
     job_num: usize,
+    charge: isize,
 ) -> Vec<Job<Mopac>> {
     let mut count: usize = start_index;
     let mut job_num = job_num;
@@ -176,8 +177,10 @@ pub fn build_jobs(
     for mol in moles {
         let filename = format!("inp/job.{:08}", job_num);
         job_num += 1;
-        let mut job =
-            Job::new(Mopac::new(filename, params.clone(), mol.clone()), count);
+        let mut job = Job::new(
+            Mopac::new(filename, params.clone(), mol.clone(), charge),
+            count,
+        );
         job.coeff = coeff;
         jobs.push(job);
         count += 1;
@@ -190,8 +193,9 @@ pub fn semi_empirical<Q: Queue<Mopac>>(
     moles: &Vec<Vec<Atom>>,
     params: &Params,
     submitter: &Q,
+    charge: isize,
 ) -> na::DVector<f64> {
-    let mut jobs = build_jobs(moles, params, 0, 1.0, 0);
+    let mut jobs = build_jobs(moles, params, 0, 1.0, 0, charge);
     let mut got = vec![0.0; jobs.len()];
     submitter.drain(&mut jobs, &mut got);
     na::DVector::from(got)
@@ -204,6 +208,7 @@ pub fn num_jac<Q: Queue<Mopac>>(
     moles: &Vec<Vec<Atom>>,
     params: &Params,
     submitter: &Q,
+    charge: isize,
 ) -> na::DMatrix<f64> {
     let rows = params.values.len();
     let cols = moles.len();
@@ -218,12 +223,14 @@ pub fn num_jac<Q: Queue<Mopac>>(
         let idx = row * cols;
         // TODO do I really have to clone here?
         pf.values[row] += DELTA;
-        let fwd_jobs = build_jobs(&moles.clone(), &pf, idx, DELTA_FWD, job_num);
+        let fwd_jobs =
+            build_jobs(&moles.clone(), &pf, idx, DELTA_FWD, job_num, charge);
         job_num += fwd_jobs.len();
         jobs.extend_from_slice(&fwd_jobs);
 
         pb.values[row] -= DELTA;
-        let bwd_jobs = build_jobs(&moles.clone(), &pb, idx, DELTA_BWD, job_num);
+        let bwd_jobs =
+            build_jobs(&moles.clone(), &pb, idx, DELTA_BWD, job_num, charge);
         job_num += bwd_jobs.len();
         jobs.extend_from_slice(&bwd_jobs);
     }
@@ -276,6 +283,7 @@ pub fn lev_mar(
         Some(a) => a,
         None => {
             eprintln!("cholesky decomposition failed");
+            eprintln!("jacobian: \n{:12.8}", jac);
             std::process::exit(1);
         }
     };
@@ -347,13 +355,14 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
     broyden: bool,
     broyd_int: usize,
     queue: Q,
+    charge: isize,
 ) -> Stats {
     let moles = load_geoms(geom_file, &atom_names);
     let mut params = params.clone();
     log_params(param_log, 0, &params);
     let ai = load_energies(energy_file);
     // initial semi-empirical energies and stats
-    let mut se = relative(&semi_empirical(&moles, &params, &queue));
+    let mut se = relative(&semi_empirical(&moles, &params, &queue, charge));
     let mut old_se = se.clone();
     let mut stats = Stats::new(&ai, &se);
     let mut last_stats = Stats::default();
@@ -367,7 +376,7 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
     let mut in_broyden = false;
     let mut need_num_jac = false;
     let mut start = std::time::SystemTime::now();
-    let mut jac = num_jac(&moles, &params, &queue);
+    let mut jac = num_jac(&moles, &params, &queue, charge);
     // have to "initialize" this to satisfy compiler, but any use should panic
     // since it has zero length
     let mut step = na::DVector::from(vec![]);
@@ -381,7 +390,7 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
             in_broyden = false;
             need_num_jac = false;
             start = std::time::SystemTime::now();
-            jac = num_jac(&moles, &params, &queue);
+            jac = num_jac(&moles, &params, &queue, charge);
         } // else (first iteration) use jac from outside loop
         let lambda_init = lambda;
 
@@ -393,7 +402,8 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
             params.atoms.clone(),
             &params.values + &step,
         );
-        let mut new_se = relative(&semi_empirical(&moles, &try_params, &queue));
+        let mut new_se =
+            relative(&semi_empirical(&moles, &try_params, &queue, charge));
         stats = Stats::new(&ai, &new_se);
 
         // cases ii. and iii. from Marquardt63; first iteration is case ii.
@@ -417,7 +427,8 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
                 params.atoms.clone(),
                 &params.values + &step,
             );
-            new_se = relative(&semi_empirical(&moles, &try_params, &queue));
+            new_se =
+                relative(&semi_empirical(&moles, &try_params, &queue, charge));
             stats = Stats::new(&ai, &new_se);
 
             i += 1;
@@ -447,7 +458,8 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
                 params.atoms.clone(),
                 &params.values + k * &step,
             );
-            new_se = relative(&semi_empirical(&moles, &try_params, &queue));
+            new_se =
+                relative(&semi_empirical(&moles, &try_params, &queue, charge));
             stats = Stats::new(&ai, &new_se);
 
             if stats.norm - last_stats.norm > dnorm {
@@ -653,7 +665,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             0.20541305733965845,
             0.20511337069030972,
         ]);
-        let got = semi_empirical(&moles, &params, &LocalQueue);
+        let got = semi_empirical(&moles, &params, &LocalQueue, 0);
         let eps = 1e-14;
         assert!(comp_dvec(got, want, eps));
     }
@@ -730,7 +742,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             let moles = load_geoms("test_files/small07", &names);
             let params = load_params("test_files/small.params");
             let want = load_mat("test_files/small.jac");
-            let got = num_jac(&moles, &params, &LocalQueue);
+            let got = num_jac(&moles, &params, &LocalQueue, 0);
             assert!(comp_mat(got, want, 1e-5));
         }
         {
@@ -738,7 +750,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             let moles = load_geoms("test_files/three07", &names);
             let params = load_params("test_files/three.params");
             let want = load_mat("test_files/three.jac");
-            let got = num_jac(&moles, &params, &LocalQueue);
+            let got = num_jac(&moles, &params, &LocalQueue, 0);
             assert!(comp_mat(got, want, 1e-8));
         }
     }
@@ -895,6 +907,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             true,
             5,
             queue,
+            0,
         );
         let want = Stats {
             norm: 7.1820,

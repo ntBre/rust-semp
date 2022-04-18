@@ -26,6 +26,8 @@ pub trait Program {
 
     fn extension(&self) -> String;
 
+    fn charge(&self) -> isize;
+
     fn write_input(&mut self);
 
     fn read_output(&self) -> ProgramStatus;

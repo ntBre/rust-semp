@@ -138,7 +138,12 @@ where
         let ext = path.extension().unwrap().to_str().unwrap();
         let base = path.file_stem().unwrap().to_str().unwrap();
         let inp_file = format!("{}/{}_redo.{}", dir, base, ext);
-        std::fs::copy(filename, &inp_file).unwrap();
+        match std::fs::copy(filename, &inp_file) {
+            Ok(_) => (),
+            Err(e) => {
+                panic!("failed to copy {filename} to {inp_file} with `{e}`")
+            }
+        };
         let pbs_file = format!("{}/{}_redo.{}", dir, base, Self::SCRIPT_EXT);
         self.write_submit_script(&[inp_file.clone()], &pbs_file);
         let job_id = self.submit(&pbs_file);

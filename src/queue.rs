@@ -259,11 +259,16 @@ where
                                 job.program.filename(),
                                 e
                             );
+                            let resub = format!(
+                                "{}.{}",
+                                job.program.filename(),
+                                job.program.extension()
+                            );
                             let Resubmit {
                                 inp_file,
                                 pbs_file,
                                 job_id,
-                            } = self.resubmit(&job.program.filename());
+                            } = self.resubmit(&resub);
                             job.program.set_filename(&inp_file);
                             job.pbs_file = pbs_file;
                             qstat.insert(job_id.clone());

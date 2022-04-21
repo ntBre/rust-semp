@@ -385,9 +385,9 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
     // since it has zero length
     let mut step = na::DVector::from(vec![]);
     while iter <= max_iter
-        && del_norm.abs() > DCONV_THRSH
-        && del_rmsd.abs() > DCONV_THRSH
-        && del_max.abs() > DCONV_THRSH
+        && (del_norm.abs() > DCONV_THRSH
+            || del_rmsd.abs() > DCONV_THRSH
+            || del_max.abs() > DCONV_THRSH)
     {
         if broyden && !need_num_jac && iter > 1 && iter % broyd_int != 1 {
             eprintln!("broyden on iter {}", iter);

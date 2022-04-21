@@ -23,6 +23,9 @@ static DELTA: f64 = 1e-8;
 static DELTA_FWD: f64 = 5e7; // 1 / 2Δ
 static DELTA_BWD: f64 = -5e7; // -1 / 2Δ
 static DEBUG: bool = false;
+/// convergence threshold for the change in the norm. if the change in the norm
+/// between iterations is less than this, convergence is reached
+const DNORM_CONV: f64 = 1e-5;
 
 pub static LAMBDA0: f64 = 1e-8;
 pub static NU: f64 = 2.0;
@@ -380,7 +383,7 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
     // have to "initialize" this to satisfy compiler, but any use should panic
     // since it has zero length
     let mut step = na::DVector::from(vec![]);
-    while iter <= max_iter && del_norm.abs() > 1e-4 {
+    while iter <= max_iter && del_norm.abs() > DNORM_CONV {
         if broyden && !need_num_jac && iter > 1 && iter % broyd_int != 1 {
             eprintln!("broyden on iter {}", iter);
             in_broyden = true;
@@ -496,7 +499,8 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
         last_stats = stats;
         iter += 1;
     }
-    println!("\nconvergence reached after {} iterations", iter);
+    println!("\nconvergence reached after {} iterations", iter - 1);
+    println!("DNORM = {:.2e}", del_norm.abs());
     last_stats
 }
 

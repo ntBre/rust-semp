@@ -33,3 +33,7 @@ profile.num_jac:
 
 profile.full:
 	$(call profile,full)
+
+time:
+	RUSTFLAGS='-g' cargo build --release --bin full
+	sh -c "time ${BASE}/target/release/full"

@@ -2,14 +2,22 @@
 #+TODO: TODO WAIT | DONE
 #+TODO: | CHECKPOINT
 
-this time write input as needed, not all at once. the first three all need to
-be inside of the 'as needed' part -> iterator returning jobs?
-- if I can set up a list of structs containing all the info necessary for a
-  job, I can map over that and submit as I go
-- use Iter.take(n) to grab the first n, I guess you slice off the front n
-  elements of the original slice after that
+* Timings
+  these are collected using the =time= recipe in the Makefile
+  | Commit  | T_full    |
+  |---------+-----------|
+  | b7565eb | 2m26.295s |
+  |         |           |
 
-see [[https://msfjarvis.dev/posts/building-static-rust-binaries-for-linux/][this]] if I have trouble with static binaries
+* Notes
+  this time write input as needed, not all at once. the first three all need to
+  be inside of the 'as needed' part -> iterator returning jobs?
+  - if I can set up a list of structs containing all the info necessary for a
+    job, I can map over that and submit as I go
+  - use Iter.take(n) to grab the first n, I guess you slice off the front n
+    elements of the original slice after that
+
+  see [[https://msfjarvis.dev/posts/building-static-rust-binaries-for-linux/][this]] if I have trouble with static binaries
 
 * tasks
 ** DONE load geometries

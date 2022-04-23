@@ -174,29 +174,26 @@ where
     /// corresponding submission script and then submitting the script
     fn build_chunk<'a>(
         &self,
-        jobs: Vec<Job<P>>,
+        jobs: &mut [Job<P>],
         chunk_num: usize,
         slurm_jobs: &'a mut HashMap<String, usize>,
-    ) -> Vec<Job<P>> {
+    ) {
         let queue_file =
             format!("{}/main{}.{}", Self::DIR, chunk_num, Self::SCRIPT_EXT);
         let jl = jobs.len();
-        let mut chunk_jobs = Vec::with_capacity(jl);
         let mut filenames = Vec::with_capacity(jl);
-        for mut job in jobs {
+        for job in &mut *jobs {
             job.program.write_input();
             job.pbs_file = queue_file.to_string();
             filenames.push(job.program.filename());
-            chunk_jobs.push(job);
         }
-        slurm_jobs.insert(queue_file.clone(), chunk_jobs.len());
+        slurm_jobs.insert(queue_file.clone(), jl);
         self.write_submit_script(&filenames, &queue_file);
         // run jobs
         let job_id = self.submit(&queue_file);
-        for job in &mut chunk_jobs {
+        for mut job in jobs {
             job.job_id = job_id.clone();
         }
-        chunk_jobs
     }
 
     fn drain(&self, jobs: &mut Vec<Job<P>>, dst: &mut [f64]) {
@@ -206,7 +203,7 @@ where
         let mut remaining = jobs.len();
         let mut dump = Dump::new(self.chunk_size() * 5);
         let mut qstat = HashSet::<String>::new();
-        let mut chunks = jobs.chunks(self.chunk_size());
+        let mut chunks = jobs.chunks_mut(self.chunk_size());
         let mut out_of_jobs = false;
         setup();
         loop {
@@ -214,18 +211,14 @@ where
             while cur_jobs.len() < self.job_limit() {
                 match chunks.next() {
                     Some(jobs) => {
-                        let new_chunk = self.build_chunk(
-                            jobs.to_vec(),
-                            chunk_num,
-                            &mut slurm_jobs,
-                        );
-                        let job_id = new_chunk[0].job_id.clone();
+                        self.build_chunk(jobs, chunk_num, &mut slurm_jobs);
+                        let job_id = jobs[0].job_id.clone();
                         qstat.insert(job_id);
                         if DEBUG {
                             eprintln!("submitted chunk {}", chunk_num);
                         }
                         chunk_num += 1;
-                        cur_jobs.extend(new_chunk);
+                        cur_jobs.extend(jobs);
                     }
                     None => {
                         out_of_jobs = true;

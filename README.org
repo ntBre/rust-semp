@@ -3,11 +3,12 @@
 #+TODO: | CHECKPOINT
 
 * Timings
-  these are collected using the =time= recipe in the Makefile
+  these are real times collected using the =time= recipe in the Makefile
   | Commit  | T_full    |
   |---------+-----------|
   | b7565eb | 2m26.295s |
-  |         |           |
+  | de7888e | 2m26.897s |
+  |         | 2m25.366s |
 
 * Notes
   this time write input as needed, not all at once. the first three all need to

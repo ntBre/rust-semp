@@ -6,12 +6,11 @@
   these are real times collected using the =time= recipe in the Makefile
   | Commit  | T_full    | Peak Mem |
   |---------+-----------+----------|
-  | b7565eb | 2m26.295s |          |
   | de7888e | 2m26.897s | 3.1MB    |
-  | 1209365 | 2m25.366s |          |
+  | 1209365 | 2m25.366s | 1.6MB    |
   | 130766f | 2m20.006s | 1.6MB    |
   | a5cd573 | 2m24.663s | 565.2kB  |
-  |         | 2m22.688s | 414.6kB  |
+  | e908ef2 | 2m22.688s | 414.6kB  |
 
 * Notes
   this time write input as needed, not all at once. the first three all need to

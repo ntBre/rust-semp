@@ -34,6 +34,12 @@ profile.num_jac:
 profile.full:
 	$(call profile,full)
 
+memprofile = RUSTFLAGS='-g' cargo build --release --bin $(1); \
+		heaptrack ${BASE}/target/release/$(1)
+
+memprofile.full:
+	$(call memprofile,full)
+
 time:
 	RUSTFLAGS='-g' cargo build --release --bin full
 	sh -c "time ${BASE}/target/release/full"

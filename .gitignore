@@ -4,3 +4,4 @@
 /perf.data*
 /callgrind.out*
 /flamegraph.svg
+/heaptrack*

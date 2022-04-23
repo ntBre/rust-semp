@@ -223,18 +223,17 @@ pub fn num_jac<Q: Queue<Mopac>>(
         let mut pf = params.clone();
         let mut pb = params.clone();
         let idx = row * cols;
-        // TODO do I really have to clone here?
         pf.values[row] += DELTA;
-        let fwd_jobs =
-            build_jobs(&moles.clone(), &pf, idx, DELTA_FWD, job_num, charge);
+        let mut fwd_jobs =
+            build_jobs(&moles, &pf, idx, DELTA_FWD, job_num, charge);
         job_num += fwd_jobs.len();
-        jobs.extend_from_slice(&fwd_jobs);
+        jobs.append(&mut fwd_jobs);
 
         pb.values[row] -= DELTA;
-        let bwd_jobs =
-            build_jobs(&moles.clone(), &pb, idx, DELTA_BWD, job_num, charge);
+        let mut bwd_jobs =
+            build_jobs(&moles, &pb, idx, DELTA_BWD, job_num, charge);
         job_num += bwd_jobs.len();
-        jobs.extend_from_slice(&bwd_jobs);
+        jobs.append(&mut bwd_jobs);
     }
     if DEBUG {
         eprintln!("num_jac: running {} jobs", jobs.len());

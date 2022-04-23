@@ -10,7 +10,8 @@
   | de7888e | 2m26.897s |          |
   | 1209365 | 2m25.366s |          |
   | 130766f | 2m20.006s | 1.6MB    |
-  |         | 2m24.663s | 565.2kB  |
+  | a5cd573 | 2m24.663s | 565.2kB  |
+  |         | 2m22.688s | 414.6kB  |
 
 * Notes
   this time write input as needed, not all at once. the first three all need to

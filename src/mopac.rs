@@ -123,7 +123,10 @@ pub struct Mopac {
     /// to be shared between calculations without an expensive `clone`
     /// operation.
     pub params: Rc<Params>,
-    pub geom: Vec<Atom>,
+    /// The initial geometry for the calculation. These are also wrapped in an
+    /// Rc to avoid allocating multiple copies for calculations with the same
+    /// geometry.
+    pub geom: Rc<Vec<Atom>>,
     pub param_file: String,
     pub param_dir: String,
     pub charge: isize,
@@ -221,7 +224,7 @@ impl Mopac {
     pub fn new(
         filename: String,
         params: Rc<Params>,
-        geom: Vec<Atom>,
+        geom: Rc<Vec<Atom>>,
         charge: isize,
     ) -> Self {
         Self {
@@ -316,7 +319,7 @@ mod tests {
                 atoms.iter().map(|s| s.to_string()).collect(),
                 values,
             )),
-            Vec::new(),
+            Rc::new(Vec::new()),
             0,
         )
     }
@@ -369,7 +372,7 @@ HSP            C      0.717322000000
         let mp = Mopac::new(
             String::from("test_files/job"),
             Rc::new(Params::default()),
-            Vec::new(),
+            Rc::new(Vec::new()),
             0,
         );
         let got = if let ProgramStatus::Success(v) = mp.read_output() {
@@ -384,7 +387,7 @@ HSP            C      0.717322000000
         let mp = Mopac::new(
             String::from("test_files/nojob"),
             Rc::new(Params::default()),
-            Vec::new(),
+            Rc::new(Vec::new()),
             0,
         );
         let got = mp.read_output();
@@ -394,7 +397,7 @@ HSP            C      0.717322000000
         let mp = Mopac::new(
             String::from("test_files/noaux"),
             Rc::new(Params::default()),
-            Vec::new(),
+            Rc::new(Vec::new()),
             0,
         );
         let got = mp.read_output();

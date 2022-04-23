@@ -76,7 +76,7 @@ pub fn geom_string(geom: &Vec<Atom>) -> String {
 }
 
 /// Take an INTDER-style `file07` file and parse it into a Vec of geometries
-pub fn load_geoms(filename: &str, atom_names: &[String]) -> Vec<Vec<Atom>> {
+pub fn load_geoms(filename: &str, atom_names: &[String]) -> Vec<Rc<Vec<Atom>>> {
     let f = match File::open(filename) {
         Ok(f) => f,
         Err(e) => {
@@ -91,7 +91,7 @@ pub fn load_geoms(filename: &str, atom_names: &[String]) -> Vec<Vec<Atom>> {
     for (i, line) in lines.map(|x| x.unwrap()).enumerate() {
         if line.contains("# GEOM") {
             if i > 0 {
-                ret.push(buf);
+                ret.push(Rc::new(buf));
                 buf = Vec::new();
                 idx = 0;
             }
@@ -107,7 +107,7 @@ pub fn load_geoms(filename: &str, atom_names: &[String]) -> Vec<Vec<Atom>> {
         });
         idx += 1;
     }
-    ret.push(buf);
+    ret.push(Rc::new(buf));
     ret
 }
 
@@ -167,7 +167,7 @@ pub fn parse_params(params: &str) -> Params {
 /// Build the jobs described by `moles` in memory, but don't write any of their
 /// files yet
 pub fn build_jobs(
-    moles: &Vec<Vec<Atom>>,
+    moles: &Vec<Rc<Vec<Atom>>>,
     params: &Params,
     start_index: usize,
     coeff: f64,
@@ -194,7 +194,7 @@ pub fn build_jobs(
 
 /// compute the semi-empirical energies of `moles` for the given `params`
 pub fn semi_empirical<Q: Queue<Mopac>>(
-    moles: &Vec<Vec<Atom>>,
+    moles: &Vec<Rc<Vec<Atom>>>,
     params: &Params,
     submitter: &Q,
     charge: isize,
@@ -209,7 +209,7 @@ pub fn semi_empirical<Q: Queue<Mopac>>(
 /// parameters in `params`. For convenience of indexing, the transpose is
 /// actually computed and returned
 pub fn num_jac<Q: Queue<Mopac>>(
-    moles: &Vec<Vec<Atom>>,
+    moles: &Vec<Rc<Vec<Atom>>>,
     params: &Params,
     submitter: &Q,
     charge: isize,
@@ -516,7 +516,7 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
 
 #[cfg(test)]
 mod tests {
-    use std::fs;
+    use std::{fs, ops::Deref};
 
     use crate::{local::LocalQueue, slurm::Slurm, stats::Stats};
 
@@ -569,7 +569,10 @@ mod tests {
         true
     }
 
-    fn comp_geoms(got: Vec<Vec<Atom>>, want: Vec<Vec<Atom>>, eps: f64) -> bool {
+    fn comp_geoms<T>(got: Vec<T>, want: Vec<Vec<Atom>>, eps: f64) -> bool
+    where
+        T: Deref<Target = Vec<Atom>>,
+    {
         for (i, mol) in got.iter().enumerate() {
             for (j, atom) in mol.iter().enumerate() {
                 let btom = &want[i][j];

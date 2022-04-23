@@ -118,7 +118,11 @@ impl Params {
 #[derive(Debug, Clone)]
 pub struct Mopac {
     pub filename: String,
-    pub params: Params,
+    /// The semi-empirical parameters to use in the calculation via the EXTERNAL
+    /// keyword. These are wrapped in an Rc to allow the same set of parameters
+    /// to be shared between calculations without an expensive `clone`
+    /// operation.
+    pub params: Rc<Params>,
     pub geom: Vec<Atom>,
     pub param_file: String,
     pub param_dir: String,
@@ -216,7 +220,7 @@ Comment line 2
 impl Mopac {
     pub fn new(
         filename: String,
-        params: Params,
+        params: Rc<Params>,
         geom: Vec<Atom>,
         charge: isize,
     ) -> Self {
@@ -307,11 +311,11 @@ mod tests {
         ];
         Mopac::new(
             String::from("/tmp/test"),
-            Params::from(
+            Rc::new(Params::from(
                 names.iter().map(|s| s.to_string()).collect(),
                 atoms.iter().map(|s| s.to_string()).collect(),
                 values,
-            ),
+            )),
             Vec::new(),
             0,
         )
@@ -364,7 +368,7 @@ HSP            C      0.717322000000
         // success
         let mp = Mopac::new(
             String::from("test_files/job"),
-            Params::default(),
+            Rc::new(Params::default()),
             Vec::new(),
             0,
         );
@@ -379,7 +383,7 @@ HSP            C      0.717322000000
         // failure in output
         let mp = Mopac::new(
             String::from("test_files/nojob"),
-            Params::default(),
+            Rc::new(Params::default()),
             Vec::new(),
             0,
         );
@@ -389,7 +393,7 @@ HSP            C      0.717322000000
         // failure in aux
         let mp = Mopac::new(
             String::from("test_files/noaux"),
-            Params::default(),
+            Rc::new(Params::default()),
             Vec::new(),
             0,
         );

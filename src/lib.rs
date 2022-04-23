@@ -3,6 +3,7 @@ use std::{
     fs::File,
     io::BufReader,
     io::{BufRead, Write},
+    rc::Rc,
 };
 
 use nalgebra as na;
@@ -176,6 +177,7 @@ pub fn build_jobs(
     let mut count: usize = start_index;
     let mut job_num = job_num;
     let mut jobs = Vec::new();
+    let params = Rc::new(params.clone());
     for mol in moles {
         let filename = format!("inp/job.{:08}", job_num);
         job_num += 1;

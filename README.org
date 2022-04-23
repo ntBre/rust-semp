@@ -9,7 +9,8 @@
   | b7565eb | 2m26.295s |          |
   | de7888e | 2m26.897s |          |
   | 1209365 | 2m25.366s |          |
-  |         | 2m20.006s | 1.6MB    |
+  | 130766f | 2m20.006s | 1.6MB    |
+  |         | 2m24.663s | 565.2kB  |
 
 * Notes
   this time write input as needed, not all at once. the first three all need to

@@ -137,20 +137,24 @@ where
     fn resubmit(&self, filename: &str) -> Resubmit {
         let path = Path::new(filename);
         let dir = path.parent().unwrap().to_str().unwrap();
-        let ext = path.extension().unwrap().to_str().unwrap();
         let base = path.file_stem().unwrap().to_str().unwrap();
-        let inp_file = format!("{}/{}_redo.{}", dir, base, ext);
-        match std::fs::copy(filename, &inp_file) {
-            Ok(_) => (),
-            Err(e) => {
-                panic!("failed to copy {filename} to {inp_file} with `{e}`")
-            }
-        };
+        {
+            let ext = path.extension().unwrap().to_str().unwrap();
+            let inp_file = format!("{}/{}_redo.{}", dir, base, ext);
+            match std::fs::copy(filename, &inp_file) {
+                Ok(_) => (),
+                Err(e) => {
+                    panic!("failed to copy {filename} to {inp_file} with `{e}`")
+                }
+            };
+        }
+        // nothing but the copy needs the name with extension
+        let inp_name = format!("{}/{}_redo", dir, base);
         let pbs_file = format!("{}/{}_redo.{}", dir, base, Self::SCRIPT_EXT);
-        self.write_submit_script(&[inp_file.clone()], &pbs_file);
+        self.write_submit_script(&[inp_name.clone()], &pbs_file);
         let job_id = self.submit(&pbs_file);
         Resubmit {
-            inp_file: format!("{}/{}_redo", dir, base),
+            inp_file: inp_name,
             pbs_file,
             job_id,
         }

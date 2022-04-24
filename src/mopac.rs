@@ -470,7 +470,7 @@ HSP            C      0.717322000000
         let want = queue::Resubmit {
             inp_file: String::from("/tmp/job_redo"),
             pbs_file: String::from("/tmp/job_redo.pbs"),
-            job_id: String::from("/tmp/job_redo.mop"),
+            job_id: String::from("/tmp/job_redo"),
         };
         assert_eq!(got, want);
 

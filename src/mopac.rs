@@ -468,7 +468,7 @@ HSP            C      0.717322000000
             read_to_string("/tmp/job_redo.mop").unwrap()
         );
         let want = queue::Resubmit {
-            inp_file: String::from("/tmp/job_redo.mop"),
+            inp_file: String::from("/tmp/job_redo"),
             pbs_file: String::from("/tmp/job_redo.pbs"),
             job_id: String::from("/tmp/job_redo.mop"),
         };

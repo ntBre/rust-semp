@@ -150,7 +150,7 @@ where
         self.write_submit_script(&[inp_file.clone()], &pbs_file);
         let job_id = self.submit(&pbs_file);
         Resubmit {
-            inp_file,
+            inp_file: format!("{}/{}_redo", dir, base),
             pbs_file,
             job_id,
         }

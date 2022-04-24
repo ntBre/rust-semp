@@ -251,7 +251,7 @@ where
                         // just overwrite the existing job with the resubmitted
                         // version
                         if !qstat.contains(&job.job_id) {
-                            println!(
+                            eprintln!(
                                 "resubmitting {} for {:?}",
                                 job.program.filename(),
                                 e

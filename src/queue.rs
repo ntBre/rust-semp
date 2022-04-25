@@ -201,7 +201,6 @@ where
     }
 
     fn drain(&self, jobs: &mut Vec<Job<P>>, dst: &mut [f64]) {
-        let total_jobs = jobs.len();
         let mut chunk_num: usize = 0;
         let mut cur_jobs = Vec::new();
         let mut slurm_jobs = HashMap::new();
@@ -212,7 +211,7 @@ where
         let mut out_of_jobs = false;
         setup();
         loop {
-            let mut finished = 0;
+	    // build more jobs if there is room
             while cur_jobs.len() < self.job_limit() {
                 match chunks.next() {
                     Some(jobs) => {
@@ -232,6 +231,7 @@ where
                 }
             }
             // collect output
+            let mut finished = 0;
             let mut to_remove = Vec::new();
             for (i, job) in cur_jobs.iter_mut().enumerate() {
                 match job.program.read_output() {
@@ -305,7 +305,7 @@ where
                 thread::sleep(time::Duration::from_secs(
                     self.sleep_int() as u64
                 ));
-            } else if finished > total_jobs / 20 {
+            } else if finished > remaining / 10 {
                 eprintln!("{} jobs remaining", remaining);
             }
         }

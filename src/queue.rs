@@ -201,6 +201,7 @@ where
     }
 
     fn drain(&self, jobs: &mut Vec<Job<P>>, dst: &mut [f64]) {
+        let total_jobs = jobs.len();
         let mut chunk_num: usize = 0;
         let mut cur_jobs = Vec::new();
         let mut slurm_jobs = HashMap::new();
@@ -241,9 +242,18 @@ where
                         finished += 1;
                         remaining -= 1;
                         let job_name = job.pbs_file.as_str();
-                        let count = slurm_jobs.get_mut(job_name).unwrap();
-                        *count -= 1;
-                        if *count == 0 {
+                        let mut count = match slurm_jobs.get_mut(job_name) {
+                            Some(n) => *n,
+                            None => {
+                                eprintln!(
+                                    "failed to find {} in slurm_jobs",
+                                    job_name
+                                );
+                                1
+                            }
+                        };
+                        count -= 1;
+                        if count == 0 {
                             // delete the submit script
                             dump.add(vec![
                                 job_name.to_string(),
@@ -271,7 +281,8 @@ where
                                 job_id,
                             } = self.resubmit(&resub);
                             job.program.set_filename(&inp_file);
-                            job.pbs_file = pbs_file;
+                            job.pbs_file = pbs_file.clone();
+                            slurm_jobs.insert(pbs_file, 1);
                             qstat.insert(job_id.clone());
                             job.job_id = job_id;
                         }
@@ -294,6 +305,8 @@ where
                 thread::sleep(time::Duration::from_secs(
                     self.sleep_int() as u64
                 ));
+            } else if finished > total_jobs / 20 {
+                eprintln!("{} jobs remaining", remaining);
             }
         }
     }

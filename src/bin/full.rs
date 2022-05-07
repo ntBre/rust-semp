@@ -1,4 +1,5 @@
 use rust_semp::local::LocalQueue;
+use rust_semp::optimize::energy::Energy;
 use rust_semp::*;
 
 fn main() {
@@ -13,5 +14,6 @@ fn main() {
         5,
         LocalQueue,
         0,
+        Energy,
     );
 }

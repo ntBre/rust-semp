@@ -1,6 +1,14 @@
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug, PartialEq)]
+pub enum Protocol {
+    #[serde(alias = "energy")]
+    Energy,
+    #[serde(alias = "frequency")]
+    Frequency,
+}
+
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct Config {
     /// The maximum number of jobs that should be written/submitted to the Queue
     /// at one time.
@@ -29,6 +37,8 @@ pub struct Config {
     /// charge on the molecule. 0 for neutral, +1 for cation, -1 for anion, and
     /// so on
     pub charge: isize,
+    /// the values to base the optimization on. energy or frequency
+    pub optimize: Protocol,
 }
 
 impl Config {
@@ -76,6 +86,7 @@ FN11       C      0.046302000000
             broyden: false,
             broyd_int: 10,
             charge: 0,
+            optimize: Protocol::Energy,
         };
         assert_eq!(got, want);
     }

@@ -12,17 +12,17 @@ use mopac::{Mopac, Params};
 use queue::{Job, Queue};
 use stats::Stats;
 
+use crate::optimize::Optimize;
+
 pub mod config;
 pub mod dump;
 pub mod local;
 pub mod mopac;
+pub mod optimize;
 pub mod queue;
 pub mod slurm;
 pub mod stats;
 
-static DELTA: f64 = 1e-8;
-static DELTA_FWD: f64 = 5e7; // 1 / 2Δ
-static DELTA_BWD: f64 = -5e7; // -1 / 2Δ
 static DEBUG: bool = false;
 /// convergence threshold for the change in the norm, rmsd, and max
 const DCONV_THRSH: f64 = 1e-5;
@@ -192,61 +192,6 @@ pub fn build_jobs(
     jobs
 }
 
-/// compute the semi-empirical energies of `moles` for the given `params`
-pub fn semi_empirical<Q: Queue<Mopac>>(
-    moles: &Vec<Rc<Vec<Atom>>>,
-    params: &Params,
-    submitter: &Q,
-    charge: isize,
-) -> na::DVector<f64> {
-    let mut jobs = build_jobs(moles, params, 0, 1.0, 0, charge);
-    let mut got = vec![0.0; jobs.len()];
-    submitter.drain(&mut jobs, &mut got);
-    na::DVector::from(got)
-}
-
-/// Compute the numerical Jacobian for the geomeries in `moles` and the
-/// parameters in `params`. For convenience of indexing, the transpose is
-/// actually computed and returned
-pub fn num_jac<Q: Queue<Mopac>>(
-    moles: &Vec<Rc<Vec<Atom>>>,
-    params: &Params,
-    submitter: &Q,
-    charge: isize,
-) -> na::DMatrix<f64> {
-    let rows = params.values.len();
-    let cols = moles.len();
-    let mut jac_t = vec![0.; rows * cols];
-    // front and back for each row and col
-    let mut jobs = Vec::with_capacity(2 * rows * cols);
-    let mut job_num = 0;
-    for row in 0..rows {
-        // loop over params
-        let mut pf = params.clone();
-        let mut pb = params.clone();
-        let idx = row * cols;
-        pf.values[row] += DELTA;
-        let mut fwd_jobs =
-            build_jobs(&moles, &pf, idx, DELTA_FWD, job_num, charge);
-        job_num += fwd_jobs.len();
-        jobs.append(&mut fwd_jobs);
-
-        pb.values[row] -= DELTA;
-        let mut bwd_jobs =
-            build_jobs(&moles, &pb, idx, DELTA_BWD, job_num, charge);
-        job_num += bwd_jobs.len();
-        jobs.append(&mut bwd_jobs);
-    }
-    if DEBUG {
-        eprintln!("num_jac: running {} jobs", jobs.len());
-    }
-    submitter.drain(&mut jobs, &mut jac_t);
-    // nalgebra does from_vec in col-major order, so lead with cols and I get
-    // jac_t_t or jac back
-    let jac = na::DMatrix::from_vec(cols, rows, jac_t);
-    jac
-}
-
 /// Solve (JᵀJ + λI)δ = Jᵀ[y - f(β)] for δ. y is the vector of "true" training
 /// energies, and f(β) represents the current semi-empirical energies.
 pub fn lev_mar(
@@ -348,7 +293,7 @@ fn log_params<W: Write>(w: &mut W, iter: usize, params: &Params) {
     let _ = writeln!(w, "{}", params.to_string());
 }
 
-pub fn run_algo<Q: Queue<Mopac>, W: Write>(
+pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
     param_log: &mut W,
     atom_names: Vec<String>,
     geom_file: &str,
@@ -359,13 +304,14 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
     broyd_int: usize,
     queue: Q,
     charge: isize,
+    optimizer: O,
 ) -> Stats {
     let moles = load_geoms(geom_file, &atom_names);
     let mut params = params.clone();
     log_params(param_log, 0, &params);
     let ai = load_energies(energy_file);
     // initial semi-empirical energies and stats
-    let mut se = relative(&semi_empirical(&moles, &params, &queue, charge));
+    let mut se = optimizer.semi_empirical(&moles, &params, &queue, charge);
     let mut old_se = se.clone();
     let mut stats = Stats::new(&ai, &se);
     let mut last_stats = Stats::default();
@@ -381,7 +327,7 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
     let mut in_broyden = false;
     let mut need_num_jac = false;
     let mut start = std::time::SystemTime::now();
-    let mut jac = num_jac(&moles, &params, &queue, charge);
+    let mut jac = optimizer.num_jac(&moles, &params, &queue, charge);
     // have to "initialize" this to satisfy compiler, but any use should panic
     // since it has zero length
     let mut step = na::DVector::from(vec![]);
@@ -399,7 +345,7 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
             in_broyden = false;
             need_num_jac = false;
             start = std::time::SystemTime::now();
-            jac = num_jac(&moles, &params, &queue, charge);
+            jac = optimizer.num_jac(&moles, &params, &queue, charge);
         } // else (first iteration) use jac from outside loop
         let lambda_init = lambda;
 
@@ -412,7 +358,7 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
             &params.values + &step,
         );
         let mut new_se =
-            relative(&semi_empirical(&moles, &try_params, &queue, charge));
+            optimizer.semi_empirical(&moles, &try_params, &queue, charge);
         stats = Stats::new(&ai, &new_se);
 
         // cases ii. and iii. from Marquardt63; first iteration is case ii.
@@ -437,7 +383,7 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
                 &params.values + &step,
             );
             new_se =
-                relative(&semi_empirical(&moles, &try_params, &queue, charge));
+                optimizer.semi_empirical(&moles, &try_params, &queue, charge);
             stats = Stats::new(&ai, &new_se);
 
             i += 1;
@@ -468,7 +414,7 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
                 &params.values + k * &step,
             );
             new_se =
-                relative(&semi_empirical(&moles, &try_params, &queue, charge));
+                optimizer.semi_empirical(&moles, &try_params, &queue, charge);
             stats = Stats::new(&ai, &new_se);
 
             if stats.norm - last_stats.norm > dnorm {
@@ -518,7 +464,9 @@ pub fn run_algo<Q: Queue<Mopac>, W: Write>(
 mod tests {
     use std::{fs, ops::Deref};
 
-    use crate::{local::LocalQueue, slurm::Slurm, stats::Stats};
+    use crate::{
+        local::LocalQueue, optimize::energy::Energy, slurm::Slurm, stats::Stats,
+    };
 
     use super::*;
 
@@ -678,11 +626,11 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let moles = load_geoms("test_files/three07", &names);
         let params = load_params("test_files/params.dat");
         let want = na::DVector::from(vec![
-            0.20374485388911504,
-            0.20541305733965845,
-            0.20511337069030972,
+            0.0,
+            0.0016682034505434151,
+            0.0013685168011946802,
         ]);
-        let got = semi_empirical(&moles, &params, &LocalQueue, 0);
+        let got = Energy.semi_empirical(&moles, &params, &LocalQueue, 0);
         let eps = 1e-14;
         assert!(comp_dvec(got, want, eps));
     }
@@ -759,7 +707,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             let moles = load_geoms("test_files/small07", &names);
             let params = load_params("test_files/small.params");
             let want = load_mat("test_files/small.jac");
-            let got = num_jac(&moles, &params, &LocalQueue, 0);
+            let got = Energy.num_jac(&moles, &params, &LocalQueue, 0);
             assert!(comp_mat(got, want, 1e-5));
         }
         {
@@ -767,7 +715,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             let moles = load_geoms("test_files/three07", &names);
             let params = load_params("test_files/three.params");
             let want = load_mat("test_files/three.jac");
-            let got = num_jac(&moles, &params, &LocalQueue, 0);
+            let got = Energy.num_jac(&moles, &params, &LocalQueue, 0);
             assert!(comp_mat(
                 got,
                 want,
@@ -954,6 +902,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             5,
             queue,
             0,
+            Energy,
         );
         assert_eq!(got, want);
     }

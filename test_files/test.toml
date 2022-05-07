@@ -24,3 +24,4 @@ FN11       C      0.046302000000
 broyden = false
 broyd_int = 10
 charge = 0
+optimize = "energy"

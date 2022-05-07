@@ -2,6 +2,8 @@ use std::fs::File;
 use std::os::unix::io::AsRawFd;
 
 use rust_semp::config::Config;
+use rust_semp::optimize::energy::Energy;
+use rust_semp::optimize::frequency::Frequency;
 use rust_semp::slurm::Slurm;
 use rust_semp::*;
 
@@ -26,16 +28,37 @@ fn main() {
     let queue = Slurm::new(conf.chunk_size, conf.job_limit, conf.sleep_int);
     let mut param_log = File::create("params.log")
         .expect("failed to create parameter log file");
-    run_algo(
-        &mut param_log,
-        conf.atom_names,
-        "file07",
-        parse_params(&conf.params),
-        "rel.dat",
-        conf.max_iter,
-        conf.broyden,
-        conf.broyd_int,
-        queue,
-        conf.charge,
-    );
+    match conf.optimize {
+        config::Protocol::Energy => {
+            run_algo(
+                &mut param_log,
+                conf.atom_names,
+                "file07",
+                parse_params(&conf.params),
+                "rel.dat",
+                conf.max_iter,
+                conf.broyden,
+                conf.broyd_int,
+                queue,
+                conf.charge,
+                Energy,
+            );
+        }
+        config::Protocol::Frequency => {
+	    // TODO load intder, anpass, and spectro to prepare Frequency
+            run_algo(
+                &mut param_log,
+                conf.atom_names,
+                "file07",
+                parse_params(&conf.params),
+                "rel.dat",
+                conf.max_iter,
+                conf.broyden,
+                conf.broyd_int,
+                queue,
+                conf.charge,
+                Frequency,
+            );
+        }
+    }
 }

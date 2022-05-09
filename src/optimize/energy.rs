@@ -1,9 +1,8 @@
-use crate::{
-    build_jobs,
-    mopac::{Mopac, Params},
-    queue::Queue,
-    relative, Atom, DEBUG, setup, takedown,
-};
+use psqs::atom::Atom;
+use psqs::program::mopac::{Mopac, Params};
+use psqs::queue::Queue;
+
+use crate::{build_jobs, relative, setup, takedown, DEBUG};
 use nalgebra as na;
 use std::rc::Rc;
 
@@ -26,9 +25,9 @@ impl Optimize for Energy {
     ) -> na::DVector<f64> {
         let mut jobs = build_jobs(moles, params, 0, 1.0, 0, charge);
         let mut got = vec![0.0; jobs.len()];
-	setup();
+        setup();
         submitter.drain(&mut jobs, &mut got);
-	takedown();
+        takedown();
         relative(&na::DVector::from(got))
     }
 
@@ -68,9 +67,9 @@ impl Optimize for Energy {
         if DEBUG {
             eprintln!("num_jac: running {} jobs", jobs.len());
         }
-	setup();
+        setup();
         submitter.drain(&mut jobs, &mut jac_t);
-	takedown();
+        takedown();
         // nalgebra does from_vec in col-major order, so lead with cols and I get
         // jac_t_t or jac back
         let jac = na::DMatrix::from_vec(cols, rows, jac_t);

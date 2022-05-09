@@ -1,10 +1,10 @@
 use std::fs::File;
 use std::os::unix::io::AsRawFd;
 
+use psqs::queue::slurm::Slurm;
 use rust_semp::config::Config;
 use rust_semp::optimize::energy::Energy;
 use rust_semp::optimize::frequency::Frequency;
-use rust_semp::slurm::Slurm;
 use rust_semp::*;
 
 fn main() {
@@ -45,7 +45,7 @@ fn main() {
             );
         }
         config::Protocol::Frequency => {
-	    // TODO load intder, anpass, and spectro to prepare Frequency
+            // TODO load intder, anpass, and spectro to prepare Frequency
             run_algo(
                 &mut param_log,
                 conf.atom_names,

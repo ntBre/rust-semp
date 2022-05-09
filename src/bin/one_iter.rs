@@ -1,5 +1,5 @@
-use rust_semp::local::LocalQueue;
-use rust_semp::queue::Queue;
+use psqs::queue::Queue;
+use psqs::queue::local::LocalQueue;
 use rust_semp::*;
 
 fn main() {

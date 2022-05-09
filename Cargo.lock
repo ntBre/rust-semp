@@ -120,6 +120,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "psqs"
+version = "0.1.0"
+dependencies = [
+ "nalgebra",
+]
+
+[[package]]
 name = "quote"
 version = "1.0.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -140,6 +147,7 @@ version = "0.1.0"
 dependencies = [
  "libc",
  "nalgebra",
+ "psqs",
  "serde",
  "toml",
 ]

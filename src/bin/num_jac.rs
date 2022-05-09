@@ -1,4 +1,4 @@
-use crate::local::LocalQueue;
+use psqs::queue::local::LocalQueue;
 use rust_semp::{
     optimize::{energy::Energy, Optimize},
     *,

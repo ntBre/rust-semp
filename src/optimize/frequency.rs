@@ -1,10 +1,9 @@
 #![allow(unused)]
-use crate::{
-    build_jobs,
-    mopac::{Mopac, Params},
-    queue::Queue,
-    relative, Atom, DEBUG,
-};
+use psqs::atom::Atom;
+use psqs::program::mopac::{Mopac, Params};
+use psqs::queue::Queue;
+
+use crate::{build_jobs, relative, setup, takedown, DEBUG};
 use nalgebra as na;
 use std::rc::Rc;
 
@@ -25,7 +24,7 @@ impl Optimize for Frequency {
         submitter: &Q,
         charge: isize,
     ) -> na::DVector<f64> {
-	todo!();
+        todo!();
     }
 
     /// Compute the numerical Jacobian for the geomeries in `moles` and the
@@ -38,6 +37,6 @@ impl Optimize for Frequency {
         submitter: &Q,
         charge: isize,
     ) -> na::DMatrix<f64> {
-	todo!()
+        todo!()
     }
 }

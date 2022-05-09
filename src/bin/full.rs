@@ -1,4 +1,4 @@
-use rust_semp::local::LocalQueue;
+use psqs::queue::local::LocalQueue;
 use rust_semp::optimize::energy::Energy;
 use rust_semp::*;
 

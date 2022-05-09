@@ -9,19 +9,16 @@ use std::{
 
 use nalgebra as na;
 
-use mopac::{Mopac, Params};
-use queue::{Job, Queue};
+use psqs::atom::Atom;
+use psqs::program::mopac::{Mopac, Params};
+use psqs::program::Job;
+use psqs::queue::Queue;
 use stats::Stats;
 
 use crate::optimize::Optimize;
 
 pub mod config;
-pub mod dump;
-pub mod local;
-pub mod mopac;
 pub mod optimize;
-pub mod queue;
-pub mod slurm;
 pub mod stats;
 
 static DEBUG: bool = false;
@@ -41,39 +38,6 @@ macro_rules! string {
         // calling String::from on each:
         vec![$(String::from($str),)*] as Vec<String>
     });
-}
-
-#[derive(Debug, Clone)]
-pub struct Atom {
-    pub label: String,
-    pub coord: Vec<f64>,
-}
-
-impl Atom {
-    pub fn new(label: &str, coord: Vec<f64>) -> Self {
-        Self {
-            label: label.to_string(),
-            coord,
-        }
-    }
-}
-
-impl ToString for Atom {
-    fn to_string(&self) -> String {
-        format!(
-            "{:2} {:15.10} {:15.10} {:15.10}",
-            self.label, self.coord[0], self.coord[1], self.coord[2]
-        )
-    }
-}
-
-pub fn geom_string(geom: &Vec<Atom>) -> String {
-    use std::fmt::Write;
-    let mut ret = String::new();
-    for g in geom {
-        write!(ret, "{}\n", g.to_string()).unwrap();
-    }
-    ret
 }
 
 /// Take an INTDER-style `file07` file and parse it into a Vec of geometries
@@ -497,9 +461,9 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
 mod tests {
     use std::{fs, ops::Deref};
 
-    use crate::{
-        local::LocalQueue, optimize::energy::Energy, slurm::Slurm, stats::Stats,
-    };
+    use crate::{optimize::energy::Energy, stats::Stats};
+
+    use psqs::queue::{local::LocalQueue, slurm::Slurm};
 
     use super::*;
 

@@ -2,11 +2,9 @@ use std::rc::Rc;
 
 use nalgebra as na;
 
-use crate::{
-    mopac::{Mopac, Params},
-    queue::Queue,
-    Atom,
-};
+use psqs::program::mopac::{Mopac, Params};
+use psqs::queue::Queue;
+use psqs::atom::Atom;
 
 pub mod energy;
 pub mod frequency;

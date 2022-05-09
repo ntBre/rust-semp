@@ -2,7 +2,6 @@ use core::time;
 // this is going to make my psandqs (Ps and Qs) crate - programs and queues
 use std::{
     collections::{HashMap, HashSet},
-    fs,
     path::Path,
     process::Command,
     str, thread,
@@ -58,38 +57,6 @@ impl<P: Program> Job<P> {
     }
 }
 
-// TODO this really doesn't belong here
-static DIRS: &'static [&str] = &["inp", "tmparam"];
-
-/// set up the directories needed for the program after deleting existing ones
-pub fn setup() {
-    takedown();
-    for dir in DIRS {
-        match fs::create_dir(dir) {
-            Ok(_) => (),
-            Err(_) => {
-                eprintln!("can't create '{}'", dir);
-                std::process::exit(1);
-            }
-        }
-    }
-}
-
-// TODO don't do this if -nodel flag
-pub fn takedown() {
-    for dir in DIRS {
-        let path = Path::new(dir);
-        if path.is_dir() {
-            match fs::remove_dir_all(dir) {
-                Ok(_) => (),
-                Err(_) => {
-                    eprintln!("can't remove '{}'", dir);
-                    std::process::exit(1);
-                }
-            }
-        }
-    }
-}
 
 #[derive(PartialEq, Debug)]
 pub struct Resubmit {
@@ -209,7 +176,6 @@ where
         let mut qstat = HashSet::<String>::new();
         let mut chunks = jobs.chunks_mut(self.chunk_size());
         let mut out_of_jobs = false;
-        setup();
         loop {
 	    // build more jobs if there is room
             while cur_jobs.len() < self.job_limit() {
@@ -296,7 +262,6 @@ where
                 cur_jobs.swap_remove(i);
             }
             if cur_jobs.len() == 0 && out_of_jobs {
-                takedown();
                 return;
             }
             if finished == 0 {

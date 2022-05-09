@@ -1,8 +1,9 @@
 use std::{
     clone::Clone,
-    fs::File,
+    fs::{self, File},
     io::BufReader,
     io::{BufRead, Write},
+    path::Path,
     rc::Rc,
 };
 
@@ -139,6 +140,38 @@ pub fn load_params(filename: &str) -> Params {
         }
     };
     parse_params(&params)
+}
+
+static DIRS: &'static [&str] = &["inp", "tmparam"];
+
+/// set up the directories needed for the program after deleting existing ones
+pub fn setup() {
+    takedown();
+    for dir in DIRS {
+        match fs::create_dir(dir) {
+            Ok(_) => (),
+            Err(_) => {
+                eprintln!("can't create '{}'", dir);
+                std::process::exit(1);
+            }
+        }
+    }
+}
+
+// TODO don't do this if -nodel flag
+pub fn takedown() {
+    for dir in DIRS {
+        let path = Path::new(dir);
+        if path.is_dir() {
+            match fs::remove_dir_all(dir) {
+                Ok(_) => (),
+                Err(_) => {
+                    eprintln!("can't remove '{}'", dir);
+                    std::process::exit(1);
+                }
+            }
+        }
+    }
 }
 
 /// parse a string containing lines like:

@@ -1,5 +1,5 @@
 #![allow(unused)]
-use psqs::atom::Atom;
+use psqs::atom::Geom;
 use psqs::program::mopac::{Mopac, Params};
 use psqs::queue::Queue;
 
@@ -19,7 +19,7 @@ impl Optimize for Frequency {
     /// compute the semi-empirical energies of `moles` for the given `params`
     fn semi_empirical<Q: Queue<Mopac>>(
         &self,
-        moles: &Vec<Rc<Vec<Atom>>>,
+        moles: &Vec<Rc<Geom>>,
         params: &Params,
         submitter: &Q,
         charge: isize,
@@ -32,7 +32,7 @@ impl Optimize for Frequency {
     /// actually computed and returned
     fn num_jac<Q: Queue<Mopac>>(
         &self,
-        moles: &Vec<Rc<Vec<Atom>>>,
+        moles: &Vec<Rc<Geom>>,
         params: &Params,
         submitter: &Q,
         charge: isize,

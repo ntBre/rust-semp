@@ -9,7 +9,7 @@ use std::{
 
 use nalgebra as na;
 
-use psqs::atom::Atom;
+use psqs::atom::{Atom, Geom};
 use psqs::program::mopac::{Mopac, Params};
 use psqs::program::Job;
 use psqs::queue::Queue;
@@ -41,7 +41,7 @@ macro_rules! string {
 }
 
 /// Take an INTDER-style `file07` file and parse it into a Vec of geometries
-pub fn load_geoms(filename: &str, atom_names: &[String]) -> Vec<Rc<Vec<Atom>>> {
+pub fn load_geoms(filename: &str, atom_names: &[String]) -> Vec<Rc<Geom>> {
     let f = match File::open(filename) {
         Ok(f) => f,
         Err(e) => {
@@ -56,7 +56,7 @@ pub fn load_geoms(filename: &str, atom_names: &[String]) -> Vec<Rc<Vec<Atom>>> {
     for (i, line) in lines.map(|x| x.unwrap()).enumerate() {
         if line.contains("# GEOM") {
             if i > 0 {
-                ret.push(Rc::new(buf));
+                ret.push(Rc::new(Geom::Xyz(buf)));
                 buf = Vec::new();
                 idx = 0;
             }
@@ -72,7 +72,7 @@ pub fn load_geoms(filename: &str, atom_names: &[String]) -> Vec<Rc<Vec<Atom>>> {
         });
         idx += 1;
     }
-    ret.push(Rc::new(buf));
+    ret.push(Rc::new(Geom::Xyz(buf)));
     ret
 }
 
@@ -164,7 +164,7 @@ pub fn parse_params(params: &str) -> Params {
 /// Build the jobs described by `moles` in memory, but don't write any of their
 /// files yet
 pub fn build_jobs(
-    moles: &Vec<Rc<Vec<Atom>>>,
+    moles: &Vec<Rc<Geom>>,
     params: &Params,
     start_index: usize,
     coeff: f64,
@@ -472,27 +472,27 @@ mod tests {
         let got =
             load_geoms("test_files/three07", &string!["C", "C", "C", "H", "H"]);
         let want = vec![
-            vec![
+            Geom::Xyz(vec![
                 Atom::new("C", vec![0.0000000000, 0.0000000000, -1.6794733900]),
                 Atom::new("C", vec![0.0000000000, 1.2524327590, 0.6959098120]),
                 Atom::new("C", vec![0.0000000000, -1.2524327590, 0.6959098120]),
                 Atom::new("H", vec![0.0000000000, 3.0146272390, 1.7138963510]),
                 Atom::new("H", vec![0.0000000000, -3.0146272390, 1.7138963510]),
-            ],
-            vec![
+            ]),
+            Geom::Xyz(vec![
                 Atom::new("C", vec![0.0000000000, 0.0000000000, -1.6929508795]),
                 Atom::new("C", vec![0.0000000000, 1.2335354991, 0.6923003326]),
                 Atom::new("C", vec![0.0000000000, -1.2335354991, 0.6923003326]),
                 Atom::new("H", vec![0.0000000000, 2.9875928126, 1.7242445752]),
                 Atom::new("H", vec![0.0000000000, -2.9875928126, 1.7242445752]),
-            ],
-            vec![
+            ]),
+            Geom::Xyz(vec![
                 Atom::new("C", vec![0.0000000000, 0.0000000000, -1.6826636598]),
                 Atom::new("C", vec![0.0000000000, 1.2382598141, 0.6926064201]),
                 Atom::new("C", vec![0.0000000000, -1.2382598141, 0.6926064201]),
                 Atom::new("H", vec![0.0000000000, 2.9956906742, 1.7187948778]),
                 Atom::new("H", vec![0.0000000000, -2.9956906742, 1.7187948778]),
-            ],
+            ]),
         ];
         assert!(comp_geoms(got, want, 1e-10));
     }
@@ -514,13 +514,14 @@ mod tests {
         true
     }
 
-    fn comp_geoms<T>(got: Vec<T>, want: Vec<Vec<Atom>>, eps: f64) -> bool
+    fn comp_geoms<T>(got: Vec<T>, want: Vec<Geom>, eps: f64) -> bool
     where
-        T: Deref<Target = Vec<Atom>>,
+        T: Deref<Target = Geom>,
     {
         for (i, mol) in got.iter().enumerate() {
+            let mol = mol.xyz().unwrap();
             for (j, atom) in mol.iter().enumerate() {
-                let btom = &want[i][j];
+                let btom = &want[i].xyz().unwrap()[j];
                 if atom.label != btom.label {
                     return false;
                 }
@@ -627,7 +628,12 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             0.0016682034505434151,
             0.0013685168011946802,
         ]);
-        let got = Energy.semi_empirical(&moles, &params, &LocalQueue, 0);
+        let got = Energy.semi_empirical(
+            &moles,
+            &params,
+            &LocalQueue { dir: "inp".to_string() },
+            0,
+        );
         let eps = 1e-14;
         assert!(comp_dvec(got, want, eps));
     }
@@ -704,7 +710,8 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             let moles = load_geoms("test_files/small07", &names);
             let params = load_params("test_files/small.params");
             let want = load_mat("test_files/small.jac");
-            let got = Energy.num_jac(&moles, &params, &LocalQueue, 0);
+            let got =
+                Energy.num_jac(&moles, &params, &LocalQueue { dir: "inp".to_string() }, 0);
             assert!(comp_mat(got, want, 1e-5));
         }
         {
@@ -712,7 +719,8 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             let moles = load_geoms("test_files/three07", &names);
             let params = load_params("test_files/three.params");
             let want = load_mat("test_files/three.jac");
-            let got = Energy.num_jac(&moles, &params, &LocalQueue, 0);
+            let got =
+                Energy.num_jac(&moles, &params, &LocalQueue { dir: "inp".to_string() }, 0);
             assert!(comp_mat(
                 got,
                 want,
@@ -884,7 +892,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             }
         };
         let names = string!["C", "C", "C", "H", "H"];
-        let queue = LocalQueue;
+        let queue = LocalQueue { dir: "inp".to_string() };
         let geom_file = "test_files/small07";
         let param_file = "test_files/small.params";
         let energy_file = "test_files/25.dat";

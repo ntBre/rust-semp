@@ -179,7 +179,7 @@ pub fn build_jobs(
         let filename = format!("inp/job.{:08}", job_num);
         job_num += 1;
         let mut job = Job::new(
-            Mopac::new(filename, params.clone(), mol.clone(), charge),
+            Mopac::new(filename, Some(params.clone()), mol.clone(), charge),
             count,
         );
         job.coeff = coeff;

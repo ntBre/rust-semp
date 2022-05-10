@@ -9,10 +9,13 @@ use std::{
 
 use nalgebra as na;
 
-use psqs::atom::{Atom, Geom};
 use psqs::program::mopac::{Mopac, Params};
 use psqs::program::Job;
 use psqs::queue::Queue;
+use psqs::{
+    atom::{Atom, Geom},
+    program::Template,
+};
 use stats::Stats;
 
 use crate::optimize::Optimize;
@@ -28,6 +31,9 @@ const DCONV_THRSH: f64 = 1e-5;
 pub static LAMBDA0: f64 = 1e-8;
 pub static NU: f64 = 2.0;
 pub static MAX_TRIES: usize = 10;
+
+static MOPAC_TMPL: Template =
+    Template::from("XYZ A0 scfcrt=1.D-21 aux(precision=14) PM6");
 
 /// from [StackOverflow](https://stackoverflow.com/a/45145246)
 #[macro_export]
@@ -179,7 +185,13 @@ pub fn build_jobs(
         let filename = format!("inp/job.{:08}", job_num);
         job_num += 1;
         let mut job = Job::new(
-            Mopac::new(filename, Some(params.clone()), mol.clone(), charge),
+            Mopac::new(
+                filename,
+                Some(params.clone()),
+                mol.clone(),
+                charge,
+                &MOPAC_TMPL,
+            ),
             count,
         );
         job.coeff = coeff;
@@ -631,7 +643,9 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
         let got = Energy.semi_empirical(
             &moles,
             &params,
-            &LocalQueue { dir: "inp".to_string() },
+            &LocalQueue {
+                dir: "inp".to_string(),
+            },
             0,
         );
         let eps = 1e-14;
@@ -710,8 +724,14 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             let moles = load_geoms("test_files/small07", &names);
             let params = load_params("test_files/small.params");
             let want = load_mat("test_files/small.jac");
-            let got =
-                Energy.num_jac(&moles, &params, &LocalQueue { dir: "inp".to_string() }, 0);
+            let got = Energy.num_jac(
+                &moles,
+                &params,
+                &LocalQueue {
+                    dir: "inp".to_string(),
+                },
+                0,
+            );
             assert!(comp_mat(got, want, 1e-5));
         }
         {
@@ -719,8 +739,14 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             let moles = load_geoms("test_files/three07", &names);
             let params = load_params("test_files/three.params");
             let want = load_mat("test_files/three.jac");
-            let got =
-                Energy.num_jac(&moles, &params, &LocalQueue { dir: "inp".to_string() }, 0);
+            let got = Energy.num_jac(
+                &moles,
+                &params,
+                &LocalQueue {
+                    dir: "inp".to_string(),
+                },
+                0,
+            );
             assert!(comp_mat(
                 got,
                 want,
@@ -892,7 +918,9 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
             }
         };
         let names = string!["C", "C", "C", "H", "H"];
-        let queue = LocalQueue { dir: "inp".to_string() };
+        let queue = LocalQueue {
+            dir: "inp".to_string(),
+        };
         let geom_file = "test_files/small07";
         let param_file = "test_files/small.params";
         let energy_file = "test_files/25.dat";

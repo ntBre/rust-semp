@@ -1,6 +1,5 @@
 use psqs::atom::Geom;
 use psqs::program::mopac::{Mopac, Params};
-use psqs::program::Procedure;
 use psqs::queue::Queue;
 
 use crate::{build_jobs, relative, setup, takedown, DEBUG};
@@ -27,7 +26,7 @@ impl Optimize for Energy {
         let mut jobs = build_jobs(moles, params, 0, 1.0, 0, charge);
         let mut got = vec![0.0; jobs.len()];
         setup();
-        submitter.drain(&mut jobs, &mut got, Procedure::SinglePt);
+        submitter.drain(&mut jobs, &mut got);
         takedown();
         relative(&na::DVector::from(got))
     }
@@ -69,7 +68,7 @@ impl Optimize for Energy {
             eprintln!("num_jac: running {} jobs", jobs.len());
         }
         setup();
-        submitter.drain(&mut jobs, &mut jac_t, Procedure::SinglePt);
+        submitter.drain(&mut jobs, &mut jac_t);
         takedown();
         // nalgebra does from_vec in col-major order, so lead with cols and I get
         // jac_t_t or jac back

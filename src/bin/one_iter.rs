@@ -1,4 +1,3 @@
-use psqs::program::Procedure;
 use psqs::queue::local::LocalQueue;
 use psqs::queue::Queue;
 use rust_semp::*;
@@ -13,7 +12,7 @@ fn main() {
     LocalQueue {
         dir: "inp".to_string(),
     }
-    .drain(&mut jobs, &mut energies, Procedure::SinglePt);
+    .drain(&mut jobs, &mut energies);
     for (i, e) in energies.iter().enumerate() {
         println!("{i:5}{e:20.12}");
     }

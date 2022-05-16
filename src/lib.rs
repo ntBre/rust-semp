@@ -822,11 +822,11 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
                 },
                 0,
             );
-            assert!(comp_mat(
-                got,
-                want,
-                if hostname() == "cactus" { 3e-6 } else { 1e-8 }
-            ));
+            let tol = match hostname().as_str() {
+                "cactus" | "bonsai" => 3e-6,
+                _ => 1e-8,
+            };
+            assert!(comp_mat(got, want, tol,));
         }
     }
 
@@ -979,18 +979,22 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
     #[test]
     fn test_algo() {
         // loading everything
-        let want = if hostname() == "cactus" {
-            Stats {
+        let want = match hostname().as_str() {
+            "cactus" => Stats {
                 norm: 5.2262,
                 rmsd: 1.0452,
                 max: 2.7152,
-            }
-        } else {
-            Stats {
+            },
+            "bonsai" => Stats {
+                norm: 10.683446823854098,
+                rmsd: 2.13668936477082,
+                max: 6.088680294135415,
+            },
+            _ => Stats {
                 norm: 7.1820,
                 rmsd: 1.4364,
                 max: 3.7770,
-            }
+            },
         };
         let names = string!["C", "C", "C", "H", "H"];
         let queue = LocalQueue {

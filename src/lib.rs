@@ -12,11 +12,9 @@ use nalgebra as na;
 use psqs::program::mopac::{Mopac, Params};
 use psqs::program::Job;
 use psqs::queue::Queue;
-use psqs::{
-    atom::{Atom, Geom},
-    program::Template,
-};
+use psqs::{geom::Geom, program::Template};
 use stats::Stats;
+use symm::atom::Atom;
 
 use crate::optimize::Optimize;
 
@@ -68,14 +66,16 @@ pub fn load_geoms(filename: &str, atom_names: &[String]) -> Vec<Rc<Geom>> {
             }
             continue;
         }
-        let fields = line
+        let fields: Vec<_> = line
             .split_whitespace()
             .map(|x| x.parse::<f64>().unwrap())
             .collect();
-        buf.push(Atom {
-            label: atom_names[idx].to_string(),
-            coord: fields,
-        });
+        buf.push(Atom::new_from_label(
+            &atom_names[idx],
+            fields[0],
+            fields[1],
+            fields[2],
+        ));
         idx += 1;
     }
     ret.push(Rc::new(Geom::Xyz(buf)));
@@ -485,25 +485,100 @@ mod tests {
             load_geoms("test_files/three07", &string!["C", "C", "C", "H", "H"]);
         let want = vec![
             Geom::Xyz(vec![
-                Atom::new("C", vec![0.0000000000, 0.0000000000, -1.6794733900]),
-                Atom::new("C", vec![0.0000000000, 1.2524327590, 0.6959098120]),
-                Atom::new("C", vec![0.0000000000, -1.2524327590, 0.6959098120]),
-                Atom::new("H", vec![0.0000000000, 3.0146272390, 1.7138963510]),
-                Atom::new("H", vec![0.0000000000, -3.0146272390, 1.7138963510]),
+                Atom::new_from_label(
+                    "C",
+                    0.0000000000,
+                    0.0000000000,
+                    -1.6794733900,
+                ),
+                Atom::new_from_label(
+                    "C",
+                    0.0000000000,
+                    1.2524327590,
+                    0.6959098120,
+                ),
+                Atom::new_from_label(
+                    "C",
+                    0.0000000000,
+                    -1.2524327590,
+                    0.6959098120,
+                ),
+                Atom::new_from_label(
+                    "H",
+                    0.0000000000,
+                    3.0146272390,
+                    1.7138963510,
+                ),
+                Atom::new_from_label(
+                    "H",
+                    0.0000000000,
+                    -3.0146272390,
+                    1.7138963510,
+                ),
             ]),
             Geom::Xyz(vec![
-                Atom::new("C", vec![0.0000000000, 0.0000000000, -1.6929508795]),
-                Atom::new("C", vec![0.0000000000, 1.2335354991, 0.6923003326]),
-                Atom::new("C", vec![0.0000000000, -1.2335354991, 0.6923003326]),
-                Atom::new("H", vec![0.0000000000, 2.9875928126, 1.7242445752]),
-                Atom::new("H", vec![0.0000000000, -2.9875928126, 1.7242445752]),
+                Atom::new_from_label(
+                    "C",
+                    0.0000000000,
+                    0.0000000000,
+                    -1.6929508795,
+                ),
+                Atom::new_from_label(
+                    "C",
+                    0.0000000000,
+                    1.2335354991,
+                    0.6923003326,
+                ),
+                Atom::new_from_label(
+                    "C",
+                    0.0000000000,
+                    -1.2335354991,
+                    0.6923003326,
+                ),
+                Atom::new_from_label(
+                    "H",
+                    0.0000000000,
+                    2.9875928126,
+                    1.7242445752,
+                ),
+                Atom::new_from_label(
+                    "H",
+                    0.0000000000,
+                    -2.9875928126,
+                    1.7242445752,
+                ),
             ]),
             Geom::Xyz(vec![
-                Atom::new("C", vec![0.0000000000, 0.0000000000, -1.6826636598]),
-                Atom::new("C", vec![0.0000000000, 1.2382598141, 0.6926064201]),
-                Atom::new("C", vec![0.0000000000, -1.2382598141, 0.6926064201]),
-                Atom::new("H", vec![0.0000000000, 2.9956906742, 1.7187948778]),
-                Atom::new("H", vec![0.0000000000, -2.9956906742, 1.7187948778]),
+                Atom::new_from_label(
+                    "C",
+                    0.0000000000,
+                    0.0000000000,
+                    -1.6826636598,
+                ),
+                Atom::new_from_label(
+                    "C",
+                    0.0000000000,
+                    1.2382598141,
+                    0.6926064201,
+                ),
+                Atom::new_from_label(
+                    "C",
+                    0.0000000000,
+                    -1.2382598141,
+                    0.6926064201,
+                ),
+                Atom::new_from_label(
+                    "H",
+                    0.0000000000,
+                    2.9956906742,
+                    1.7187948778,
+                ),
+                Atom::new_from_label(
+                    "H",
+                    0.0000000000,
+                    -2.9956906742,
+                    1.7187948778,
+                ),
             ]),
         ];
         assert!(comp_geoms(got, want, 1e-10));
@@ -534,10 +609,10 @@ mod tests {
             let mol = mol.xyz().unwrap();
             for (j, atom) in mol.iter().enumerate() {
                 let btom = &want[i].xyz().unwrap()[j];
-                if atom.label != btom.label {
+                if atom.atomic_number != btom.atomic_number {
                     return false;
                 }
-                if !comp_vec(&atom.coord, &btom.coord, eps) {
+                if !comp_vec(&atom.coord(), &btom.coord(), eps) {
                     return false;
                 }
             }

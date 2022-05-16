@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use nalgebra as na;
 
-use psqs::atom::Geom;
+use psqs::geom::Geom;
 use psqs::program::mopac::{Mopac, Params};
 use psqs::queue::Queue;
 

@@ -1,4 +1,4 @@
-use psqs::atom::Geom;
+use psqs::geom::Geom;
 use psqs::program::mopac::{Mopac, Params};
 use psqs::queue::Queue;
 

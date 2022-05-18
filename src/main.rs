@@ -45,7 +45,6 @@ fn main() {
             );
         }
         config::Protocol::Frequency => {
-            // TODO load intder, anpass, and spectro to prepare Frequency
             run_algo(
                 &mut param_log,
                 conf.atom_names,
@@ -57,7 +56,11 @@ fn main() {
                 conf.broyd_int,
                 queue,
                 conf.charge,
-                Frequency,
+                Frequency {
+                    config: rust_pbqff::config::Config::load("pbqff.toml"),
+                    intder: rust_pbqff::Intder::load_file("intder.in"),
+                    spectro: rust_pbqff::Spectro::load("spectro.in"),
+                },
             );
         }
     }

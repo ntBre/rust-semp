@@ -44,6 +44,13 @@ fn main() {
                 Energy,
             );
         }
+        // requirements for a Frequency calculation:
+        // 1. pbqff input file called `pbqff.toml`
+        // 2. intder template called `intder.in`
+        // 3. spectro template called `spectro.in`
+        // 4. optimize = "frequency" in `semp.toml`
+        // 5. "true" frequencies in rel.dat
+        // 6. an empty `file07`
         config::Protocol::Frequency => {
             run_algo(
                 &mut param_log,

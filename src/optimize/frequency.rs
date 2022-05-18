@@ -1,7 +1,7 @@
 #![allow(unused)]
 use psqs::geom::Geom;
 use psqs::program::mopac::{Mopac, Params};
-use psqs::program::Job;
+use psqs::program::{Job, Template};
 use psqs::queue::Queue;
 
 use crate::{build_jobs, relative, setup, takedown, DEBUG, MOPAC_TMPL};
@@ -23,8 +23,11 @@ pub struct Frequency {
 pub fn optimize_geometry<Q: Queue<Mopac>>(geom: Geom, queue: &Q) -> Geom {
     // TODO handle error
     let _ = std::fs::create_dir("opt");
+
+    static OPT_TMPL: Template =
+        Template::from("scfcrt=1.D-21 aux(precision=14) PM6");
     let opt = Job::new(
-        Mopac::new("opt/opt".to_string(), None, Rc::new(geom), 0, &MOPAC_TMPL),
+        Mopac::new("opt/opt".to_string(), None, Rc::new(geom), 0, &OPT_TMPL),
         0,
     );
     queue.optimize(opt)
@@ -41,6 +44,7 @@ impl Optimize for Frequency {
     ) -> na::DVector<f64> {
         let mut intder = self.intder.clone();
         // optimize
+        setup(); // setup because submitter tries to write in inp, not opt
         let geom = optimize_geometry(self.config.geometry.clone(), submitter);
         // generate pts == moles
         let (moles, taylor, taylor_disps, atomic_numbers) =
@@ -49,26 +53,23 @@ impl Optimize for Frequency {
         let mut jobs = build_jobs(&moles, params, 0, 1.0, 0, charge);
         let mut energies = vec![0.0; jobs.len()];
         // drain to get energies
-        setup();
         submitter.drain(&mut jobs, &mut energies);
         takedown();
         // convert energies to frequencies and return those
-        println!(
-            "{}",
-            na::DVector::from(
-                rust_pbqff::freqs(
-                    energies,
-                    &mut intder,
-                    &taylor,
-                    &taylor_disps,
-                    &atomic_numbers,
-                    &self.spectro,
-                    &self.config.spectro,
-                )
-                .corr,
+        na::DVector::from(
+            rust_pbqff::freqs(
+                energies,
+                &mut intder,
+                &taylor,
+                &taylor_disps,
+                &atomic_numbers,
+                &self.spectro,
+                &self.config.gspectro_cmd,
+                &self.config.spectro_cmd,
+                &self.config.summary_cmd,
             )
-        );
-        todo!()
+            .corr,
+        )
     }
 
     /// Compute the numerical Jacobian for the geomeries in `moles` and the

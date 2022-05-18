@@ -41,7 +41,7 @@ impl Optimize for Frequency {
     ) -> na::DVector<f64> {
         let mut intder = self.intder.clone();
         // optimize
-        let geom = optimize_geometry(self.config.geometry, submitter);
+        let geom = optimize_geometry(self.config.geometry.clone(), submitter);
         // generate pts == moles
         let (moles, taylor, taylor_disps, atomic_numbers) =
             rust_pbqff::generate_pts(geom, &mut intder);

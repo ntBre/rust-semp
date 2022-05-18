@@ -318,6 +318,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
     charge: isize,
     optimizer: O,
 ) -> Stats {
+    let conv = optimizer.stat_multiplier();
     let moles = load_geoms(geom_file, &atom_names);
     let mut params = params.clone();
     log_params(param_log, 0, &params);
@@ -325,7 +326,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
     // initial semi-empirical energies and stats
     let mut se = optimizer.semi_empirical(&moles, &params, &queue, charge);
     let mut old_se = se.clone();
-    let mut stats = Stats::new(&ai, &se);
+    let mut stats = Stats::new(&ai, &se, conv);
     let mut last_stats = Stats::default();
     Stats::print_header();
     stats.print_step(0, &last_stats, 0);
@@ -371,7 +372,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
         );
         let mut new_se =
             optimizer.semi_empirical(&moles, &try_params, &queue, charge);
-        stats = Stats::new(&ai, &new_se);
+        stats = Stats::new(&ai, &new_se, conv);
 
         // cases ii. and iii. from Marquardt63; first iteration is case ii.
         // increase λ*ν until the norm improves or we hit MAX_TRIES or Δnorm
@@ -396,7 +397,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
             );
             new_se =
                 optimizer.semi_empirical(&moles, &try_params, &queue, charge);
-            stats = Stats::new(&ai, &new_se);
+            stats = Stats::new(&ai, &new_se, conv);
 
             i += 1;
             if stats.norm - last_stats.norm > dnorm || i > MAX_TRIES {
@@ -427,7 +428,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
             );
             new_se =
                 optimizer.semi_empirical(&moles, &try_params, &queue, charge);
-            stats = Stats::new(&ai, &new_se);
+            stats = Stats::new(&ai, &new_se, conv);
 
             if stats.norm - last_stats.norm > dnorm {
                 break;

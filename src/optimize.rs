@@ -25,4 +25,6 @@ pub trait Optimize {
         submitter: &Q,
         charge: isize,
     ) -> na::DMatrix<f64>;
+
+    fn stat_multiplier(&self) -> f64;
 }

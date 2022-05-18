@@ -75,4 +75,9 @@ impl Optimize for Energy {
         let jac = na::DMatrix::from_vec(cols, rows, jac_t);
         jac
     }
+
+    fn stat_multiplier(&self) -> f64 {
+        static HT_TO_CM: f64 = 219_474.5459784;
+        HT_TO_CM
+    }
 }

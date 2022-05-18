@@ -360,6 +360,11 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
             start = std::time::SystemTime::now();
             jac = optimizer.num_jac(&moles, &params, &queue, charge);
         } // else (first iteration) use jac from outside loop
+
+        if DEBUG {
+            eprintln!("{:8.3e}", jac);
+        }
+
         let lambda_init = lambda;
 
         // first try with λ/ν

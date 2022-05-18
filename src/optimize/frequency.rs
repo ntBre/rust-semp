@@ -10,9 +10,7 @@ use std::rc::Rc;
 
 use super::Optimize;
 
-static DELTA: f64 = 1e-8;
-static DELTA_FWD: f64 = 5e7; // 1 / 2Δ
-static DELTA_BWD: f64 = -5e7; // -1 / 2Δ
+static DELTA: f64 = 1e-4;
 
 pub struct Frequency {
     pub config: rust_pbqff::config::Config,

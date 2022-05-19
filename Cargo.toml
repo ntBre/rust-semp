@@ -14,6 +14,9 @@ psqs = { path = "/home/brent/Projects/psqs" }
 symm = { path = "/home/brent/Projects/symm" }
 rust-pbqff = { path = "/home/brent/Projects/rust-pbqff" }
 
+[dev-dependencies]
+approx = "0.5.1"
+
 [[bin]]
 name = "one_iter"
 

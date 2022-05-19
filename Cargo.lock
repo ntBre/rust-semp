@@ -204,7 +204,6 @@ dependencies = [
 name = "rust-pbqff"
 version = "0.1.0"
 dependencies = [
- "approx",
  "intder",
  "nalgebra",
  "psqs",
@@ -222,6 +221,7 @@ dependencies = [
 name = "rust-semp"
 version = "0.1.0"
 dependencies = [
+ "approx",
  "libc",
  "nalgebra",
  "psqs",

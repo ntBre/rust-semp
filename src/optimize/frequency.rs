@@ -1,10 +1,9 @@
-#![allow(unused)]
 use psqs::geom::Geom;
 use psqs::program::mopac::{Mopac, Params};
 use psqs::program::{Job, Template};
 use psqs::queue::Queue;
 
-use crate::{build_jobs, relative, setup, takedown, DEBUG, MOPAC_TMPL};
+use crate::{build_jobs, setup, takedown};
 use nalgebra as na;
 use std::rc::Rc;
 

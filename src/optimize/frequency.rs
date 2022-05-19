@@ -77,7 +77,6 @@ impl Optimize for Frequency {
                 &self.spectro,
                 &self.config.gspectro_cmd,
                 &self.config.spectro_cmd,
-                &self.config.summary_cmd,
             )
             .corr,
         );

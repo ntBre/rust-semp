@@ -1,6 +1,9 @@
 use std::{fs, ops::Deref};
 
-use crate::{optimize::energy::Energy, stats::Stats};
+use crate::{
+    optimize::{energy::Energy, frequency::Frequency},
+    stats::Stats,
+};
 
 use psqs::queue::{local::LocalQueue, slurm::Slurm};
 
@@ -224,6 +227,9 @@ fn test_one_iter() {
     assert!(comp_dvec(got, want, eps));
 }
 
+/// load a matrix from a file. each line becomes a row in the resulting matrix.
+/// NOTE: assumes the rows are numbered, so it skips the first field of each
+/// line
 fn load_mat(filename: &str) -> na::DMatrix<f64> {
     let f = match File::open(filename) {
         Ok(f) => f,
@@ -500,4 +506,47 @@ fn test_algo() {
         Energy,
     );
     assert_eq!(got, want);
+}
+
+#[test]
+#[ignore]
+fn freq_num_jac() {
+    // this test takes 23 minutes with the current implementation at work
+    let freq = Frequency {
+        config: rust_pbqff::config::Config::load("test_files/pbqff.toml"),
+        intder: rust_pbqff::Intder::load_file("test_files/intder.in"),
+        spectro: rust_pbqff::Spectro::load("test_files/spectro.in"),
+    };
+    setup();
+    let queue = LocalQueue {
+        dir: "inp".to_string(),
+    };
+    let got = freq.num_jac(
+        &Vec::new(),
+        &"USS            H    -11.246958000000
+    ZS             H      1.268641000000
+    BETAS          H     -8.352984000000
+    GSS            H     14.448686000000
+    USS            C    -51.089653000000
+    UPP            C    -39.937920000000
+    ZS             C      2.047558000000
+    ZP             C      1.702841000000
+    BETAS          C    -15.385236000000
+    BETAP          C     -7.471929000000
+    GSS            C     13.335519000000
+    GPP            C     10.778326000000
+    GSP            C     11.528134000000
+    GP2            C      9.486212000000
+    HSP            C      0.717322000000
+    FN11           C      0.046302000000"
+            .parse()
+            .unwrap(),
+        &queue,
+        0,
+    );
+    let want = load_mat("test_files/freq.jac");
+    // this should agree to 1e-12 depending on the computer I guess, I printed
+    // `got` to 12 decimal places when obtaining the `want` value
+    approx::assert_abs_diff_eq!(got, want, epsilon = 1e-12,);
+    takedown();
 }

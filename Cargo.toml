@@ -12,6 +12,7 @@ toml = "0.5.8"
 serde = { version = "1.0", features = ["derive"] }
 psqs = { path = "/home/brent/Projects/psqs" }
 symm = { path = "/home/brent/Projects/symm" }
+taylor = { path = "/home/brent/Projects/taylor" }
 rust-pbqff = { path = "/home/brent/Projects/rust-pbqff" }
 
 [dev-dependencies]

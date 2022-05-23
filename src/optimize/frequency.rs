@@ -41,6 +41,37 @@ pub fn optimize_geometry<Q: Queue<Mopac>>(
     queue.optimize(opt)
 }
 
+impl Frequency {
+    fn build_jobs<Q: Queue<Mopac>>(
+        &self,
+        params: &Params,
+	start_index: usize,
+        submitter: &Q,
+        charge: isize,
+    ) -> (
+        rust_pbqff::Intder,
+        taylor::Taylor,
+        Vec<Vec<isize>>,
+        Vec<usize>,
+        Vec<Job<Mopac>>,
+    ) {
+        let mut intder = self.intder.clone();
+        // optimize
+        setup();
+        // setup because submitter tries to write in inp, not opt
+        let geom =
+            optimize_geometry(self.config.geometry.clone(), params, submitter);
+        // generate pts == moles
+        let (moles, taylor, taylor_disps, atomic_numbers) =
+            rust_pbqff::generate_pts(geom, &mut intder);
+        // dir created in generate_pts but unused here
+        let _ = std::fs::remove_dir_all("pts");
+        // call build_jobs like before
+        let jobs = build_jobs(&moles, params, start_index, 1.0, 0, charge);
+        (intder, taylor, taylor_disps, atomic_numbers, jobs)
+    }
+}
+
 impl Optimize for Frequency {
     /// compute the semi-empirical energies of `moles` for the given `params`
     fn semi_empirical<Q: Queue<Mopac>>(
@@ -50,18 +81,9 @@ impl Optimize for Frequency {
         submitter: &Q,
         charge: isize,
     ) -> na::DVector<f64> {
-        let mut intder = self.intder.clone();
-        // optimize
-        setup(); // setup because submitter tries to write in inp, not opt
-        let geom =
-            optimize_geometry(self.config.geometry.clone(), params, submitter);
-        // generate pts == moles
-        let (moles, taylor, taylor_disps, atomic_numbers) =
-            rust_pbqff::generate_pts(geom, &mut intder);
-        // dir created in generate_pts but unused here
-        let _ = std::fs::remove_dir_all("pts");
-        // call build_jobs like before
-        let mut jobs = build_jobs(&moles, params, 0, 1.0, 0, charge);
+        let (mut intder, taylor, taylor_disps, atomic_numbers, mut jobs) =
+	    // start_index always zero for this
+            self.build_jobs(params, 0, submitter, charge);
         let mut energies = vec![0.0; jobs.len()];
         // drain to get energies
         submitter.drain(&mut jobs, &mut energies);

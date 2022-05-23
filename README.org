@@ -11,6 +11,16 @@
   | 130766f | 2m20.006s | 1.6MB    |
   | a5cd573 | 2m24.663s | 565.2kB  |
   | e908ef2 | 2m22.688s | 414.6kB  |
+** Frequency num_jac
+   like =Energy::num_jac=, generating all the points in advance and draining them
+   together seems to have led to a large speedup:
+   | Commit  | Best Time (sec) |
+   |---------+-----------------|
+   | ee7c41b |           327.3 |
+   | 3726677 |           199.5 |
+*** Future work
+    - run the optimizations at the same time
+    - run the frequency parts at the same time
 
 * Notes
   this time write input as needed, not all at once. the first three all need to

@@ -1,4 +1,3 @@
-static HT_TO_CM: f64 = 219_474.5459784;
 use nalgebra as na;
 
 #[derive(Debug)]
@@ -11,7 +10,7 @@ pub struct Stats {
 impl Stats {
     /// compute the Stats between `v` and `w` in cm-1 under the assumption they
     /// started out in Ht
-    pub fn new(v: &na::DVector<f64>, w: &na::DVector<f64>) -> Self {
+    pub fn new(v: &na::DVector<f64>, w: &na::DVector<f64>, conv: f64) -> Self {
         let count = v.len();
         assert_eq!(count, w.len());
         let mut sq_diffs = 0.0;
@@ -24,9 +23,9 @@ impl Stats {
             }
         }
         Self {
-            norm: sq_diffs.sqrt() * HT_TO_CM,
-            rmsd: (sq_diffs / count as f64).sqrt() * HT_TO_CM,
-            max: max * HT_TO_CM,
+            norm: sq_diffs.sqrt() * conv,
+            rmsd: (sq_diffs / count as f64).sqrt() * conv,
+            max: max * conv,
         }
     }
     pub fn print_header() {

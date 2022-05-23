@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use nalgebra as na;
 
-use psqs::atom::Geom;
+use psqs::geom::Geom;
 use psqs::program::mopac::{Mopac, Params};
 use psqs::queue::Queue;
 
@@ -25,4 +25,6 @@ pub trait Optimize {
         submitter: &Q,
         charge: isize,
     ) -> na::DMatrix<f64>;
+
+    fn stat_multiplier(&self) -> f64;
 }

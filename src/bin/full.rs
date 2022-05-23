@@ -12,7 +12,9 @@ fn main() {
         10,
         true,
         5,
-        LocalQueue{ dir: "inp".to_string() },
+        LocalQueue {
+            dir: "inp".to_string(),
+        },
         0,
         Energy,
     );

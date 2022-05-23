@@ -1,4 +1,4 @@
-use psqs::atom::Geom;
+use psqs::geom::Geom;
 use psqs::program::mopac::{Mopac, Params};
 use psqs::queue::Queue;
 
@@ -74,5 +74,10 @@ impl Optimize for Energy {
         // jac_t_t or jac back
         let jac = na::DMatrix::from_vec(cols, rows, jac_t);
         jac
+    }
+
+    fn stat_multiplier(&self) -> f64 {
+        static HT_TO_CM: f64 = 219_474.5459784;
+        HT_TO_CM
     }
 }

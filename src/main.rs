@@ -44,8 +44,14 @@ fn main() {
                 Energy,
             );
         }
+        // requirements for a Frequency calculation:
+        // 1. pbqff input file called `pbqff.toml`
+        // 2. intder template called `intder.in`
+        // 3. spectro template called `spectro.in`
+        // 4. optimize = "frequency" in `semp.toml`
+        // 5. "true" frequencies in rel.dat
+        // 6. an empty `file07`
         config::Protocol::Frequency => {
-            // TODO load intder, anpass, and spectro to prepare Frequency
             run_algo(
                 &mut param_log,
                 conf.atom_names,
@@ -57,7 +63,11 @@ fn main() {
                 conf.broyd_int,
                 queue,
                 conf.charge,
-                Frequency,
+                Frequency {
+                    config: rust_pbqff::config::Config::load("pbqff.toml"),
+                    intder: rust_pbqff::Intder::load_file("intder.in"),
+                    spectro: rust_pbqff::Spectro::load("spectro.in"),
+                },
             );
         }
     }

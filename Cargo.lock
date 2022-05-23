@@ -40,7 +40,14 @@ dependencies = [
  "nalgebra",
  "psqs",
  "regex",
+ "symm",
 ]
+
+[[package]]
+name = "itoa"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "112c678d4050afce233f4f2852bb2eb519230b3cf12f33585275537d7e41578d"
 
 [[package]]
 name = "libc"
@@ -185,12 +192,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f497285884f3fcff424ffc933e56d7cbca511def0c9831a7f9b5f6153e3cc89b"
 
 [[package]]
+name = "rust-anpass"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "nalgebra",
+ "regex",
+]
+
+[[package]]
 name = "rust-pbqff"
 version = "0.1.0"
 dependencies = [
  "intder",
+ "nalgebra",
  "psqs",
+ "rust-anpass",
  "serde",
+ "serde_json",
+ "spectro",
+ "summarize",
  "symm",
  "taylor",
  "toml",
@@ -209,6 +230,12 @@ dependencies = [
  "symm",
  "toml",
 ]
+
+[[package]]
+name = "ryu"
+version = "1.0.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f3f6f92acf49d1b98f7a81226834412ada05458b7364277387724a237f062695"
 
 [[package]]
 name = "safe_arch"
@@ -240,6 +267,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_json"
+version = "1.0.81"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9b7ce2b32a1aed03c558dc61a5cd328f15aff2dbc17daad8fb8af04d2100e15c"
+dependencies = [
+ "itoa",
+ "ryu",
+ "serde",
+]
+
+[[package]]
 name = "simba"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -251,6 +289,17 @@ dependencies = [
  "paste",
  "wide",
 ]
+
+[[package]]
+name = "spectro"
+version = "0.1.0"
+dependencies = [
+ "symm",
+]
+
+[[package]]
+name = "summarize"
+version = "0.1.0"
 
 [[package]]
 name = "symm"

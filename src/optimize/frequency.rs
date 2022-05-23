@@ -112,6 +112,9 @@ impl Optimize for Frequency {
             jac_t.extend_from_slice(
                 ((fwd_freqs - bwd_freqs) / (2. * DELTA)).as_slice(),
             );
+
+	    #[cfg(test)]
+	    eprintln!("finished row {row}");
         }
         let cols = jac_t.len() / rows;
         na::DMatrix::from_vec(cols, rows, jac_t)

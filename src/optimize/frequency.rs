@@ -41,20 +41,37 @@ pub fn optimize_geometry<Q: Queue<Mopac>>(
     queue.optimize(opt)
 }
 
+struct FreqParts {
+    intder: rust_pbqff::Intder,
+    taylor: taylor::Taylor,
+    taylor_disps: Vec<Vec<isize>>,
+    atomic_numbers: Vec<usize>,
+}
+
+impl FreqParts {
+    fn new(
+        intder: rust_pbqff::Intder,
+        taylor: taylor::Taylor,
+        taylor_disps: Vec<Vec<isize>>,
+        atomic_numbers: Vec<usize>,
+    ) -> Self {
+        Self {
+            intder,
+            taylor,
+            taylor_disps,
+            atomic_numbers,
+        }
+    }
+}
+
 impl Frequency {
     fn build_jobs<Q: Queue<Mopac>>(
         &self,
         params: &Params,
-	start_index: usize,
+        start_index: usize,
         submitter: &Q,
         charge: isize,
-    ) -> (
-        rust_pbqff::Intder,
-        taylor::Taylor,
-        Vec<Vec<isize>>,
-        Vec<usize>,
-        Vec<Job<Mopac>>,
-    ) {
+    ) -> (FreqParts, Vec<Job<Mopac>>) {
         let mut intder = self.intder.clone();
         // optimize
         setup();
@@ -68,7 +85,10 @@ impl Frequency {
         let _ = std::fs::remove_dir_all("pts");
         // call build_jobs like before
         let jobs = build_jobs(&moles, params, start_index, 1.0, 0, charge);
-        (intder, taylor, taylor_disps, atomic_numbers, jobs)
+        (
+            FreqParts::new(intder, taylor, taylor_disps, atomic_numbers),
+            jobs,
+        )
     }
 }
 
@@ -81,7 +101,7 @@ impl Optimize for Frequency {
         submitter: &Q,
         charge: isize,
     ) -> na::DVector<f64> {
-        let (mut intder, taylor, taylor_disps, atomic_numbers, mut jobs) =
+        let (mut freq, mut jobs) =
 	    // start_index always zero for this
             self.build_jobs(params, 0, submitter, charge);
         let mut energies = vec![0.0; jobs.len()];
@@ -92,10 +112,10 @@ impl Optimize for Frequency {
         let res = na::DVector::from(
             rust_pbqff::freqs(
                 energies,
-                &mut intder,
-                &taylor,
-                &taylor_disps,
-                &atomic_numbers,
+                &mut freq.intder,
+                &freq.taylor,
+                &freq.taylor_disps,
+                &freq.atomic_numbers,
                 &self.spectro,
                 &self.config.gspectro_cmd,
                 &self.config.spectro_cmd,

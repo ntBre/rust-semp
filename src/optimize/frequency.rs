@@ -21,16 +21,14 @@ pub fn optimize_geometry<Q: Queue<Mopac>>(
     geom: Geom,
     params: &Params,
     queue: &Q,
+    dir: &str,
+    name: &str,
 ) -> Geom {
-    // TODO handle error
-    let _ = std::fs::remove_dir_all("opt");
-    let _ = std::fs::create_dir("opt");
-
     static OPT_TMPL: Template =
         Template::from("scfcrt=1.D-21 aux(precision=14) PM6");
     let opt = Job::new(
         Mopac::new(
-            "opt/opt".to_string(),
+            format!("{}/{}", dir, name),
             Some(Rc::new(params.clone())),
             Rc::new(geom),
             0,
@@ -65,20 +63,15 @@ impl FreqParts {
 }
 
 impl Frequency {
-    fn build_jobs<Q: Queue<Mopac>>(
+    fn build_jobs(
         &self,
+        geom: Geom,
         params: &Params,
         start_index: usize,
         job_num: usize,
-        submitter: &Q,
         charge: isize,
     ) -> (FreqParts, Vec<Job<Mopac>>) {
         let mut intder = self.intder.clone();
-        // optimize
-        setup();
-        // setup because submitter tries to write in inp, not opt
-        let geom =
-            optimize_geometry(self.config.geometry.clone(), params, submitter);
         // generate pts == moles
         let (moles, taylor, taylor_disps, atomic_numbers) =
             rust_pbqff::generate_pts(geom, &mut intder);
@@ -103,12 +96,20 @@ impl Optimize for Frequency {
         submitter: &Q,
         charge: isize,
     ) -> na::DVector<f64> {
+        setup();
+        let geom = optimize_geometry(
+            self.config.geometry.clone(),
+            params,
+            submitter,
+            "inp",
+            "opt",
+        );
         // start_index and job_num always zero for this since I'm only running
         // one set of jobs at a time
-        let (mut freq, mut jobs) =
-            self.build_jobs(params, 0, 0, submitter, charge);
+        let (mut freq, mut jobs) = self.build_jobs(geom, params, 0, 0, charge);
         let mut energies = vec![0.0; jobs.len()];
         // drain to get energies
+        setup();
         submitter.drain(&mut jobs, &mut energies);
         takedown();
         // convert energies to frequencies and return those
@@ -140,7 +141,7 @@ impl Optimize for Frequency {
         submitter: &Q,
         charge: isize,
     ) -> na::DMatrix<f64> {
-	let rows = params.values.len();
+        let rows = params.values.len();
         // build all the jobs, including optimizations
         let mut idx = 0;
         let mut jobs = Vec::new();
@@ -149,17 +150,31 @@ impl Optimize for Frequency {
         for row in 0..rows {
             let mut pf = params.clone();
             pf.values[row] += DELTA;
+            setup();
+            let geom = optimize_geometry(
+                self.config.geometry.clone(),
+                &pf,
+                submitter,
+                "inp",
+                "opt",
+            );
             // idx = job_num so use it twice
-            let (freq, fwd_jobs) =
-                self.build_jobs(&pf, idx, idx, submitter, charge);
+            let (freq, fwd_jobs) = self.build_jobs(geom, &pf, idx, idx, charge);
             idx += fwd_jobs.len();
             jobs.extend(fwd_jobs);
             freqs.push(freq);
 
             let mut pb = params.clone();
             pb.values[row] -= DELTA;
-            let (freq, bwd_jobs) =
-                self.build_jobs(&pb, idx, idx, submitter, charge);
+            setup();
+            let geom = optimize_geometry(
+                self.config.geometry.clone(),
+                &pb,
+                submitter,
+                "inp",
+                "opt",
+            );
+            let (freq, bwd_jobs) = self.build_jobs(geom, &pb, idx, idx, charge);
             idx += bwd_jobs.len();
             if row == 0 {
                 // set this once
@@ -178,11 +193,11 @@ impl Optimize for Frequency {
         let mut jac_t = Vec::new();
         let mut energies = energies.chunks_exact_mut(cols);
         let mut freqs = freqs.iter_mut();
-	// TODO more parallel
+        // TODO more parallel
         for _ in 0..rows {
             // need to pull out two slices of the energies and two freqs
             let mut fwd_energies = energies.next().unwrap();
-	    let fwd_freq = freqs.next().unwrap();
+            let fwd_freq = freqs.next().unwrap();
             let fwd_freqs = na::DVector::from(
                 rust_pbqff::freqs(
                     &mut fwd_energies,
@@ -198,7 +213,7 @@ impl Optimize for Frequency {
             );
 
             let mut bwd_energies = energies.next().unwrap();
-	    let bwd_freq = freqs.next().unwrap();
+            let bwd_freq = freqs.next().unwrap();
             let bwd_freqs = na::DVector::from(
                 rust_pbqff::freqs(
                     &mut bwd_energies,

@@ -25,7 +25,7 @@ pub mod config;
 pub mod optimize;
 pub mod stats;
 
-static DEBUG: bool = false;
+static DEBUG: bool = true;
 /// convergence threshold for the change in the norm, rmsd, and max
 const DCONV_THRSH: f64 = 1e-5;
 

@@ -36,7 +36,9 @@ pub fn optimize_geometry<Q: Queue<Mopac>>(
         ),
         0,
     );
-    queue.optimize(opt)
+    let mut res = vec![Geom::default(); 1];
+    queue.optimize(&mut [opt], &mut res);
+    res.pop().unwrap()
 }
 
 struct FreqParts {
@@ -142,6 +144,48 @@ impl Optimize for Frequency {
         charge: isize,
     ) -> na::DMatrix<f64> {
         let rows = params.values.len();
+        // build all the optimizations
+        static OPT_TMPL: Template =
+            Template::from("scfcrt=1.D-21 aux(precision=14) PM6");
+        let mut opts = Vec::new();
+        for row in 0..rows {
+            // forward
+            {
+                let mut pf = params.clone();
+                pf.values[row] += DELTA;
+                opts.push(Job::new(
+                    Mopac::new(
+                        format!("inp/opt{row}_fwd"),
+                        Some(Rc::new(pf)),
+                        Rc::new(self.config.geometry.clone()),
+                        charge,
+                        &OPT_TMPL,
+                    ),
+                    2 * row,
+                ));
+            }
+
+            // backward
+            {
+                let mut pb = params.clone();
+                pb.values[row] -= DELTA;
+                opts.push(Job::new(
+                    Mopac::new(
+                        format!("inp/opt{row}_bwd"),
+                        Some(Rc::new(pb)),
+                        Rc::new(self.config.geometry.clone()),
+                        charge,
+                        &OPT_TMPL,
+                    ),
+                    2 * row + 1,
+                ));
+            }
+        }
+        setup();
+        let mut geoms = vec![Default::default(); opts.len()];
+        assert!(geoms.len() == 2 * rows);
+        submitter.optimize(&mut opts, &mut geoms);
+
         // build all the jobs, including optimizations
         let mut idx = 0;
         let mut jobs = Vec::new();
@@ -150,31 +194,22 @@ impl Optimize for Frequency {
         for row in 0..rows {
             let mut pf = params.clone();
             pf.values[row] += DELTA;
-            setup();
-            let geom = optimize_geometry(
-                self.config.geometry.clone(),
-                &pf,
-                submitter,
-                "inp",
-                "opt",
-            );
             // idx = job_num so use it twice
-            let (freq, fwd_jobs) = self.build_jobs(geom, &pf, idx, idx, charge);
+            let (freq, fwd_jobs) =
+                self.build_jobs(geoms[2 * row].clone(), &pf, idx, idx, charge);
             idx += fwd_jobs.len();
             jobs.extend(fwd_jobs);
             freqs.push(freq);
 
             let mut pb = params.clone();
             pb.values[row] -= DELTA;
-            setup();
-            let geom = optimize_geometry(
-                self.config.geometry.clone(),
+            let (freq, bwd_jobs) = self.build_jobs(
+                geoms[2 * row + 1].clone(),
                 &pb,
-                submitter,
-                "inp",
-                "opt",
+                idx,
+                idx,
+                charge,
             );
-            let (freq, bwd_jobs) = self.build_jobs(geom, &pb, idx, idx, charge);
             idx += bwd_jobs.len();
             if row == 0 {
                 // set this once

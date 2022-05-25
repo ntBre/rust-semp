@@ -225,52 +225,40 @@ impl Optimize for Frequency {
         takedown();
 
         // calculate all of the frequencies and assemble the jacobian
-        let mut jac_t = Vec::new();
-        let mut energies = energies.chunks_exact_mut(cols);
-        let mut freqs = freqs.iter_mut();
+        let energies = energies.chunks_exact_mut(cols);
+        let pairs = energies.zip(freqs);
         // TODO more parallel
-        for _ in 0..rows {
-            // need to pull out two slices of the energies and two freqs
-            let mut fwd_energies = energies.next().unwrap();
-            let fwd_freq = freqs.next().unwrap();
-            let fwd_freqs = na::DVector::from(
-                rust_pbqff::freqs(
-                    &mut fwd_energies,
-                    &mut fwd_freq.intder,
-                    &fwd_freq.taylor,
-                    &fwd_freq.taylor_disps,
-                    &fwd_freq.atomic_numbers,
-                    &self.spectro,
-                    &self.config.gspectro_cmd,
-                    &self.config.spectro_cmd,
+        let jac_t: Vec<_> = pairs
+            .map(|(mut energy, mut freq)| {
+                na::DVector::from(
+                    rust_pbqff::freqs(
+                        &mut energy,
+                        &mut freq.intder,
+                        &freq.taylor,
+                        &freq.taylor_disps,
+                        &freq.atomic_numbers,
+                        &self.spectro,
+                        &self.config.gspectro_cmd,
+                        &self.config.spectro_cmd,
+                    )
+                    .corr,
                 )
-                .corr,
-            );
+            })
+            .collect();
+        let jac_t: Vec<_> = jac_t
+            .chunks(2)
+            .map(|pair| {
+                // use 'let else' if that gets stabilized
+                let (fwd, bwd) = if let [fwd, bwd] = pair {
+                    (fwd, bwd)
+                } else {
+                    panic!("unmatched pair");
+                };
+                (fwd - bwd) / (2. * DELTA)
+            })
+            .collect();
 
-            let mut bwd_energies = energies.next().unwrap();
-            let bwd_freq = freqs.next().unwrap();
-            let bwd_freqs = na::DVector::from(
-                rust_pbqff::freqs(
-                    &mut bwd_energies,
-                    &mut bwd_freq.intder,
-                    &bwd_freq.taylor,
-                    &bwd_freq.taylor_disps,
-                    &bwd_freq.atomic_numbers,
-                    &self.spectro,
-                    &self.config.gspectro_cmd,
-                    &self.config.spectro_cmd,
-                )
-                .corr,
-            );
-
-            // (fwd_freqs - bwd_freqs) / 2DELTA gives a column of jac_t
-            jac_t.extend_from_slice(
-                ((fwd_freqs - bwd_freqs) / (2. * DELTA)).as_slice(),
-            );
-        }
-        assert!(energies.into_remainder().is_empty());
-        let cols = jac_t.len() / rows;
-        na::DMatrix::from_vec(cols, rows, jac_t)
+        na::DMatrix::from_columns(&jac_t)
     }
 
     fn stat_multiplier(&self) -> f64 {

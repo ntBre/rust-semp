@@ -14,6 +14,7 @@ psqs = { path = "/home/brent/Projects/psqs" }
 symm = { path = "/home/brent/Projects/symm" }
 taylor = { path = "/home/brent/Projects/taylor" }
 rust-pbqff = { path = "/home/brent/Projects/rust-pbqff" }
+rayon = "1.5.3"
 
 [dev-dependencies]
 approx = "0.5.1"
@@ -23,3 +24,6 @@ name = "one_iter"
 
 [[bin]]
 name = "num_jac"
+
+[[bin]]
+name = "mopac"

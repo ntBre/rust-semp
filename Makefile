@@ -20,9 +20,6 @@ eland.scripts: scripts/time.awk
 test:
 	RUST_BACKTRACE=1 cargo test -- ${TESTFLAGS} ${ARGS}
 
-mopac: src/bin/mopac.rs
-	cargo build --release --bin mopac
-
 profile = RUSTFLAGS='-g' cargo build --release --bin $(1); \
 	valgrind --tool=callgrind --callgrind-out-file=callgrind.out	\
 		--collect-jumps=yes --simulate-cache=yes		\

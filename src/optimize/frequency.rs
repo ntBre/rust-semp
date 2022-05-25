@@ -41,6 +41,7 @@ pub fn optimize_geometry<Q: Queue<Mopac>>(
     res.pop().unwrap()
 }
 
+#[derive(Clone)]
 struct FreqParts {
     intder: rust_pbqff::Intder,
     taylor: taylor::Taylor,
@@ -115,8 +116,10 @@ impl Optimize for Frequency {
         submitter.drain(&mut jobs, &mut energies);
         takedown();
         // convert energies to frequencies and return those
+        let _ = std::fs::create_dir("freqs");
         let res = na::DVector::from(
             rust_pbqff::freqs(
+                "freqs",
                 &mut energies,
                 &mut freq.intder,
                 &freq.taylor,
@@ -128,7 +131,6 @@ impl Optimize for Frequency {
             )
             .corr,
         );
-        // this gets made inside `freqs
         let _ = std::fs::remove_dir_all("freqs");
         res
     }
@@ -143,6 +145,8 @@ impl Optimize for Frequency {
         submitter: &Q,
         charge: isize,
     ) -> na::DMatrix<f64> {
+        let start = std::time::SystemTime::now();
+
         let rows = params.values.len();
         // build all the optimizations
         static OPT_TMPL: Template =
@@ -186,6 +190,12 @@ impl Optimize for Frequency {
         assert!(geoms.len() == 2 * rows);
         submitter.optimize(&mut opts, &mut geoms);
 
+        eprintln!(
+            "finished optimizations after {:.1} sec",
+            start.elapsed().unwrap().as_millis() as f64 / 1000.
+        );
+        let start = std::time::SystemTime::now();
+
         // build all the jobs, including optimizations
         let mut idx = 0;
         let mut jobs = Vec::new();
@@ -224,14 +234,29 @@ impl Optimize for Frequency {
         submitter.drain(&mut jobs, &mut energies);
         takedown();
 
+        eprintln!(
+            "finished energies after {:.1} sec",
+            start.elapsed().unwrap().as_millis() as f64 / 1000.
+        );
+        let start = std::time::SystemTime::now();
+
+        use rayon::prelude::*;
+
         // calculate all of the frequencies and assemble the jacobian
-        let energies = energies.chunks_exact_mut(cols);
-        let pairs = energies.zip(freqs);
+        let energies = energies.chunks_exact_mut(cols).map(|c| c.to_vec());
+        let pairs: Vec<_> = energies.zip(freqs).collect();
         // TODO more parallel
-        let jac_t: Vec<_> = pairs
-            .map(|(mut energy, mut freq)| {
+        let freqs: Vec<_> = pairs
+            .par_iter()
+            .enumerate()
+            .map(|(i, (energy, freq))| {
+                let mut energy = energy.clone();
+                let mut freq = freq.clone();
+                let dir = format!("freqs{}", i);
+                let _ = std::fs::create_dir(&dir);
                 na::DVector::from(
                     rust_pbqff::freqs(
+                        &dir,
                         &mut energy,
                         &mut freq.intder,
                         &freq.taylor,
@@ -245,7 +270,12 @@ impl Optimize for Frequency {
                 )
             })
             .collect();
-        let jac_t: Vec<_> = jac_t
+        // remove the directories created by the iteration above
+        for i in 0..pairs.len() {
+            let dir = format!("freqs{}", i);
+            let _ = std::fs::remove_dir_all(&dir);
+        }
+        let jac_t: Vec<_> = freqs
             .chunks(2)
             .map(|pair| {
                 // use 'let else' if that gets stabilized
@@ -257,6 +287,11 @@ impl Optimize for Frequency {
                 (fwd - bwd) / (2. * DELTA)
             })
             .collect();
+
+        eprintln!(
+            "finished frequencies after {:.1} sec",
+            start.elapsed().unwrap().as_millis() as f64 / 1000.
+        );
 
         na::DMatrix::from_columns(&jac_t)
     }

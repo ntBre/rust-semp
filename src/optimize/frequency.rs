@@ -77,7 +77,7 @@ impl Frequency {
         let mut intder = self.intder.clone();
         // generate pts == moles
         let (moles, taylor, taylor_disps, atomic_numbers) =
-            rust_pbqff::generate_pts(geom, &mut intder);
+            rust_pbqff::coord_type::generate_pts(geom, &mut intder);
         // dir created in generate_pts but unused here
         let _ = std::fs::remove_dir_all("pts");
         // call build_jobs like before
@@ -118,7 +118,7 @@ impl Optimize for Frequency {
         // convert energies to frequencies and return those
         let _ = std::fs::create_dir("freqs");
         let res = na::DVector::from(
-            rust_pbqff::freqs(
+            rust_pbqff::coord_type::freqs(
                 "freqs",
                 &mut energies,
                 &mut freq.intder,
@@ -255,7 +255,7 @@ impl Optimize for Frequency {
                 let dir = format!("freqs{}", i);
                 let _ = std::fs::create_dir(&dir);
                 na::DVector::from(
-                    rust_pbqff::freqs(
+                    rust_pbqff::coord_type::freqs(
                         &dir,
                         &mut energy,
                         &mut freq.intder,

@@ -332,7 +332,26 @@ impl Optimize for Frequency {
         for g in got {
             write!(logger, "{:8.1}", g).unwrap();
         }
-        let mae = (got - want).abs().sum() / got.len() as f64;
-        writeln!(logger, "{:8.1}", mae).unwrap();
+        writeln!(logger, "{:8.1}", mae(got, want)).unwrap();
+    }
+}
+
+fn mae(a: &na::DVector<f64>, b: &na::DVector<f64>) -> f64 {
+    (a - b).abs().sum() / a.len() as f64
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+
+    fn test_mae() {
+        let se = na::dvector![
+            3130.3, 3107.9, 1590.1, 1227.0, 1117.1, 1002.9, 876.2, 925.6, 773.6
+        ];
+        let ai = na::dvector![
+            3142.6, 3120.8, 1600.9, 1278.8, 1065.1, 970.2, 888.6, 878.6, 772.8
+        ];
+        approx::assert_abs_diff_eq!(mae(&se, &ai), 25.855555555555547);
     }
 }

@@ -13,3 +13,5 @@ HCC =               147.81488230
 optimize = true
 spectro_cmd = "/home/brent/Projects/pbqff/bin/spectro"
 gspectro_cmd = "/home/brent/Projects/chemutils/spectro/spectro/spectro"
+charge = 0
+step_size = 0.005

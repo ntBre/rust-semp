@@ -77,7 +77,11 @@ impl Frequency {
         let mut intder = self.intder.clone();
         // generate pts == moles
         let (moles, taylor, taylor_disps, atomic_numbers) =
-            rust_pbqff::coord_type::generate_pts(geom, &mut intder);
+            rust_pbqff::coord_type::generate_pts(
+                geom,
+                &mut intder,
+                self.config.step_size,
+            );
         // dir created in generate_pts but unused here
         let _ = std::fs::remove_dir_all("pts");
         // call build_jobs like before
@@ -128,6 +132,7 @@ impl Optimize for Frequency {
                 &self.spectro,
                 &self.config.gspectro_cmd,
                 &self.config.spectro_cmd,
+                self.config.step_size,
             )
             .corr,
         );
@@ -265,6 +270,7 @@ impl Optimize for Frequency {
                         &self.spectro,
                         &self.config.gspectro_cmd,
                         &self.config.spectro_cmd,
+                        self.config.step_size,
                     )
                     .corr,
                 )

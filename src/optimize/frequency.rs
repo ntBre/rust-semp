@@ -8,7 +8,7 @@ use nalgebra as na;
 use std::fs::File;
 use std::io::Write;
 use std::rc::Rc;
-use std::sync::RwLock;
+use std::sync::Mutex;
 
 use super::Optimize;
 
@@ -18,7 +18,7 @@ pub struct Frequency {
     pub config: rust_pbqff::config::Config,
     pub intder: rust_pbqff::Intder,
     pub spectro: rust_pbqff::Spectro,
-    logger: RwLock<File>,
+    logger: Mutex<File>,
 }
 
 pub fn optimize_geometry<Q: Queue<Mopac>>(
@@ -75,7 +75,7 @@ impl Frequency {
         intder: rust_pbqff::Intder,
         spectro: rust_pbqff::Spectro,
     ) -> Self {
-        let logger = RwLock::new(
+        let logger = Mutex::new(
             std::fs::File::create("freqs.log")
                 .expect("failed to create 'freqs.log'"),
         );
@@ -328,11 +328,11 @@ impl Optimize for Frequency {
     }
 
     fn log(&self, got: &na::DVector<f64>, want: &na::DVector<f64>) {
-        let mut logger = self.logger.write().unwrap();
+        let mut logger = self.logger.lock().unwrap();
         for g in got {
-            write!(logger, "{:12.8}", g).unwrap();
+            write!(logger, "{:8.1}", g).unwrap();
         }
-        let diff = (got - want).abs();
-        writeln!(logger, "{:12.8}", diff / got.len() as f64).unwrap();
+        let mae = (got - want).abs().sum() / got.len() as f64;
+        writeln!(logger, "{:8.1}", mae).unwrap();
     }
 }

@@ -5,11 +5,11 @@ use rust_semp::{
 };
 
 fn main() {
-    let freq = Frequency {
-        config: rust_pbqff::config::Config::load("test_files/pbqff.toml"),
-        intder: rust_pbqff::Intder::load_file("test_files/intder.in"),
-        spectro: rust_pbqff::Spectro::load("test_files/spectro.in"),
-    };
+    let freq = Frequency::new(
+        rust_pbqff::config::Config::load("test_files/pbqff.toml"),
+        rust_pbqff::Intder::load_file("test_files/intder.in"),
+        rust_pbqff::Spectro::load("test_files/spectro.in"),
+    );
     setup();
     let queue = LocalQueue {
         dir: "inp".to_string(),

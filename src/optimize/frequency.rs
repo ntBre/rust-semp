@@ -5,7 +5,10 @@ use psqs::queue::Queue;
 
 use crate::{build_jobs, setup, takedown};
 use nalgebra as na;
+use std::fs::File;
+use std::io::Write;
 use std::rc::Rc;
+use std::sync::RwLock;
 
 use super::Optimize;
 
@@ -15,6 +18,7 @@ pub struct Frequency {
     pub config: rust_pbqff::config::Config,
     pub intder: rust_pbqff::Intder,
     pub spectro: rust_pbqff::Spectro,
+    logger: RwLock<File>,
 }
 
 pub fn optimize_geometry<Q: Queue<Mopac>>(
@@ -66,6 +70,23 @@ impl FreqParts {
 }
 
 impl Frequency {
+    pub fn new(
+        config: rust_pbqff::config::Config,
+        intder: rust_pbqff::Intder,
+        spectro: rust_pbqff::Spectro,
+    ) -> Self {
+        let logger = RwLock::new(
+            std::fs::File::create("freqs.log")
+                .expect("failed to create 'freqs.log'"),
+        );
+        Self {
+            config,
+            intder,
+            spectro,
+            logger,
+        }
+    }
+
     fn build_jobs(
         &self,
         geom: Geom,
@@ -304,5 +325,14 @@ impl Optimize for Frequency {
 
     fn stat_multiplier(&self) -> f64 {
         1.0
+    }
+
+    fn log(&self, got: &na::DVector<f64>, want: &na::DVector<f64>) {
+        let mut logger = self.logger.write().unwrap();
+        for g in got {
+            write!(logger, "{:12.8}", g).unwrap();
+        }
+        let diff = (got - want).abs();
+        writeln!(logger, "{:12.8}", diff / got.len() as f64).unwrap();
     }
 }

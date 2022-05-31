@@ -27,4 +27,7 @@ pub trait Optimize {
     ) -> na::DMatrix<f64>;
 
     fn stat_multiplier(&self) -> f64;
+
+    /// optional method for logging the actual values on each iteration
+    fn log(&self, _got: &na::DVector<f64>, _want: &na::DVector<f64>) {}
 }

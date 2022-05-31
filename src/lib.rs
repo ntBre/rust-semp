@@ -25,7 +25,7 @@ pub mod config;
 pub mod optimize;
 pub mod stats;
 
-static DEBUG: bool = true;
+static DEBUG: bool = false;
 /// convergence threshold for the change in the norm, rmsd, and max
 const DCONV_THRSH: f64 = 1e-5;
 
@@ -461,6 +461,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
 
         // end of loop updates
         stats.print_step(iter, &last_stats, time);
+        optimizer.log(&se, &ai);
         old_se = se;
         se = new_se;
         params = try_params;

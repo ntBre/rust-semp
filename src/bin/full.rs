@@ -12,9 +12,7 @@ fn main() {
         10,
         true,
         5,
-        LocalQueue {
-            dir: "inp".to_string(),
-        },
+        LocalQueue::new("inp", 128),
         0,
         Energy,
     );

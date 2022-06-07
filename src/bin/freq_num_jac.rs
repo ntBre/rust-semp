@@ -11,9 +11,7 @@ fn main() {
         rust_pbqff::Spectro::load("test_files/spectro.in"),
     );
     setup();
-    let queue = LocalQueue {
-        dir: "inp".to_string(),
-    };
+    let queue = LocalQueue::new("inp", 128);
     freq.num_jac(
         &Vec::new(),
         &"USS            H    -11.246958000000

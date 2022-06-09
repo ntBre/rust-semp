@@ -219,6 +219,7 @@ fn test_one_iter() {
         &moles,
         &params,
         &LocalQueue {
+            chunk_size: 128,
             dir: "inp".to_string(),
         },
         0,
@@ -298,6 +299,7 @@ fn test_num_jac() {
             &moles,
             &params,
             &LocalQueue {
+                chunk_size: 128,
                 dir: "inp".to_string(),
             },
             0,
@@ -313,6 +315,7 @@ fn test_num_jac() {
             &moles,
             &params,
             &LocalQueue {
+                chunk_size: 128,
                 dir: "inp".to_string(),
             },
             0,
@@ -487,6 +490,7 @@ fn test_algo() {
     };
     let names = string!["C", "C", "C", "H", "H"];
     let queue = LocalQueue {
+        chunk_size: 128,
         dir: "inp".to_string(),
     };
     let geom_file = "test_files/small07";
@@ -518,6 +522,7 @@ fn freq_semi_empirical() {
     );
     setup();
     let queue = LocalQueue {
+        chunk_size: 128,
         dir: "inp".to_string(),
     };
     let got = freq.semi_empirical(
@@ -564,6 +569,7 @@ fn freq_num_jac() {
     );
     setup();
     let queue = LocalQueue {
+        chunk_size: 128,
         dir: "inp".to_string(),
     };
     let got = freq.num_jac(

@@ -3,7 +3,7 @@ use psqs::program::mopac::{Mopac, Params};
 use psqs::program::{Job, Template};
 use psqs::queue::Queue;
 
-use crate::{build_jobs, log_params, setup, takedown};
+use crate::{build_jobs, setup, takedown};
 use nalgebra as na;
 use std::fs::File;
 use std::io::Write;

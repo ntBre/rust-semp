@@ -39,6 +39,9 @@ pub struct Config {
     pub charge: isize,
     /// the values to base the optimization on. energy or frequency
     pub optimize: Protocol,
+
+    /// dummy atoms of the form (axis, atom)
+    pub dummies: Vec<(usize, usize)>,
 }
 
 impl Config {
@@ -87,6 +90,7 @@ FN11       C      0.046302000000
             broyd_int: 10,
             charge: 0,
             optimize: Protocol::Energy,
+            dummies: vec![],
         };
         assert_eq!(got, want);
     }

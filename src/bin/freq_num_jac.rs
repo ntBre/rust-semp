@@ -9,6 +9,7 @@ fn main() {
         rust_pbqff::config::Config::load("test_files/pbqff.toml"),
         rust_pbqff::Intder::load_file("test_files/intder.in"),
         rust_pbqff::Spectro::load("test_files/spectro.in"),
+        vec![],
     );
     setup();
     let queue = LocalQueue::new("inp", 128);

@@ -67,6 +67,7 @@ fn main() {
                     rust_pbqff::config::Config::load("pbqff.toml"),
                     rust_pbqff::Intder::load_file("intder.in"),
                     rust_pbqff::Spectro::load("spectro.in"),
+                    conf.dummies,
                 ),
             );
         }

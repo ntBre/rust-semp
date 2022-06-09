@@ -3,7 +3,7 @@ use psqs::program::mopac::{Mopac, Params};
 use psqs::program::{Job, Template};
 use psqs::queue::Queue;
 
-use crate::{build_jobs, setup, takedown};
+use crate::{build_jobs, log_params, setup, takedown};
 use nalgebra as na;
 use std::fs::File;
 use std::io::Write;
@@ -18,6 +18,7 @@ pub struct Frequency {
     pub config: rust_pbqff::config::Config,
     pub intder: rust_pbqff::Intder,
     pub spectro: rust_pbqff::Spectro,
+    pub dummies: Vec<(usize, usize)>,
     logger: Mutex<File>,
 }
 
@@ -69,11 +70,14 @@ impl FreqParts {
     }
 }
 
+type Dummies = Vec<(usize, usize)>;
+
 impl Frequency {
     pub fn new(
         config: rust_pbqff::config::Config,
         intder: rust_pbqff::Intder,
         spectro: rust_pbqff::Spectro,
+        dummies: Dummies,
     ) -> Self {
         let logger = Mutex::new(
             std::fs::File::create("freqs.log")
@@ -83,6 +87,7 @@ impl Frequency {
             config,
             intder,
             spectro,
+            dummies,
             logger,
         }
     }
@@ -102,6 +107,7 @@ impl Frequency {
                 geom,
                 &mut intder,
                 self.config.step_size,
+                &self.dummies,
             );
         // dir created in generate_pts but unused here
         let _ = std::fs::remove_dir_all("pts");

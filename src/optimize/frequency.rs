@@ -100,6 +100,7 @@ impl Frequency {
         job_num: usize,
         charge: isize,
     ) -> (FreqParts, Vec<Job<Mopac>>) {
+        eprintln!("geometry into build_jobs =\n{}", geom);
         let mut intder = self.intder.clone();
         // generate pts == moles
         let (moles, taylor, taylor_disps, atomic_numbers) =
@@ -109,6 +110,9 @@ impl Frequency {
                 self.config.step_size,
                 &self.dummies,
             );
+        eprintln!("geometry used in intder");
+        eprintln!("{}", intder.geom);
+
         // dir created in generate_pts but unused here
         let _ = std::fs::remove_dir_all("pts");
         // call build_jobs like before
@@ -131,6 +135,8 @@ impl Optimize for Frequency {
         charge: isize,
     ) -> na::DVector<f64> {
         setup();
+        eprintln!("initial geometry");
+        eprintln!("{}", self.config.geometry);
         let geom = optimize_geometry(
             self.config.geometry.clone(),
             params,
@@ -138,6 +144,8 @@ impl Optimize for Frequency {
             "inp",
             "opt",
         );
+        eprintln!("optimized geometry");
+        eprintln!("{}", geom);
         // start_index and job_num always zero for this since I'm only running
         // one set of jobs at a time
         let (mut freq, mut jobs) = self.build_jobs(geom, params, 0, 0, charge);

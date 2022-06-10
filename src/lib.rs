@@ -325,6 +325,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
     let ai = load_energies(energy_file);
     // initial semi-empirical energies and stats
     let mut se = optimizer.semi_empirical(&moles, &params, &queue, charge);
+    optimizer.log(0, &se, &ai);
     let mut old_se = se.clone();
     let mut stats = Stats::new(&ai, &se, conv);
     let mut last_stats = Stats::default();
@@ -461,9 +462,9 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
 
         // end of loop updates
         stats.print_step(iter, &last_stats, time);
-        optimizer.log(&se, &ai);
         old_se = se;
         se = new_se;
+        optimizer.log(iter, &se, &ai);
         params = try_params;
         log_params(param_log, iter, &params);
         del_norm = stats.norm - last_stats.norm;

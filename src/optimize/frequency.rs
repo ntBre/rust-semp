@@ -333,8 +333,14 @@ impl Optimize for Frequency {
         1.0
     }
 
-    fn log(&self, got: &na::DVector<f64>, want: &na::DVector<f64>) {
+    fn log(
+        &self,
+        iter: usize,
+        got: &na::DVector<f64>,
+        want: &na::DVector<f64>,
+    ) {
         let mut logger = self.logger.lock().unwrap();
+        write!(logger, "{:5}", iter).unwrap();
         for g in got {
             write!(logger, "{:8.1}", g).unwrap();
         }

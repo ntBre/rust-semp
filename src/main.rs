@@ -25,7 +25,8 @@ fn main() {
         libc::dup2(log_fd, 2);
     }
     let conf = Config::load(&conf_name);
-    let queue = Slurm::new(conf.chunk_size, conf.job_limit, conf.sleep_int);
+    let queue =
+        Slurm::new(conf.chunk_size, conf.job_limit, conf.sleep_int, "inp");
     let mut param_log = File::create("params.log")
         .expect("failed to create parameter log file");
     match conf.optimize {

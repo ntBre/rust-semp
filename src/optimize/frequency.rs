@@ -2,8 +2,10 @@ use psqs::geom::Geom;
 use psqs::program::mopac::{Mopac, Params};
 use psqs::program::{Job, Template};
 use psqs::queue::Queue;
+use rust_pbqff::coord_type::{freqs, generate_pts};
+use symm::Molecule;
 
-use crate::{build_jobs, setup, takedown};
+use crate::{build_jobs, setup, takedown, MOPAC_TMPL};
 use nalgebra as na;
 use std::fs::File;
 use std::io::Write;
@@ -100,21 +102,27 @@ impl Frequency {
         job_num: usize,
         charge: isize,
     ) -> (FreqParts, Vec<Job<Mopac>>) {
-        eprintln!("geometry into build_jobs =\n{}", geom);
+        let mol = {
+            let mut mol = Molecule::new(geom.xyz().unwrap().to_vec());
+            mol.normalize();
+            mol
+        };
+        const SYMM_EPS: f64 = 1e-6;
+        let pg = mol.point_group_approx(SYMM_EPS);
+
         let mut intder = self.intder.clone();
-        // generate pts == moles
-        let (moles, taylor, taylor_disps, atomic_numbers) =
-            rust_pbqff::coord_type::generate_pts(
-                geom,
-                &mut intder,
-                self.config.step_size,
-                &self.dummies,
-            );
-        eprintln!("geometry used in intder");
-        eprintln!("{}", intder.geom);
+        let (moles, taylor, taylor_disps, atomic_numbers) = generate_pts(
+            &mut std::io::stderr(),
+            &mol,
+            &pg,
+            &mut intder,
+            self.config.step_size,
+            &self.dummies,
+        );
 
         // dir created in generate_pts but unused here
         let _ = std::fs::remove_dir_all("pts");
+
         // call build_jobs like before
         let jobs =
             build_jobs(&moles, params, start_index, 1.0, job_num, charge);
@@ -134,9 +142,11 @@ impl Optimize for Frequency {
         submitter: &Q,
         charge: isize,
     ) -> na::DVector<f64> {
+        let mut w = std::io::stderr();
+
+        writeln!(w, "Params:\n{}", params.to_string()).unwrap();
+
         setup();
-        eprintln!("initial geometry");
-        eprintln!("{}", self.config.geometry);
         let geom = optimize_geometry(
             self.config.geometry.clone(),
             params,
@@ -144,11 +154,46 @@ impl Optimize for Frequency {
             "inp",
             "opt",
         );
-        eprintln!("optimized geometry");
-        eprintln!("{}", geom);
-        // start_index and job_num always zero for this since I'm only running
-        // one set of jobs at a time
-        let (mut freq, mut jobs) = self.build_jobs(geom, params, 0, 0, charge);
+
+        writeln!(w, "Optimized Geometry:\n{}", geom).unwrap();
+
+        let mol = {
+            let mut mol = Molecule::new(geom.xyz().unwrap().to_vec());
+            mol.normalize();
+            mol
+        };
+        const SYMM_EPS: f64 = 1e-6;
+        let pg = mol.point_group_approx(SYMM_EPS);
+        writeln!(w, "Normalized Geometry:\n{}", mol).unwrap();
+        writeln!(w, "Point Group = {}", pg).unwrap();
+
+        let mut intder = self.intder.clone();
+        let (moles, taylor, taylor_disps, atomic_numbers) = generate_pts(
+            &mut std::io::stderr(),
+            &mol,
+            &pg,
+            &mut intder,
+            self.config.step_size,
+            &self.dummies,
+        );
+
+        // dir created in generate_pts but unused here
+        let _ = std::fs::remove_dir_all("pts");
+
+        // call build_jobs like before
+        let mut jobs = Mopac::build_jobs(
+            &moles,
+            Some(params),
+            "inp",
+            0,
+            1.0,
+            0,
+            charge,
+            &MOPAC_TMPL,
+        );
+        writeln!(w, "\n{} atoms require {} jobs", mol.atoms.len(), jobs.len())
+            .unwrap();
+
         let mut energies = vec![0.0; jobs.len()];
         // drain to get energies
         setup();
@@ -157,13 +202,14 @@ impl Optimize for Frequency {
         // convert energies to frequencies and return those
         let _ = std::fs::create_dir("freqs");
         let res = na::DVector::from(
-            rust_pbqff::coord_type::freqs(
+            freqs(
+                &mut std::io::stderr(),
                 "freqs",
                 &mut energies,
-                &mut freq.intder,
-                &freq.taylor,
-                &freq.taylor_disps,
-                &freq.atomic_numbers,
+                &mut intder,
+                &taylor,
+                &taylor_disps,
+                &atomic_numbers,
                 &self.spectro,
                 &self.config.gspectro_cmd,
                 &self.config.spectro_cmd,
@@ -296,6 +342,7 @@ impl Optimize for Frequency {
                 let _ = std::fs::create_dir(&dir);
                 na::DVector::from(
                     rust_pbqff::coord_type::freqs(
+                        &mut std::io::stderr(),
                         &dir,
                         &mut energy,
                         &mut freq.intder,

@@ -5,7 +5,7 @@ use psqs::queue::Queue;
 use rust_pbqff::coord_type::{freqs, generate_pts};
 use symm::Molecule;
 
-use crate::{build_jobs, setup, takedown, MOPAC_TMPL};
+use crate::{setup, takedown, MOPAC_TMPL};
 use nalgebra as na;
 use std::fs::File;
 use std::io::Write;
@@ -120,8 +120,6 @@ impl Frequency {
         const SYMM_EPS: f64 = 1e-6;
         let pg = mol.point_group_approx(SYMM_EPS);
 
-        let mut w = output_stream();
-
         let mut intder = self.intder.clone();
         let (moles, taylor, taylor_disps, atomic_numbers) = generate_pts(
             &mut w,
@@ -136,8 +134,16 @@ impl Frequency {
         let _ = std::fs::remove_dir_all("pts");
 
         // call build_jobs like before
-        let jobs =
-            build_jobs(&moles, params, start_index, 1.0, job_num, charge);
+        let jobs = Mopac::build_jobs(
+            &moles,
+            Some(&params),
+            "inp",
+            start_index,
+            1.0,
+            job_num,
+            charge,
+            &MOPAC_TMPL,
+        );
         (
             FreqParts::new(intder, taylor, taylor_disps, atomic_numbers),
             jobs,

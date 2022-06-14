@@ -13,7 +13,6 @@ use std::{
 use nalgebra as na;
 
 use psqs::program::mopac::{Mopac, Params};
-use psqs::program::Job;
 use psqs::queue::Queue;
 use psqs::{geom::Geom, program::Template};
 use stats::Stats;
@@ -168,40 +167,6 @@ pub fn parse_params(params: &str) -> Params {
         }
     }
     Params::from(names, atoms, values)
-}
-
-/// Build the jobs described by `moles` in memory, but don't write any of their
-/// files yet
-pub fn build_jobs(
-    moles: &Vec<Rc<Geom>>,
-    params: &Params,
-    start_index: usize,
-    coeff: f64,
-    job_num: usize,
-    charge: isize,
-) -> Vec<Job<Mopac>> {
-    let mut count: usize = start_index;
-    let mut job_num = job_num;
-    let mut jobs = Vec::new();
-    let params = Rc::new(params.clone());
-    for mol in moles {
-        let filename = format!("inp/job.{:08}", job_num);
-        job_num += 1;
-        let mut job = Job::new(
-            Mopac::new(
-                filename,
-                Some(params.clone()),
-                mol.clone(),
-                charge,
-                &MOPAC_TMPL,
-            ),
-            count,
-        );
-        job.coeff = coeff;
-        jobs.push(job);
-        count += 1;
-    }
-    jobs
 }
 
 /// Solve (JᵀJ + λI)δ = Jᵀ[y - f(β)] for δ. y is the vector of "true" training

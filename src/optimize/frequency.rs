@@ -16,7 +16,7 @@ use super::Optimize;
 
 static DELTA: f64 = 1e-4;
 
-static DEBUG: bool = false;
+static DEBUG: bool = true;
 
 fn output_stream() -> Box<dyn Write> {
     if DEBUG {
@@ -112,6 +112,7 @@ impl Frequency {
         job_num: usize,
         charge: isize,
     ) -> (FreqParts, Vec<Job<Mopac>>) {
+        let mut w = output_stream();
         let mol = {
             let mut mol = Molecule::new(geom.xyz().unwrap().to_vec());
             mol.normalize();
@@ -173,7 +174,7 @@ impl Optimize for Frequency {
             "opt",
         );
 
-        writeln!(w, "Optimized Geometry:\n{}", geom).unwrap();
+        writeln!(w, "Optimized Geometry:\n{:20.12}", geom).unwrap();
 
         let mol = {
             let mut mol = Molecule::new(geom.xyz().unwrap().to_vec());
@@ -182,7 +183,7 @@ impl Optimize for Frequency {
         };
         const SYMM_EPS: f64 = 1e-6;
         let pg = mol.point_group_approx(SYMM_EPS);
-        writeln!(w, "Normalized Geometry:\n{}", mol).unwrap();
+        writeln!(w, "Normalized Geometry:\n{:20.12}", mol).unwrap();
         writeln!(w, "Point Group = {}", pg).unwrap();
 
         let mut intder = self.intder.clone();

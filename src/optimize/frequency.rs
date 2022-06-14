@@ -16,6 +16,16 @@ use super::Optimize;
 
 static DELTA: f64 = 1e-4;
 
+static DEBUG: bool = false;
+
+fn output_stream() -> Box<dyn Write> {
+    if DEBUG {
+        Box::new(std::io::stderr())
+    } else {
+        Box::new(std::io::sink())
+    }
+}
+
 pub struct Frequency {
     pub config: rust_pbqff::config::Config,
     pub intder: rust_pbqff::Intder,
@@ -110,9 +120,11 @@ impl Frequency {
         const SYMM_EPS: f64 = 1e-6;
         let pg = mol.point_group_approx(SYMM_EPS);
 
+        let mut w = output_stream();
+
         let mut intder = self.intder.clone();
         let (moles, taylor, taylor_disps, atomic_numbers) = generate_pts(
-            &mut std::io::stderr(),
+            &mut w,
             &mol,
             &pg,
             &mut intder,
@@ -142,7 +154,7 @@ impl Optimize for Frequency {
         submitter: &Q,
         charge: isize,
     ) -> na::DVector<f64> {
-        let mut w = std::io::stderr();
+        let mut w = output_stream();
 
         writeln!(w, "Params:\n{}", params.to_string()).unwrap();
 
@@ -169,7 +181,7 @@ impl Optimize for Frequency {
 
         let mut intder = self.intder.clone();
         let (moles, taylor, taylor_disps, atomic_numbers) = generate_pts(
-            &mut std::io::stderr(),
+            &mut w,
             &mol,
             &pg,
             &mut intder,
@@ -203,7 +215,7 @@ impl Optimize for Frequency {
         let _ = std::fs::create_dir("freqs");
         let res = na::DVector::from(
             freqs(
-                &mut std::io::stderr(),
+                &mut w,
                 "freqs",
                 &mut energies,
                 &mut intder,
@@ -342,7 +354,7 @@ impl Optimize for Frequency {
                 let _ = std::fs::create_dir(&dir);
                 na::DVector::from(
                     rust_pbqff::coord_type::freqs(
-                        &mut std::io::stderr(),
+                        &mut output_stream(),
                         &dir,
                         &mut energy,
                         &mut freq.intder,

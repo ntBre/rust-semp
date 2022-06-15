@@ -91,7 +91,7 @@ impl Frequency {
         intder: rust_pbqff::Intder,
         spectro: rust_pbqff::Spectro,
         dummies: Dummies,
-	reorder: bool,
+        reorder: bool,
     ) -> Self {
         let logger = Mutex::new(
             std::fs::File::create("freqs.log")
@@ -103,33 +103,38 @@ impl Frequency {
             spectro,
             dummies,
             logger,
-	    reorder,
+            reorder,
         }
     }
 
-    fn build_jobs(
+    fn build_jobs<W>(
         &self,
+        w: &mut W,
         geom: Geom,
         params: &Params,
         start_index: usize,
         job_num: usize,
         charge: isize,
-    ) -> (FreqParts, Vec<Job<Mopac>>) {
-        let mut w = output_stream();
+    ) -> (FreqParts, Vec<Job<Mopac>>)
+    where
+        W: Write,
+    {
         let mol = {
             let mut mol = Molecule::new(geom.xyz().unwrap().to_vec());
             mol.normalize();
-	    if self.reorder {
-		mol.reorder();
-	    }
+            if self.reorder {
+                mol.reorder();
+            }
             mol
         };
         const SYMM_EPS: f64 = 1e-6;
         let pg = mol.point_group_approx(SYMM_EPS);
+        writeln!(w, "Normalized Geometry:\n{:20.12}", mol).unwrap();
+        writeln!(w, "Point Group = {}", pg).unwrap();
 
         let mut intder = self.intder.clone();
         let (moles, taylor, taylor_disps, atomic_numbers) = generate_pts(
-            &mut w,
+            w,
             &mol,
             &pg,
             &mut intder,
@@ -182,45 +187,15 @@ impl Optimize for Frequency {
 
         writeln!(w, "Optimized Geometry:\n{:20.12}", geom).unwrap();
 
-        let mol = {
-            let mut mol = Molecule::new(geom.xyz().unwrap().to_vec());
-            mol.normalize();
-	    if self.reorder {
-		mol.reorder();
-	    }
-            mol
-        };
-        const SYMM_EPS: f64 = 1e-6;
-        let pg = mol.point_group_approx(SYMM_EPS);
-        writeln!(w, "Normalized Geometry:\n{:20.12}", mol).unwrap();
-        writeln!(w, "Point Group = {}", pg).unwrap();
-
-        let mut intder = self.intder.clone();
-        let (moles, taylor, taylor_disps, atomic_numbers) = generate_pts(
-            &mut w,
-            &mol,
-            &pg,
-            &mut intder,
-            self.config.step_size,
-            &self.dummies,
-        );
-
-        // dir created in generate_pts but unused here
-        let _ = std::fs::remove_dir_all("pts");
-
-        // call build_jobs like before
-        let mut jobs = Mopac::build_jobs(
-            &moles,
-            Some(params),
-            "inp",
-            0,
-            1.0,
-            0,
-            charge,
-            &MOPAC_TMPL,
-        );
-        writeln!(w, "\n{} atoms require {} jobs", mol.atoms.len(), jobs.len())
-            .unwrap();
+        let (mut freq, mut jobs) =
+            self.build_jobs(&mut w, geom, params, 0, 0, charge);
+        writeln!(
+            w,
+            "\n{} atoms require {} jobs",
+            freq.atomic_numbers.len(),
+            jobs.len()
+        )
+        .unwrap();
 
         let mut energies = vec![0.0; jobs.len()];
         // drain to get energies
@@ -234,10 +209,10 @@ impl Optimize for Frequency {
                 &mut w,
                 "freqs",
                 &mut energies,
-                &mut intder,
-                &taylor,
-                &taylor_disps,
-                &atomic_numbers,
+                &mut freq.intder,
+                &freq.taylor,
+                &freq.taylor_disps,
+                &freq.atomic_numbers,
                 &self.spectro,
                 &self.config.gspectro_cmd,
                 &self.config.spectro_cmd,
@@ -319,8 +294,14 @@ impl Optimize for Frequency {
             let mut pf = params.clone();
             pf.values[row] += DELTA;
             // idx = job_num so use it twice
-            let (freq, fwd_jobs) =
-                self.build_jobs(geoms[2 * row].clone(), &pf, idx, idx, charge);
+            let (freq, fwd_jobs) = self.build_jobs(
+                &mut output_stream(),
+                geoms[2 * row].clone(),
+                &pf,
+                idx,
+                idx,
+                charge,
+            );
             idx += fwd_jobs.len();
             jobs.extend(fwd_jobs);
             freqs.push(freq);
@@ -328,6 +309,7 @@ impl Optimize for Frequency {
             let mut pb = params.clone();
             pb.values[row] -= DELTA;
             let (freq, bwd_jobs) = self.build_jobs(
+                &mut output_stream(),
                 geoms[2 * row + 1].clone(),
                 &pb,
                 idx,

@@ -2,7 +2,7 @@ use psqs::geom::Geom;
 use psqs::program::mopac::{Mopac, Params};
 use psqs::queue::Queue;
 
-use crate::{build_jobs, relative, setup, takedown, DEBUG};
+use crate::{relative, setup, takedown, DEBUG, MOPAC_TMPL};
 use nalgebra as na;
 use std::rc::Rc;
 
@@ -23,7 +23,16 @@ impl Optimize for Energy {
         submitter: &Q,
         charge: isize,
     ) -> na::DVector<f64> {
-        let mut jobs = build_jobs(moles, params, 0, 1.0, 0, charge);
+        let mut jobs = Mopac::build_jobs(
+            moles,
+            Some(params),
+            "inp",
+            0,
+            1.0,
+            0,
+            charge,
+            &MOPAC_TMPL,
+        );
         let mut got = vec![0.0; jobs.len()];
         setup();
         submitter.drain(&mut jobs, &mut got);
@@ -53,14 +62,30 @@ impl Optimize for Energy {
             let mut pb = params.clone();
             let idx = row * cols;
             pf.values[row] += DELTA;
-            let mut fwd_jobs =
-                build_jobs(&moles, &pf, idx, DELTA_FWD, job_num, charge);
+            let mut fwd_jobs = Mopac::build_jobs(
+                &moles,
+                Some(&pf),
+                "inp",
+                idx,
+                DELTA_FWD,
+                job_num,
+                charge,
+                &MOPAC_TMPL,
+            );
             job_num += fwd_jobs.len();
             jobs.append(&mut fwd_jobs);
 
             pb.values[row] -= DELTA;
-            let mut bwd_jobs =
-                build_jobs(&moles, &pb, idx, DELTA_BWD, job_num, charge);
+            let mut bwd_jobs = Mopac::build_jobs(
+                &moles,
+                Some(&pb),
+                "inp",
+                idx,
+                DELTA_BWD,
+                job_num,
+                charge,
+                &MOPAC_TMPL,
+            );
             job_num += bwd_jobs.len();
             jobs.append(&mut bwd_jobs);
         }

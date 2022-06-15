@@ -5,7 +5,7 @@ use psqs::queue::Queue;
 use rust_pbqff::coord_type::{freqs, generate_pts};
 use symm::Molecule;
 
-use crate::{build_jobs, setup, takedown, MOPAC_TMPL};
+use crate::{setup, takedown, MOPAC_TMPL};
 use nalgebra as na;
 use std::fs::File;
 use std::io::Write;
@@ -15,6 +15,16 @@ use std::sync::Mutex;
 use super::Optimize;
 
 static DELTA: f64 = 1e-4;
+
+static DEBUG: bool = true;
+
+fn output_stream() -> Box<dyn Write> {
+    if DEBUG {
+        Box::new(std::io::stderr())
+    } else {
+        Box::new(std::io::sink())
+    }
+}
 
 pub struct Frequency {
     pub config: rust_pbqff::config::Config,
@@ -105,6 +115,7 @@ impl Frequency {
         job_num: usize,
         charge: isize,
     ) -> (FreqParts, Vec<Job<Mopac>>) {
+        let mut w = output_stream();
         let mol = {
             let mut mol = Molecule::new(geom.xyz().unwrap().to_vec());
             mol.normalize();
@@ -118,7 +129,7 @@ impl Frequency {
 
         let mut intder = self.intder.clone();
         let (moles, taylor, taylor_disps, atomic_numbers) = generate_pts(
-            &mut std::io::stderr(),
+            &mut w,
             &mol,
             &pg,
             &mut intder,
@@ -130,8 +141,16 @@ impl Frequency {
         let _ = std::fs::remove_dir_all("pts");
 
         // call build_jobs like before
-        let jobs =
-            build_jobs(&moles, params, start_index, 1.0, job_num, charge);
+        let jobs = Mopac::build_jobs(
+            &moles,
+            Some(&params),
+            "inp",
+            start_index,
+            1.0,
+            job_num,
+            charge,
+            &MOPAC_TMPL,
+        );
         (
             FreqParts::new(intder, taylor, taylor_disps, atomic_numbers),
             jobs,
@@ -148,7 +167,7 @@ impl Optimize for Frequency {
         submitter: &Q,
         charge: isize,
     ) -> na::DVector<f64> {
-        let mut w = std::io::stderr();
+        let mut w = output_stream();
 
         writeln!(w, "Params:\n{}", params.to_string()).unwrap();
 
@@ -161,7 +180,7 @@ impl Optimize for Frequency {
             "opt",
         );
 
-        writeln!(w, "Optimized Geometry:\n{}", geom).unwrap();
+        writeln!(w, "Optimized Geometry:\n{:20.12}", geom).unwrap();
 
         let mol = {
             let mut mol = Molecule::new(geom.xyz().unwrap().to_vec());
@@ -173,12 +192,12 @@ impl Optimize for Frequency {
         };
         const SYMM_EPS: f64 = 1e-6;
         let pg = mol.point_group_approx(SYMM_EPS);
-        writeln!(w, "Normalized Geometry:\n{}", mol).unwrap();
+        writeln!(w, "Normalized Geometry:\n{:20.12}", mol).unwrap();
         writeln!(w, "Point Group = {}", pg).unwrap();
 
         let mut intder = self.intder.clone();
         let (moles, taylor, taylor_disps, atomic_numbers) = generate_pts(
-            &mut std::io::stderr(),
+            &mut w,
             &mol,
             &pg,
             &mut intder,
@@ -212,7 +231,7 @@ impl Optimize for Frequency {
         let _ = std::fs::create_dir("freqs");
         let res = na::DVector::from(
             freqs(
-                &mut std::io::stderr(),
+                &mut w,
                 "freqs",
                 &mut energies,
                 &mut intder,
@@ -351,7 +370,7 @@ impl Optimize for Frequency {
                 let _ = std::fs::create_dir(&dir);
                 na::DVector::from(
                     rust_pbqff::coord_type::freqs(
-                        &mut std::io::stderr(),
+                        &mut output_stream(),
                         &dir,
                         &mut energy,
                         &mut freq.intder,

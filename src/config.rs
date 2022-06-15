@@ -42,6 +42,9 @@ pub struct Config {
 
     /// dummy atoms of the form (axis, atom)
     pub dummies: Vec<(usize, usize)>,
+
+    /// whether or not to try re-aligning the coordinates onto the z-axis
+    pub reorder: bool,
 }
 
 impl Config {
@@ -91,6 +94,7 @@ FN11       C      0.046302000000
             charge: 0,
             optimize: Protocol::Energy,
             dummies: vec![],
+	    reorder: false,
         };
         assert_eq!(got, want);
     }

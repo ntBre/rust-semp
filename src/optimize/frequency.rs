@@ -21,6 +21,7 @@ pub struct Frequency {
     pub intder: rust_pbqff::Intder,
     pub spectro: rust_pbqff::Spectro,
     pub dummies: Vec<(usize, usize)>,
+    pub reorder: bool,
     logger: Mutex<File>,
 }
 
@@ -80,6 +81,7 @@ impl Frequency {
         intder: rust_pbqff::Intder,
         spectro: rust_pbqff::Spectro,
         dummies: Dummies,
+	reorder: bool,
     ) -> Self {
         let logger = Mutex::new(
             std::fs::File::create("freqs.log")
@@ -91,6 +93,7 @@ impl Frequency {
             spectro,
             dummies,
             logger,
+	    reorder,
         }
     }
 
@@ -105,6 +108,9 @@ impl Frequency {
         let mol = {
             let mut mol = Molecule::new(geom.xyz().unwrap().to_vec());
             mol.normalize();
+	    if self.reorder {
+		mol.reorder();
+	    }
             mol
         };
         const SYMM_EPS: f64 = 1e-6;
@@ -160,6 +166,9 @@ impl Optimize for Frequency {
         let mol = {
             let mut mol = Molecule::new(geom.xyz().unwrap().to_vec());
             mol.normalize();
+	    if self.reorder {
+		mol.reorder();
+	    }
             mol
         };
         const SYMM_EPS: f64 = 1e-6;

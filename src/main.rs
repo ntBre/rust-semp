@@ -69,6 +69,7 @@ fn main() {
                     rust_pbqff::Intder::load_file("intder.in"),
                     rust_pbqff::Spectro::load("spectro.in"),
                     conf.dummies,
+		    conf.reorder,
                 ),
             );
         }

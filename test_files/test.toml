@@ -26,4 +26,4 @@ broyd_int = 10
 charge = 0
 optimize = "energy"
 dummies = []
-realign = false
+reorder = false

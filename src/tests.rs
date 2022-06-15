@@ -520,6 +520,7 @@ fn freq_semi_empirical() {
         rust_pbqff::Intder::load_file("test_files/intder.in"),
         rust_pbqff::Spectro::load("test_files/spectro.in"),
         vec![],
+        false,
     );
     setup();
     let queue = LocalQueue {
@@ -568,6 +569,7 @@ fn freq_num_jac() {
         rust_pbqff::Intder::load_file("test_files/intder.in"),
         rust_pbqff::Spectro::load("test_files/spectro.in"),
         vec![],
+        false,
     );
     setup();
     let queue = LocalQueue {

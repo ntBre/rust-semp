@@ -94,7 +94,7 @@ FN11       C      0.046302000000
             charge: 0,
             optimize: Protocol::Energy,
             dummies: vec![],
-	    reorder: false,
+            reorder: false,
         };
         assert_eq!(got, want);
     }

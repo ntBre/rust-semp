@@ -14,6 +14,7 @@ fn main() {
         5,
         LocalQueue::new("inp", 128),
         0,
+        false,
         Energy,
     );
 }

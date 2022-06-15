@@ -45,6 +45,10 @@ pub struct Config {
 
     /// whether or not to try re-aligning the coordinates onto the z-axis
     pub reorder: bool,
+
+    /// whether or not to reset lambda after failing to improve it by successive
+    /// multiplications by nu
+    pub reset_lambda: bool,
 }
 
 impl Config {
@@ -95,6 +99,7 @@ FN11       C      0.046302000000
             optimize: Protocol::Energy,
             dummies: vec![],
             reorder: false,
+            reset_lambda: false,
         };
         assert_eq!(got, want);
     }

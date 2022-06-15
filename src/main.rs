@@ -42,6 +42,7 @@ fn main() {
                 conf.broyd_int,
                 queue,
                 conf.charge,
+                conf.reset_lambda,
                 Energy,
             );
         }
@@ -64,6 +65,7 @@ fn main() {
                 conf.broyd_int,
                 queue,
                 conf.charge,
+                conf.reset_lambda,
                 Frequency::new(
                     rust_pbqff::config::Config::load("pbqff.toml"),
                     rust_pbqff::Intder::load_file("intder.in"),

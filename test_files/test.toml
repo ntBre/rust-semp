@@ -27,3 +27,4 @@ charge = 0
 optimize = "energy"
 dummies = []
 reorder = false
+reset_lambda = false

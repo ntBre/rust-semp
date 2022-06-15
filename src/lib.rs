@@ -281,6 +281,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
     broyd_int: usize,
     queue: Q,
     charge: isize,
+    reset_lambda: bool,
     optimizer: O,
 ) -> Stats {
     let conv = optimizer.stat_multiplier();
@@ -375,6 +376,10 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
                 bad = true;
                 break;
             }
+        }
+
+        if reset_lambda {
+            lambda /= NU.powi(i as i32);
         }
 
         // adjusting λ failed to decrease the norm. try decreasing the step size

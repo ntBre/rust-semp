@@ -12,7 +12,7 @@ ELAND_DEST = 'eland:programs/semp/.'
 eland:
 # see https://msfjarvis.dev/posts/building-static-rust-binaries-for-linux
 	RUSTFLAGS='-C target-feature=+crt-static' \
-	cargo build --release --target x86_64-unknown-linux-gnu
+	cargo build --release --target x86_64-unknown-linux-gnu --bin rust-semp
 	scp -C ${BASE}/target/x86_64-unknown-linux-gnu/release/rust-semp ${ELAND_DEST}
 
 eland.scripts: scripts/time.awk

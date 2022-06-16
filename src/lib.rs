@@ -204,15 +204,17 @@ pub fn lev_mar(
     };
     // add A* to λI (left-hand side) and compute the Cholesky decomposition
     let lhs = a_star + li;
-    let lhs = match na::linalg::Cholesky::new(lhs) {
-        Some(a) => a,
+    let mut d = match na::linalg::Cholesky::new(lhs.clone()) {
+        Some(a) => {
+            let lhs = a;
+            lhs.solve(&g_star)
+        }
         None => {
             eprintln!("cholesky decomposition failed");
-            eprintln!("jacobian: \n{:12.8}", jac);
-            std::process::exit(1);
+            let lhs = na::linalg::LU::new(lhs);
+            lhs.solve(&g_star).expect("LU decomposition also failed")
         }
     };
-    let mut d = lhs.solve(&g_star);
     // convert back from δ* to δ
     for j in 0..rows {
         d[j] /= a[(j, j)].sqrt()

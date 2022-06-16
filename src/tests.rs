@@ -444,14 +444,17 @@ fn test_solve() {
         -0.029828987570,
         0.072728316382
     ];
-    let lhs = match na::linalg::Cholesky::new(lhs) {
-        Some(a) => a,
+    let got = match na::linalg::Cholesky::new(lhs.clone()) {
+        Some(a) => {
+            let lhs = a;
+            lhs.solve(&rhs)
+        }
         None => {
             eprintln!("cholesky decomposition failed");
-            std::process::exit(1);
+            let lhs = na::linalg::LU::new(lhs);
+            lhs.solve(&rhs).expect("LU decomposition also failed")
         }
     };
-    let got = lhs.solve(&rhs);
     assert!(comp_dvec(got, want, 1.04e-6));
 }
 
@@ -507,6 +510,7 @@ fn test_algo() {
         5,
         queue,
         0,
+        false,
         Energy,
     );
     assert_eq!(got, want);

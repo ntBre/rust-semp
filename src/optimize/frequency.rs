@@ -1,14 +1,18 @@
+use na::DVector;
 use psqs::geom::Geom;
 use psqs::program::mopac::{Mopac, Params};
 use psqs::program::{Job, Template};
 use psqs::queue::Queue;
-use rust_pbqff::coord_type::{freqs, generate_pts};
-use symm::Molecule;
+use rust_pbqff::coord_type::generate_pts;
+use rust_pbqff::Intder;
+use symm::{Irrep, Molecule, PointGroup};
+use taylor::Taylor;
 
 use crate::{setup, takedown, MOPAC_TMPL};
 use nalgebra as na;
-use std::fs::File;
+use std::fs::{read_to_string, File};
 use std::io::Write;
+use std::iter::zip;
 use std::rc::Rc;
 use std::sync::Mutex;
 
@@ -32,6 +36,7 @@ pub struct Frequency {
     pub spectro: rust_pbqff::Spectro,
     pub dummies: Vec<(usize, usize)>,
     pub reorder: bool,
+    pub irreps: Vec<Irrep>,
     logger: Mutex<File>,
 }
 
@@ -92,6 +97,7 @@ impl Frequency {
         spectro: rust_pbqff::Spectro,
         dummies: Dummies,
         reorder: bool,
+        irreps: Vec<Irrep>,
     ) -> Self {
         let logger = Mutex::new(
             std::fs::File::create("freqs.log")
@@ -104,7 +110,18 @@ impl Frequency {
             dummies,
             logger,
             reorder,
+            irreps,
         }
+    }
+
+    pub fn load_irreps(filename: &str) -> Vec<Irrep> {
+        let data = read_to_string(filename).expect("failed to load irrep file");
+        data.lines()
+            .map(|s| match s.trim().parse() {
+                Ok(v) => v,
+                Err(_) => panic!("failed to parse irrep {}", s),
+            })
+            .collect()
     }
 
     fn build_jobs<W>(
@@ -129,6 +146,18 @@ impl Frequency {
         };
         const SYMM_EPS: f64 = 1e-6;
         let pg = mol.point_group_approx(SYMM_EPS);
+
+        // TODO assuming that the intder coordinates max out at C2v, this was
+        // the case for ethylene
+        let pg = if let PointGroup::D2h { axes, planes } = pg {
+            PointGroup::C2v {
+                axis: axes[0],
+                planes: [planes[1], planes[2]],
+            }
+        } else {
+            pg
+        };
+
         writeln!(w, "Normalized Geometry:\n{:20.12}", mol).unwrap();
         writeln!(w, "Point Group = {}", pg).unwrap();
 
@@ -161,6 +190,35 @@ impl Frequency {
             jobs,
         )
     }
+    /// call `rust_pbqff::coord_type::freqs`, but sort the frequencies by irrep and
+    /// then frequency and return the result as a DVector
+    pub fn freqs<W: std::io::Write>(
+        &self,
+        w: &mut W,
+        dir: &str,
+        energies: &mut [f64],
+        intder: &mut Intder,
+        taylor: &Taylor,
+        taylor_disps: &Vec<Vec<isize>>,
+        atomic_numbers: &Vec<usize>,
+    ) -> DVector<f64> {
+        let summary = rust_pbqff::coord_type::freqs(
+            w,
+            &dir,
+            energies,
+            intder,
+            taylor,
+            taylor_disps,
+            atomic_numbers,
+            &self.spectro,
+            &self.config.gspectro_cmd,
+            &self.config.spectro_cmd,
+            self.config.step_size,
+        );
+	let pairs: Vec<_> = zip(summary.irreps, &summary.corr).collect();
+	dbg!(pairs);
+        DVector::from(summary.corr)
+    }
 }
 
 impl Optimize for Frequency {
@@ -171,7 +229,7 @@ impl Optimize for Frequency {
         params: &Params,
         submitter: &Q,
         charge: isize,
-    ) -> na::DVector<f64> {
+    ) -> DVector<f64> {
         let mut w = output_stream();
 
         writeln!(w, "Params:\n{}", params.to_string()).unwrap();
@@ -204,21 +262,14 @@ impl Optimize for Frequency {
         takedown();
         // convert energies to frequencies and return those
         let _ = std::fs::create_dir("freqs");
-        let res = na::DVector::from(
-            freqs(
-                &mut w,
-                "freqs",
-                &mut energies,
-                &mut freq.intder,
-                &freq.taylor,
-                &freq.taylor_disps,
-                &freq.atomic_numbers,
-                &self.spectro,
-                &self.config.gspectro_cmd,
-                &self.config.spectro_cmd,
-                self.config.step_size,
-            )
-            .corr,
+        let res = self.freqs(
+            &mut w,
+            "freqs",
+            &mut energies,
+            &mut freq.intder,
+            &freq.taylor,
+            &freq.taylor_disps,
+            &freq.atomic_numbers,
         );
         let _ = std::fs::remove_dir_all("freqs");
         res
@@ -350,21 +401,14 @@ impl Optimize for Frequency {
                 let mut freq = freq.clone();
                 let dir = format!("freqs{}", i);
                 let _ = std::fs::create_dir(&dir);
-                na::DVector::from(
-                    rust_pbqff::coord_type::freqs(
-                        &mut output_stream(),
-                        &dir,
-                        &mut energy,
-                        &mut freq.intder,
-                        &freq.taylor,
-                        &freq.taylor_disps,
-                        &freq.atomic_numbers,
-                        &self.spectro,
-                        &self.config.gspectro_cmd,
-                        &self.config.spectro_cmd,
-                        self.config.step_size,
-                    )
-                    .corr,
+                self.freqs(
+                    &mut output_stream(),
+                    &dir,
+                    &mut energy,
+                    &mut freq.intder,
+                    &freq.taylor,
+                    &freq.taylor_disps,
+                    &freq.atomic_numbers,
                 )
             })
             .collect();
@@ -398,12 +442,7 @@ impl Optimize for Frequency {
         1.0
     }
 
-    fn log(
-        &self,
-        iter: usize,
-        got: &na::DVector<f64>,
-        want: &na::DVector<f64>,
-    ) {
+    fn log(&self, iter: usize, got: &DVector<f64>, want: &DVector<f64>) {
         let mut logger = self.logger.lock().unwrap();
         write!(logger, "{:5}", iter).unwrap();
         for g in got {
@@ -413,7 +452,7 @@ impl Optimize for Frequency {
     }
 }
 
-fn mae(a: &na::DVector<f64>, b: &na::DVector<f64>) -> f64 {
+fn mae(a: &DVector<f64>, b: &DVector<f64>) -> f64 {
     (a - b).abs().sum() / a.len() as f64
 }
 

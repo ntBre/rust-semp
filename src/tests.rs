@@ -525,6 +525,7 @@ fn freq_semi_empirical() {
         rust_pbqff::Spectro::load("test_files/spectro.in"),
         vec![],
         false,
+        Frequency::load_irreps("test_files/c3h2.symm"),
     );
     setup();
     let queue = LocalQueue {
@@ -574,6 +575,7 @@ fn freq_num_jac() {
         rust_pbqff::Spectro::load("test_files/spectro.in"),
         vec![],
         false,
+        Frequency::load_irreps("test_files/c3h2.symm"),
     );
     setup();
     let queue = LocalQueue {
@@ -608,4 +610,13 @@ fn freq_num_jac() {
     // `got` to 12 decimal places when obtaining the `want` value
     approx::assert_abs_diff_eq!(got, want, epsilon = 1e-5,);
     takedown();
+}
+
+#[test]
+fn test_load_irreps() {
+    use symm::Irrep::*;
+
+    let got = Frequency::load_irreps("test_files/symm");
+    let want = vec![B2u, B1g, Ag, B3u, Ag, B3u, Ag, B1g, Au, B1u, B2g, B2u];
+    assert_eq!(got, want);
 }

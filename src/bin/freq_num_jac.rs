@@ -11,6 +11,7 @@ fn main() {
         rust_pbqff::Spectro::load("test_files/spectro.in"),
         vec![],
         false,
+	Frequency::load_irreps("test_files/c3h2.symm"),
     );
     setup();
     let queue = LocalQueue::new("inp", 128);

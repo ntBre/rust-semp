@@ -215,8 +215,8 @@ impl Frequency {
             &self.config.spectro_cmd,
             self.config.step_size,
         );
-	let pairs: Vec<_> = zip(summary.irreps, &summary.corr).collect();
-	dbg!(pairs);
+        let pairs: Vec<_> = zip(summary.irreps, &summary.corr).collect();
+        dbg!(pairs);
         DVector::from(summary.corr)
     }
 }

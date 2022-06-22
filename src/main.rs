@@ -53,7 +53,7 @@ fn main() {
         // 4. optimize = "frequency" in `semp.toml`
         // 5. "true" frequencies in rel.dat
         // 6. an empty `file07`
-	// 7. irreps for each of the frequencies in rel.dat in `symm`
+        // 7. irreps for each of the frequencies in rel.dat in `symm`
         config::Protocol::Frequency => {
             run_algo(
                 &mut param_log,

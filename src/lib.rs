@@ -11,6 +11,9 @@ use std::{
 };
 
 use nalgebra as na;
+use std::cmp::Ordering;
+use std::iter::zip;
+use symm::Irrep;
 
 use psqs::program::mopac::{Mopac, Params};
 use psqs::queue::Queue;
@@ -272,12 +275,24 @@ fn log_params<W: Write>(w: &mut W, iter: usize, params: &Params) {
     let _ = writeln!(w, "{}", params.to_string());
 }
 
+/// sort freqs by the irrep in the same position and then by frequency. panics
+/// if `freqs` and `irreps` are not the same length.
+pub fn sort_irreps(freqs: &[f64], irreps: &[Irrep]) -> Vec<f64> {
+    assert!(freqs.len() == irreps.len());
+    let mut pairs: Vec<_> = zip(irreps, freqs).collect();
+    pairs.sort_by(|a, b| match a.0.cmp(b.0) {
+        Ordering::Equal => a.1.partial_cmp(b.1).unwrap(),
+        other => other,
+    });
+    pairs.iter().map(|x| x.1.clone()).collect()
+}
+
 pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
     param_log: &mut W,
     atom_names: Vec<String>,
     geom_file: &str,
     params: Params,
-    energy_file: &str,
+    ai: na::DVector<f64>,
     max_iter: usize,
     broyden: bool,
     broyd_int: usize,
@@ -290,7 +305,6 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
     let moles = load_geoms(geom_file, &atom_names);
     let mut params = params.clone();
     log_params(param_log, 0, &params);
-    let ai = load_energies(energy_file);
     // initial semi-empirical energies and stats
     let mut se = optimizer.semi_empirical(&moles, &params, &queue, charge);
     optimizer.log(0, &se, &ai);

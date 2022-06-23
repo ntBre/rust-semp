@@ -1,6 +1,8 @@
 use std::fs::File;
 use std::os::unix::io::AsRawFd;
 
+use nalgebra as na;
+
 use psqs::queue::slurm::Slurm;
 use rust_semp::config::Config;
 use rust_semp::optimize::energy::Energy;
@@ -31,12 +33,13 @@ fn main() {
         .expect("failed to create parameter log file");
     match conf.optimize {
         config::Protocol::Energy => {
+            let ai = load_energies("rel.dat");
             run_algo(
                 &mut param_log,
                 conf.atom_names,
                 "file07",
                 parse_params(&conf.params),
-                "rel.dat",
+                ai,
                 conf.max_iter,
                 conf.broyden,
                 conf.broyd_int,
@@ -55,12 +58,19 @@ fn main() {
         // 6. an empty `file07`
         // 7. irreps for each of the frequencies in rel.dat in `symm`
         config::Protocol::Frequency => {
+            let ai = Vec::from(load_energies("rel.dat").as_slice());
+            let irreps = Frequency::load_irreps("symm");
+            let ai = sort_irreps(&ai, &irreps);
+            eprintln!("symmetry-sorted true frequencies:");
+            for a in &ai {
+                eprintln!("{a:8.1}");
+            }
             run_algo(
                 &mut param_log,
                 conf.atom_names,
                 "file07",
                 parse_params(&conf.params),
-                "rel.dat",
+                na::DVector::from(ai),
                 conf.max_iter,
                 conf.broyden,
                 conf.broyd_int,
@@ -73,7 +83,7 @@ fn main() {
                     rust_pbqff::Spectro::load("spectro.in"),
                     conf.dummies,
                     conf.reorder,
-                    Frequency::load_irreps("symm"),
+                    irreps,
                 ),
             );
         }

@@ -8,7 +8,7 @@ fn main() {
         string!["C", "C", "C", "H", "H"],
         "test_files/small07",
         load_params("test_files/small.params"),
-        "test_files/25.dat",
+        load_energies("test_files/25.dat"),
         10,
         true,
         5,

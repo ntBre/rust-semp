@@ -8,11 +8,10 @@ use rust_pbqff::Intder;
 use symm::{Irrep, Molecule, PointGroup};
 use taylor::Taylor;
 
-use crate::{setup, takedown, MOPAC_TMPL};
+use crate::{setup, sort_irreps, takedown, MOPAC_TMPL};
 use nalgebra as na;
 use std::fs::{read_to_string, File};
 use std::io::Write;
-use std::iter::zip;
 use std::rc::Rc;
 use std::sync::Mutex;
 
@@ -215,9 +214,8 @@ impl Frequency {
             &self.config.spectro_cmd,
             self.config.step_size,
         );
-        let pairs: Vec<_> = zip(summary.irreps, &summary.corr).collect();
-        dbg!(pairs);
-        DVector::from(summary.corr)
+        let freqs = sort_irreps(&summary.corr, &summary.irreps);
+        DVector::from(freqs)
     }
 }
 

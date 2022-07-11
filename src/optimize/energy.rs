@@ -12,19 +12,20 @@ static DELTA: f64 = 1e-8;
 static DELTA_FWD: f64 = 5e7; // 1 / 2Δ
 static DELTA_BWD: f64 = -5e7; // -1 / 2Δ
 
-pub struct Energy;
+pub struct Energy {
+    pub moles: Vec<Rc<Geom>>,
+}
 
 impl Optimize for Energy {
     /// compute the semi-empirical energies of `moles` for the given `params`
     fn semi_empirical<Q: Queue<Mopac>>(
         &self,
-        moles: &Vec<Rc<Geom>>,
         params: &Params,
         submitter: &Q,
         charge: isize,
     ) -> na::DVector<f64> {
         let mut jobs = Mopac::build_jobs(
-            moles,
+            &self.moles,
             Some(params),
             "inp",
             0,
@@ -45,13 +46,12 @@ impl Optimize for Energy {
     /// actually computed and returned
     fn num_jac<Q: Queue<Mopac>>(
         &self,
-        moles: &Vec<Rc<Geom>>,
         params: &Params,
         submitter: &Q,
         charge: isize,
     ) -> na::DMatrix<f64> {
         let rows = params.values.len();
-        let cols = moles.len();
+        let cols = self.moles.len();
         let mut jac_t = vec![0.; rows * cols];
         // front and back for each row and col
         let mut jobs = Vec::with_capacity(2 * rows * cols);
@@ -63,7 +63,7 @@ impl Optimize for Energy {
             let idx = row * cols;
             pf.values[row] += DELTA;
             let mut fwd_jobs = Mopac::build_jobs(
-                &moles,
+                &self.moles,
                 Some(&pf),
                 "inp",
                 idx,
@@ -77,7 +77,7 @@ impl Optimize for Energy {
 
             pb.values[row] -= DELTA;
             let mut bwd_jobs = Mopac::build_jobs(
-                &moles,
+                &self.moles,
                 Some(&pb),
                 "inp",
                 idx,

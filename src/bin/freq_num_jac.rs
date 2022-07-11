@@ -16,7 +16,6 @@ fn main() {
     setup();
     let queue = LocalQueue::new("inp", 128);
     freq.num_jac(
-        &Vec::new(),
         &"USS            H    -11.246958000000
     ZS             H      1.268641000000
     BETAS          H     -8.352984000000

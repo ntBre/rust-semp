@@ -215,8 +215,7 @@ fn test_one_iter() {
         0.0016682034505434151,
         0.0013685168011946802,
     ]);
-    let got = Energy.semi_empirical(
-        &moles,
+    let got = Energy { moles }.semi_empirical(
         &params,
         &LocalQueue {
             chunk_size: 128,
@@ -295,8 +294,7 @@ fn test_num_jac() {
         let moles = load_geoms("test_files/small07", &names);
         let params = load_params("test_files/small.params");
         let want = load_mat("test_files/small.jac");
-        let got = Energy.num_jac(
-            &moles,
+        let got = Energy { moles }.num_jac(
             &params,
             &LocalQueue {
                 chunk_size: 128,
@@ -311,8 +309,7 @@ fn test_num_jac() {
         let moles = load_geoms("test_files/three07", &names);
         let params = load_params("test_files/three.params");
         let want = load_mat("test_files/three.jac");
-        let got = Energy.num_jac(
-            &moles,
+        let got = Energy { moles }.num_jac(
             &params,
             &LocalQueue {
                 chunk_size: 128,
@@ -505,8 +502,7 @@ fn test_algo() {
     let energy_file = "test_files/25.dat";
     let got = run_algo(
         &mut std::io::sink(),
-        names,
-        geom_file,
+        names.clone(),
         load_params(param_file),
         load_energies(energy_file),
         5,
@@ -514,7 +510,9 @@ fn test_algo() {
         5,
         queue,
         false,
-        Energy,
+        Energy {
+            moles: load_geoms(geom_file, &names[0].atom_names),
+        },
     );
     assert_eq!(got, want);
 }
@@ -536,7 +534,6 @@ fn freq_semi_empirical() {
         dir: "inp".to_string(),
     };
     let mut got = freq.semi_empirical(
-        &Vec::new(),
         &"USS            H    -11.246958000000
 ZS             H      1.268641000000
 BETAS          H     -8.352984000000
@@ -588,7 +585,6 @@ fn freq_num_jac() {
         dir: "inp".to_string(),
     };
     let got = freq.num_jac(
-        &Vec::new(),
         &"USS            H    -11.246958000000
     ZS             H      1.268641000000
     BETAS          H     -8.352984000000

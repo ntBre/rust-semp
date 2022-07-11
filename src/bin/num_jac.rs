@@ -8,5 +8,5 @@ fn main() {
     let names = string!["C", "C", "C", "H", "H"];
     let moles = load_geoms("test_files/small07", &names);
     let params = load_params("test_files/small.params");
-    Energy.num_jac(&moles, &params, &LocalQueue::new("inp", 128), 0);
+    Energy { moles }.num_jac(&params, &LocalQueue::new("inp", 128), 0);
 }

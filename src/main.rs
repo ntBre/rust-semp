@@ -36,8 +36,7 @@ fn main() {
             let ai = load_energies("rel.dat");
             run_algo(
                 &mut param_log,
-                conf.molecule,
-                "file07",
+                conf.molecule.clone(),
                 parse_params(&conf.params),
                 ai,
                 conf.max_iter,
@@ -45,7 +44,9 @@ fn main() {
                 conf.broyd_int,
                 queue,
                 conf.reset_lambda,
-                Energy,
+                Energy {
+                    moles: load_geoms("file07", &conf.molecule[0].atom_names),
+                },
             );
         }
         // requirements for a Frequency calculation:
@@ -67,7 +68,6 @@ fn main() {
             run_algo(
                 &mut param_log,
                 conf.molecule.clone(),
-                "file07",
                 parse_params(&conf.params),
                 na::DVector::from(ai),
                 conf.max_iter,

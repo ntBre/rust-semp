@@ -4,14 +4,14 @@ use rust_semp::optimize::energy::Energy;
 use rust_semp::*;
 
 fn main() {
+    let names = string!["C", "C", "C", "H", "H"];
     run_algo(
         &mut std::io::stdout(),
         vec![Molecule {
-            atom_names: string!["C", "C", "C", "H", "H"],
+            atom_names: names.clone(),
             charge: 0,
             dummies: vec![],
         }],
-        "test_files/small07",
         load_params("test_files/small.params"),
         load_energies("test_files/25.dat"),
         10,
@@ -19,6 +19,8 @@ fn main() {
         5,
         LocalQueue::new("inp", 128),
         false,
-        Energy,
+        Energy {
+            moles: load_geoms("test_files/small07", &names),
+        },
     );
 }

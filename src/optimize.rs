@@ -1,8 +1,5 @@
-use std::rc::Rc;
-
 use nalgebra as na;
 
-use psqs::geom::Geom;
 use psqs::program::mopac::{Mopac, Params};
 use psqs::queue::Queue;
 
@@ -12,7 +9,6 @@ pub mod frequency;
 pub trait Optimize {
     fn semi_empirical<Q: Queue<Mopac>>(
         &self,
-        moles: &Vec<Rc<Geom>>,
         params: &Params,
         submitter: &Q,
         charge: isize,
@@ -20,7 +16,6 @@ pub trait Optimize {
 
     fn num_jac<Q: Queue<Mopac>>(
         &self,
-        moles: &Vec<Rc<Geom>>,
         params: &Params,
         submitter: &Q,
         charge: isize,

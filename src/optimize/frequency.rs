@@ -223,7 +223,6 @@ impl Optimize for Frequency {
     /// compute the semi-empirical energies of `moles` for the given `params`
     fn semi_empirical<Q: Queue<Mopac>>(
         &self,
-        _moles: &Vec<Rc<Geom>>,
         params: &Params,
         submitter: &Q,
         charge: isize,
@@ -278,7 +277,6 @@ impl Optimize for Frequency {
     /// actually computed and returned
     fn num_jac<Q: Queue<Mopac>>(
         &self,
-        _moles: &Vec<Rc<Geom>>,
         params: &Params,
         submitter: &Q,
         charge: isize,

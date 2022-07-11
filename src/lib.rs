@@ -291,7 +291,6 @@ pub fn sort_irreps(freqs: &[f64], irreps: &[Irrep]) -> Vec<f64> {
 pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
     param_log: &mut W,
     molecules: Vec<Molecule>,
-    geom_file: &str,
     params: Params,
     ai: na::DVector<f64>,
     max_iter: usize,
@@ -303,12 +302,10 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
 ) -> Stats {
     let conv = optimizer.stat_multiplier();
     // this is only needed for energies, can I take it out in general?
-    let moles = load_geoms(geom_file, &molecules[0].atom_names);
     let mut params = params.clone();
     log_params(param_log, 0, &params);
     // initial semi-empirical energies and stats
-    let mut se =
-        optimizer.semi_empirical(&moles, &params, &queue, molecules[0].charge);
+    let mut se = optimizer.semi_empirical(&params, &queue, molecules[0].charge);
     optimizer.log(0, &se, &ai);
     let mut old_se = se.clone();
     let mut stats = Stats::new(&ai, &se, conv);
@@ -325,8 +322,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
     let mut in_broyden = false;
     let mut need_num_jac = false;
     let mut start = std::time::SystemTime::now();
-    let mut jac =
-        optimizer.num_jac(&moles, &params, &queue, molecules[0].charge);
+    let mut jac = optimizer.num_jac(&params, &queue, molecules[0].charge);
     // have to "initialize" this to satisfy compiler, but any use should panic
     // since it has zero length
     let mut step = na::DVector::from(vec![]);
@@ -344,8 +340,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
             in_broyden = false;
             need_num_jac = false;
             start = std::time::SystemTime::now();
-            jac =
-                optimizer.num_jac(&moles, &params, &queue, molecules[0].charge);
+            jac = optimizer.num_jac(&params, &queue, molecules[0].charge);
         } // else (first iteration) use jac from outside loop
 
         if DEBUG {
@@ -362,12 +357,8 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
             params.atoms.clone(),
             &params.values + &step,
         );
-        let mut new_se = optimizer.semi_empirical(
-            &moles,
-            &try_params,
-            &queue,
-            molecules[0].charge,
-        );
+        let mut new_se =
+            optimizer.semi_empirical(&try_params, &queue, molecules[0].charge);
         stats = Stats::new(&ai, &new_se, conv);
 
         // cases ii. and iii. from Marquardt63; first iteration is case ii.
@@ -392,7 +383,6 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
                 &params.values + &step,
             );
             new_se = optimizer.semi_empirical(
-                &moles,
                 &try_params,
                 &queue,
                 molecules[0].charge,
@@ -431,7 +421,6 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
                 &params.values + k * &step,
             );
             new_se = optimizer.semi_empirical(
-                &moles,
                 &try_params,
                 &queue,
                 molecules[0].charge,

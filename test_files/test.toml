@@ -1,8 +1,8 @@
+# global config
 job_limit = 10000
 chunk_size = 128
 sleep_int = 5
 max_iter = 5
-atom_names = ["C", "C", "C", "H", "H"]
 params = """
 USS        H    -11.246958000000
 ZS         H      1.268641000000
@@ -21,10 +21,13 @@ GP2        C      9.486212000000
 HSP        C      0.717322000000
 FN11       C      0.046302000000
 """
+optimize = "energy"
 broyden = false
 broyd_int = 10
-charge = 0
-optimize = "energy"
-dummies = []
 reorder = false
 reset_lambda = false
+
+[[molecule]]
+atom_names = ["C", "C", "C", "H", "H"]
+charge = 0
+dummies = []

@@ -36,7 +36,7 @@ fn main() {
             let ai = load_energies("rel.dat");
             run_algo(
                 &mut param_log,
-                conf.atom_names,
+                conf.molecule,
                 "file07",
                 parse_params(&conf.params),
                 ai,
@@ -44,7 +44,6 @@ fn main() {
                 conf.broyden,
                 conf.broyd_int,
                 queue,
-                conf.charge,
                 conf.reset_lambda,
                 Energy,
             );
@@ -67,7 +66,7 @@ fn main() {
             }
             run_algo(
                 &mut param_log,
-                conf.atom_names,
+                conf.molecule.clone(),
                 "file07",
                 parse_params(&conf.params),
                 na::DVector::from(ai),
@@ -75,13 +74,12 @@ fn main() {
                 conf.broyden,
                 conf.broyd_int,
                 queue,
-                conf.charge,
                 conf.reset_lambda,
                 Frequency::new(
                     rust_pbqff::config::Config::load("pbqff.toml"),
                     rust_pbqff::Intder::load_file("intder.in"),
                     rust_pbqff::Spectro::load("spectro.in"),
-                    conf.dummies,
+                    conf.molecule[0].dummies.clone(),
                     conf.reorder,
                     irreps,
                 ),

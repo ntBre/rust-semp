@@ -491,7 +491,11 @@ fn test_algo() {
             max: 3.7770,
         },
     };
-    let names = string!["C", "C", "C", "H", "H"];
+    let names = vec![Molecule {
+        atom_names: string!["C", "C", "C", "H", "H"],
+        charge: 0,
+        dummies: vec![],
+    }];
     let queue = LocalQueue {
         chunk_size: 128,
         dir: "inp".to_string(),
@@ -509,7 +513,6 @@ fn test_algo() {
         true,
         5,
         queue,
-        0,
         false,
         Energy,
     );

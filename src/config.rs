@@ -13,35 +13,34 @@ pub struct Config {
     /// The maximum number of jobs that should be written/submitted to the Queue
     /// at one time.
     pub job_limit: usize,
+
     /// The number of jobs to group into a single Queue submission script. The
     /// higher this number, the less strain on the submission system. The lower
     /// this number, the more jobs that can theoretically run at one time.
     pub chunk_size: usize,
+
     /// The time in seconds to sleep between iterations of polling running jobs
     /// when no jobs finished on the previous iteration
     pub sleep_int: usize,
+
     /// The maximum number of iterations to run the Levenberg-Marquardt
     /// algorithm for
     pub max_iter: usize,
-    /// Array of string atomic symbols like ["C", "C", "C", "H", "H"]
-    pub atom_names: Vec<String>,
+
     /// String containing the initial parameters to be optimized
     pub params: String,
+
     /// Whether or not to use [Broyden's approximate update
     /// method](https://en.wikipedia.org/wiki/Broyden%27s_method) to update the
     /// Jacobian matrix
     pub broyden: bool,
+
     /// If `broyden` is true, the interval at which to calculate a numerical
     /// Jacobian instead of using Broyden's method
     pub broyd_int: usize,
-    /// charge on the molecule. 0 for neutral, +1 for cation, -1 for anion, and
-    /// so on
-    pub charge: isize,
+
     /// the values to base the optimization on. energy or frequency
     pub optimize: Protocol,
-
-    /// dummy atoms of the form (axis, atom)
-    pub dummies: Vec<(usize, usize)>,
 
     /// whether or not to try re-aligning the coordinates onto the z-axis
     pub reorder: bool,
@@ -49,6 +48,22 @@ pub struct Config {
     /// whether or not to reset lambda after failing to improve it by successive
     /// multiplications by nu
     pub reset_lambda: bool,
+
+    /// individual molecules
+    pub molecule: Vec<Molecule>,
+}
+
+#[derive(Clone, Deserialize, Debug, PartialEq)]
+pub struct Molecule {
+    /// Array of string atomic symbols like ["C", "C", "C", "H", "H"]
+    pub atom_names: Vec<String>,
+
+    /// charge on the molecule. 0 for neutral, +1 for cation, -1 for anion, and
+    /// so on
+    pub charge: isize,
+
+    /// dummy atoms of the form (axis, atom)
+    pub dummies: Vec<(usize, usize)>,
 }
 
 impl Config {
@@ -73,7 +88,6 @@ mod tests {
             chunk_size: 128,
             sleep_int: 5,
             max_iter: 5,
-            atom_names: string!["C", "C", "C", "H", "H"],
             params: String::from(
                 "USS        H    -11.246958000000
 ZS         H      1.268641000000
@@ -93,11 +107,14 @@ HSP        C      0.717322000000
 FN11       C      0.046302000000
 ",
             ),
+            molecule: vec![Molecule {
+                atom_names: string!["C", "C", "C", "H", "H"],
+                charge: 0,
+                dummies: vec![],
+            }],
             broyden: false,
             broyd_int: 10,
-            charge: 0,
             optimize: Protocol::Energy,
-            dummies: vec![],
             reorder: false,
             reset_lambda: false,
         };

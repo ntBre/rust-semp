@@ -234,46 +234,51 @@ impl Optimize for Frequency {
 
         writeln!(w, "Params:\n{}", params.to_string()).unwrap();
 
-        setup();
-        // TODO the Molecules should contain their own geometries
-        let geom = optimize_geometry(
-            molecules[0].geometry.clone(),
-            params,
-            submitter,
-            "inp",
-            "opt",
-        );
+        let mut ret = Vec::new();
 
-        writeln!(w, "Optimized Geometry:\n{:20.12}", geom).unwrap();
+        for molecule in molecules {
+            setup();
+            // TODO the Molecules should contain their own geometries
+            let geom = optimize_geometry(
+                molecule.geometry.clone(),
+                params,
+                submitter,
+                "inp",
+                "opt",
+            );
 
-        let (mut freq, mut jobs) =
-            self.build_jobs(&mut w, geom, params, 0, 0, molecules[0].charge);
-        writeln!(
-            w,
-            "\n{} atoms require {} jobs",
-            freq.atomic_numbers.len(),
-            jobs.len()
-        )
-        .unwrap();
+            writeln!(w, "Optimized Geometry:\n{:20.12}", geom).unwrap();
 
-        let mut energies = vec![0.0; jobs.len()];
-        // drain to get energies
-        setup();
-        submitter.drain(&mut jobs, &mut energies);
-        takedown();
-        // convert energies to frequencies and return those
-        let _ = std::fs::create_dir("freqs");
-        let res = self.freqs(
-            &mut w,
-            "freqs",
-            &mut energies,
-            &mut freq.intder,
-            &freq.taylor,
-            &freq.taylor_disps,
-            &freq.atomic_numbers,
-        );
-        let _ = std::fs::remove_dir_all("freqs");
-        res
+            let (mut freq, mut jobs) =
+                self.build_jobs(&mut w, geom, params, 0, 0, molecule.charge);
+            writeln!(
+                w,
+                "\n{} atoms require {} jobs",
+                freq.atomic_numbers.len(),
+                jobs.len()
+            )
+            .unwrap();
+
+            let mut energies = vec![0.0; jobs.len()];
+            // drain to get energies
+            setup();
+            submitter.drain(&mut jobs, &mut energies);
+            takedown();
+            // convert energies to frequencies and return those
+            let _ = std::fs::create_dir("freqs");
+            let res = self.freqs(
+                &mut w,
+                "freqs",
+                &mut energies,
+                &mut freq.intder,
+                &freq.taylor,
+                &freq.taylor_disps,
+                &freq.atomic_numbers,
+            );
+            let _ = std::fs::remove_dir_all("freqs");
+            ret.extend(res.iter());
+        }
+        DVector::from(ret)
     }
 
     /// Compute the numerical Jacobian for the geomeries in `moles` and the

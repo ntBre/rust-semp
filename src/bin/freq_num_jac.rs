@@ -1,18 +1,19 @@
 use psqs::queue::local::LocalQueue;
 use rust_semp::{
-    config::Molecule,
     optimize::{frequency::Frequency, Optimize},
     *,
 };
 
 fn main() {
+    let config = rust_semp::config::Config::load("test_files/test.toml");
     let freq = Frequency::new(
-        rust_pbqff::config::Config::load("test_files/pbqff.toml"),
         rust_pbqff::Intder::load_file("test_files/intder.in"),
         rust_pbqff::Spectro::load("test_files/spectro.in"),
         vec![],
         false,
         Frequency::load_irreps("test_files/c3h2.symm"),
+        config.gspectro_cmd,
+        config.spectro_cmd,
     );
     setup();
     let queue = LocalQueue::new("inp", 128);
@@ -36,10 +37,6 @@ fn main() {
             .parse()
             .unwrap(),
         &queue,
-        &[Molecule {
-            atom_names: vec![],
-            charge: 0,
-            dummies: vec![],
-        }],
+        &config.molecules,
     );
 }

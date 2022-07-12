@@ -26,8 +26,22 @@ broyden = false
 broyd_int = 10
 reorder = false
 reset_lambda = false
+spectro_cmd = "/home/brent/Projects/pbqff/bin/spectro"
+gspectro_cmd = "/home/brent/Projects/chemutils/spectro/spectro/spectro"
 
 [[molecule]]
 atom_names = ["C", "C", "C", "H", "H"]
 charge = 0
 dummies = []
+geometry = """
+C
+C 1 CC
+C 1 CC 2 CCC
+H 2 CH 1 HCC 3 180.0
+H 3 CH 1 HCC 2 180.0
+
+CC =                  1.42101898
+CCC =                55.60133141
+CH =                  1.07692776
+HCC =               147.81488230
+"""

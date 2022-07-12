@@ -18,8 +18,9 @@ use std::sync::Mutex;
 use super::Optimize;
 
 static DELTA: f64 = 1e-4;
-
 static DEBUG: bool = true;
+/// pbqff step size
+const STEP_SIZE: f64 = 0.005;
 
 fn output_stream() -> Box<dyn Write> {
     if DEBUG {
@@ -30,13 +31,19 @@ fn output_stream() -> Box<dyn Write> {
 }
 
 pub struct Frequency {
-    pub config: rust_pbqff::config::Config,
     pub intder: rust_pbqff::Intder,
     pub spectro: rust_pbqff::Spectro,
     pub dummies: Vec<(usize, usize)>,
     pub reorder: bool,
     pub irreps: Vec<Irrep>,
     logger: Mutex<File>,
+
+    /* these are inherited from the config */
+    /// path to the actual spectro program to run in gspectro
+    pub spectro_cmd: String,
+
+    /// path to gspectro
+    pub gspectro_cmd: String,
 }
 
 pub fn optimize_geometry<Q: Queue<Mopac>>(
@@ -91,25 +98,27 @@ type Dummies = Vec<(usize, usize)>;
 
 impl Frequency {
     pub fn new(
-        config: rust_pbqff::config::Config,
         intder: rust_pbqff::Intder,
         spectro: rust_pbqff::Spectro,
         dummies: Dummies,
         reorder: bool,
         irreps: Vec<Irrep>,
+        gspectro_cmd: String,
+        spectro_cmd: String,
     ) -> Self {
         let logger = Mutex::new(
             std::fs::File::create("freqs.log")
                 .expect("failed to create 'freqs.log'"),
         );
         Self {
-            config,
             intder,
             spectro,
             dummies,
             logger,
             reorder,
             irreps,
+            spectro_cmd,
+            gspectro_cmd,
         }
     }
 
@@ -161,14 +170,8 @@ impl Frequency {
         writeln!(w, "Point Group = {}", pg).unwrap();
 
         let mut intder = self.intder.clone();
-        let (moles, taylor, taylor_disps, atomic_numbers) = generate_pts(
-            w,
-            &mol,
-            &pg,
-            &mut intder,
-            self.config.step_size,
-            &self.dummies,
-        );
+        let (moles, taylor, taylor_disps, atomic_numbers) =
+            generate_pts(w, &mol, &pg, &mut intder, STEP_SIZE, &self.dummies);
 
         // dir created in generate_pts but unused here
         let _ = std::fs::remove_dir_all("pts");
@@ -210,9 +213,9 @@ impl Frequency {
             taylor_disps,
             atomic_numbers,
             &self.spectro,
-            &self.config.gspectro_cmd,
-            &self.config.spectro_cmd,
-            self.config.step_size,
+            &self.gspectro_cmd,
+            &self.spectro_cmd,
+            STEP_SIZE,
         );
         let freqs = sort_irreps(&summary.corr, &summary.irreps);
         DVector::from(freqs)
@@ -234,7 +237,7 @@ impl Optimize for Frequency {
         setup();
         // TODO the Molecules should contain their own geometries
         let geom = optimize_geometry(
-            self.config.geometry.clone(),
+            molecules[0].geometry.clone(),
             params,
             submitter,
             "inp",
@@ -298,7 +301,7 @@ impl Optimize for Frequency {
                     Mopac::new(
                         format!("inp/opt{row}_fwd"),
                         Some(Rc::new(pf)),
-                        Rc::new(self.config.geometry.clone()),
+                        Rc::new(molecules[0].geometry.clone()),
                         molecules[0].charge,
                         &OPT_TMPL,
                     ),
@@ -314,7 +317,7 @@ impl Optimize for Frequency {
                     Mopac::new(
                         format!("inp/opt{row}_bwd"),
                         Some(Rc::new(pb)),
-                        Rc::new(self.config.geometry.clone()),
+                        Rc::new(molecules[0].geometry.clone()),
                         molecules[0].charge,
                         &OPT_TMPL,
                     ),

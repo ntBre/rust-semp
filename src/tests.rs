@@ -1,6 +1,7 @@
 use std::{fs, ops::Deref};
 
 use crate::{
+    config::Config,
     optimize::{energy::Energy, frequency::Frequency},
     stats::Stats,
 };
@@ -207,6 +208,7 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
 
 #[test]
 fn test_one_iter() {
+    let config = Config::load("test_files/test.toml");
     let names = string!["C", "C", "C", "H", "H"];
     let moles = load_geoms("test_files/three07", &names);
     let params = load_params("test_files/params.dat");
@@ -224,11 +226,7 @@ fn test_one_iter() {
             chunk_size: 128,
             dir: "inp".to_string(),
         },
-        &[Molecule {
-            atom_names: names,
-            charge: 0,
-            dummies: vec![],
-        }],
+        &config.molecules,
     );
     let eps = 1e-14;
     assert!(comp_dvec(got, want, eps));
@@ -296,11 +294,13 @@ fn comp_mat(got: na::DMatrix<f64>, want: na::DMatrix<f64>, eps: f64) -> bool {
 #[ignore]
 #[test]
 fn test_num_jac() {
+    let config = crate::config::Config::load("test_files/test.toml");
     let names = string!["C", "C", "C", "H", "H"];
     let molecules = [Molecule {
         atom_names: names.clone(),
         charge: 0,
         dummies: vec![],
+        geometry: config.molecules[0].geometry.clone(),
     }];
     {
         let moles = load_geoms("test_files/small07", &names);
@@ -500,10 +500,12 @@ fn test_algo() {
             max: 3.7770,
         },
     };
+    let config = Config::load("test_files/test.toml");
     let names = vec![Molecule {
         atom_names: string!["C", "C", "C", "H", "H"],
         charge: 0,
         dummies: vec![],
+        geometry: config.molecules[0].geometry.clone(),
     }];
     let queue = LocalQueue {
         chunk_size: 128,
@@ -532,13 +534,15 @@ fn test_algo() {
 #[test]
 #[ignore]
 fn freq_semi_empirical() {
+    let config = Config::load("test_files/test.toml");
     let freq = Frequency::new(
-        rust_pbqff::config::Config::load("test_files/pbqff.toml"),
         rust_pbqff::Intder::load_file("test_files/intder.in"),
         rust_pbqff::Spectro::load("test_files/spectro.in"),
         vec![],
         false,
         vec![],
+        config.gspectro_cmd,
+        config.spectro_cmd,
     );
     setup();
     let queue = LocalQueue {
@@ -569,6 +573,7 @@ FN11           C      0.046302000000"
             atom_names: vec![],
             charge: 0,
             dummies: vec![],
+            geometry: config.molecules[0].geometry.clone(),
         }],
     );
     let got = got.as_mut_slice();
@@ -587,13 +592,15 @@ FN11           C      0.046302000000"
 #[ignore]
 fn freq_num_jac() {
     // this test takes 23 minutes with the current implementation at work
+    let config = Config::load("test_files/test.toml");
     let freq = Frequency::new(
-        rust_pbqff::config::Config::load("test_files/pbqff.toml"),
         rust_pbqff::Intder::load_file("test_files/intder.in"),
         rust_pbqff::Spectro::load("test_files/spectro.in"),
         vec![],
         false,
         Frequency::load_irreps("test_files/c3h2.symm"),
+        config.gspectro_cmd,
+        config.spectro_cmd,
     );
     setup();
     let queue = LocalQueue {
@@ -624,6 +631,7 @@ fn freq_num_jac() {
             atom_names: vec![],
             charge: 0,
             dummies: vec![],
+            geometry: config.molecules[0].geometry.clone(),
         }],
     );
     let want = load_mat("test_files/freq.jac");

@@ -36,7 +36,7 @@ fn main() {
             let ai = load_energies("rel.dat");
             run_algo(
                 &mut param_log,
-                &conf.molecule,
+                &conf.molecules,
                 parse_params(&conf.params),
                 ai,
                 conf.max_iter,
@@ -45,7 +45,7 @@ fn main() {
                 queue,
                 conf.reset_lambda,
                 Energy {
-                    moles: load_geoms("file07", &conf.molecule[0].atom_names),
+                    moles: load_geoms("file07", &conf.molecules[0].atom_names),
                 },
             );
         }
@@ -67,7 +67,7 @@ fn main() {
             }
             run_algo(
                 &mut param_log,
-                &conf.molecule,
+                &conf.molecules,
                 parse_params(&conf.params),
                 na::DVector::from(ai),
                 conf.max_iter,
@@ -76,12 +76,13 @@ fn main() {
                 queue,
                 conf.reset_lambda,
                 Frequency::new(
-                    rust_pbqff::config::Config::load("pbqff.toml"),
                     rust_pbqff::Intder::load_file("intder.in"),
                     rust_pbqff::Spectro::load("spectro.in"),
-                    conf.molecule[0].dummies.clone(),
+                    conf.molecules[0].dummies.clone(),
                     conf.reorder,
                     irreps,
+                    conf.gspectro_cmd,
+                    conf.spectro_cmd,
                 ),
             );
         }

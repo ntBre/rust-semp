@@ -7,7 +7,7 @@ fn main() {
     let names = string!["C", "C", "C", "H", "H"];
     run_algo(
         &mut std::io::stdout(),
-        vec![Molecule {
+        &[Molecule {
             atom_names: names.clone(),
             charge: 0,
             dummies: vec![],

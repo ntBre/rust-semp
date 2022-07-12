@@ -215,13 +215,20 @@ fn test_one_iter() {
         0.0016682034505434151,
         0.0013685168011946802,
     ]);
-    let got = Energy { moles }.semi_empirical(
+    let got = Energy {
+        moles: moles.clone(),
+    }
+    .semi_empirical(
         &params,
         &LocalQueue {
             chunk_size: 128,
             dir: "inp".to_string(),
         },
-        0,
+        &[Molecule {
+            atom_names: names,
+            charge: 0,
+            dummies: vec![],
+        }],
     );
     let eps = 1e-14;
     assert!(comp_dvec(got, want, eps));
@@ -290,6 +297,11 @@ fn comp_mat(got: na::DMatrix<f64>, want: na::DMatrix<f64>, eps: f64) -> bool {
 #[test]
 fn test_num_jac() {
     let names = string!["C", "C", "C", "H", "H"];
+    let molecules = [Molecule {
+        atom_names: names.clone(),
+        charge: 0,
+        dummies: vec![],
+    }];
     {
         let moles = load_geoms("test_files/small07", &names);
         let params = load_params("test_files/small.params");
@@ -300,7 +312,7 @@ fn test_num_jac() {
                 chunk_size: 128,
                 dir: "inp".to_string(),
             },
-            0,
+            &molecules,
         );
         assert!(comp_mat(got, want, 1e-5));
     }
@@ -315,7 +327,7 @@ fn test_num_jac() {
                 chunk_size: 128,
                 dir: "inp".to_string(),
             },
-            0,
+            &molecules,
         );
         let tol = match hostname().as_str() {
             "cactus" | "bonsai" => 3e-6,
@@ -502,7 +514,7 @@ fn test_algo() {
     let energy_file = "test_files/25.dat";
     let got = run_algo(
         &mut std::io::sink(),
-        names.clone(),
+        &names,
         load_params(param_file),
         load_energies(energy_file),
         5,
@@ -553,7 +565,11 @@ FN11           C      0.046302000000"
             .parse()
             .unwrap(),
         &queue,
-        0,
+        &[Molecule {
+            atom_names: vec![],
+            charge: 0,
+            dummies: vec![],
+        }],
     );
     let got = got.as_mut_slice();
     got.sort_by(|a, b| b.partial_cmp(a).unwrap());
@@ -604,7 +620,11 @@ fn freq_num_jac() {
             .parse()
             .unwrap(),
         &queue,
-        0,
+        &[Molecule {
+            atom_names: vec![],
+            charge: 0,
+            dummies: vec![],
+        }],
     );
     let want = load_mat("test_files/freq.jac");
     // this should agree to 1e-12 depending on the computer I guess, I printed

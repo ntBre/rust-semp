@@ -2,6 +2,7 @@ use psqs::geom::Geom;
 use psqs::program::mopac::{Mopac, Params};
 use psqs::queue::Queue;
 
+use crate::config::Molecule;
 use crate::{relative, setup, takedown, DEBUG, MOPAC_TMPL};
 use nalgebra as na;
 use std::rc::Rc;
@@ -22,7 +23,7 @@ impl Optimize for Energy {
         &self,
         params: &Params,
         submitter: &Q,
-        charge: isize,
+        molecules: &[Molecule],
     ) -> na::DVector<f64> {
         let mut jobs = Mopac::build_jobs(
             &self.moles,
@@ -31,7 +32,7 @@ impl Optimize for Energy {
             0,
             1.0,
             0,
-            charge,
+            molecules[0].charge,
             &MOPAC_TMPL,
         );
         let mut got = vec![0.0; jobs.len()];
@@ -48,7 +49,7 @@ impl Optimize for Energy {
         &self,
         params: &Params,
         submitter: &Q,
-        charge: isize,
+        molecules: &[Molecule],
     ) -> na::DMatrix<f64> {
         let rows = params.values.len();
         let cols = self.moles.len();
@@ -69,7 +70,7 @@ impl Optimize for Energy {
                 idx,
                 DELTA_FWD,
                 job_num,
-                charge,
+                molecules[0].charge,
                 &MOPAC_TMPL,
             );
             job_num += fwd_jobs.len();
@@ -83,7 +84,7 @@ impl Optimize for Energy {
                 idx,
                 DELTA_BWD,
                 job_num,
-                charge,
+                molecules[0].charge,
                 &MOPAC_TMPL,
             );
             job_num += bwd_jobs.len();

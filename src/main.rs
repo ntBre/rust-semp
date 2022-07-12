@@ -36,7 +36,7 @@ fn main() {
             let ai = load_energies("rel.dat");
             run_algo(
                 &mut param_log,
-                conf.molecule.clone(),
+                &conf.molecule,
                 parse_params(&conf.params),
                 ai,
                 conf.max_iter,
@@ -67,7 +67,7 @@ fn main() {
             }
             run_algo(
                 &mut param_log,
-                conf.molecule.clone(),
+                &conf.molecule,
                 parse_params(&conf.params),
                 na::DVector::from(ai),
                 conf.max_iter,

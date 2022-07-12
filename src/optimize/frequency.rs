@@ -8,7 +8,7 @@ use rust_pbqff::Intder;
 use symm::{Irrep, Molecule, PointGroup};
 use taylor::Taylor;
 
-use crate::{setup, sort_irreps, takedown, MOPAC_TMPL};
+use crate::{config, setup, sort_irreps, takedown, MOPAC_TMPL};
 use nalgebra as na;
 use std::fs::{read_to_string, File};
 use std::io::Write;
@@ -225,13 +225,14 @@ impl Optimize for Frequency {
         &self,
         params: &Params,
         submitter: &Q,
-        charge: isize,
+        molecules: &[config::Molecule],
     ) -> DVector<f64> {
         let mut w = output_stream();
 
         writeln!(w, "Params:\n{}", params.to_string()).unwrap();
 
         setup();
+        // TODO the Molecules should contain their own geometries
         let geom = optimize_geometry(
             self.config.geometry.clone(),
             params,
@@ -243,7 +244,7 @@ impl Optimize for Frequency {
         writeln!(w, "Optimized Geometry:\n{:20.12}", geom).unwrap();
 
         let (mut freq, mut jobs) =
-            self.build_jobs(&mut w, geom, params, 0, 0, charge);
+            self.build_jobs(&mut w, geom, params, 0, 0, molecules[0].charge);
         writeln!(
             w,
             "\n{} atoms require {} jobs",
@@ -279,7 +280,7 @@ impl Optimize for Frequency {
         &self,
         params: &Params,
         submitter: &Q,
-        charge: isize,
+        molecules: &[config::Molecule],
     ) -> na::DMatrix<f64> {
         let start = std::time::SystemTime::now();
 
@@ -298,7 +299,7 @@ impl Optimize for Frequency {
                         format!("inp/opt{row}_fwd"),
                         Some(Rc::new(pf)),
                         Rc::new(self.config.geometry.clone()),
-                        charge,
+                        molecules[0].charge,
                         &OPT_TMPL,
                     ),
                     2 * row,
@@ -314,7 +315,7 @@ impl Optimize for Frequency {
                         format!("inp/opt{row}_bwd"),
                         Some(Rc::new(pb)),
                         Rc::new(self.config.geometry.clone()),
-                        charge,
+                        molecules[0].charge,
                         &OPT_TMPL,
                     ),
                     2 * row + 1,
@@ -347,7 +348,7 @@ impl Optimize for Frequency {
                 &pf,
                 idx,
                 idx,
-                charge,
+                molecules[0].charge,
             );
             idx += fwd_jobs.len();
             jobs.extend(fwd_jobs);
@@ -361,7 +362,7 @@ impl Optimize for Frequency {
                 &pb,
                 idx,
                 idx,
-                charge,
+                molecules[0].charge,
             );
             idx += bwd_jobs.len();
             if row == 0 {

@@ -1,5 +1,6 @@
 use psqs::queue::local::LocalQueue;
 use rust_semp::{
+    config::Molecule,
     optimize::{frequency::Frequency, Optimize},
     *,
 };
@@ -35,6 +36,10 @@ fn main() {
             .parse()
             .unwrap(),
         &queue,
-        0,
+        &[Molecule {
+            atom_names: vec![],
+            charge: 0,
+            dummies: vec![],
+        }],
     );
 }

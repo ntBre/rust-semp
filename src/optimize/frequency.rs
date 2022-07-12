@@ -397,7 +397,6 @@ impl Optimize for Frequency {
         // calculate all of the frequencies and assemble the jacobian
         let energies = energies.chunks_exact_mut(cols).map(|c| c.to_vec());
         let pairs: Vec<_> = energies.zip(freqs).collect();
-        // TODO more parallel
         let freqs: Vec<_> = pairs
             .par_iter()
             .enumerate()

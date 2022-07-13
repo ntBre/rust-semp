@@ -275,10 +275,15 @@ fn log_params<W: Write>(w: &mut W, iter: usize, params: &Params) {
     let _ = writeln!(w, "{}", params.to_string());
 }
 
-/// sort freqs by the irrep in the same position and then by frequency. panics
-/// if `freqs` and `irreps` are not the same length.
+/// sort freqs by the irrep in the same position and then by frequency. if
+/// `freqs` and `irreps` are not the same length, just return the sorted
+/// frequencies.
 pub fn sort_irreps(freqs: &[f64], irreps: &[Irrep]) -> Vec<f64> {
-    assert!(freqs.len() == irreps.len());
+    if freqs.len() != irreps.len() {
+	let mut ret = freqs.clone();
+	ret.sort_by(|a, b| a.partial_cmp(b).unwrap());
+	return ret
+    }
     let mut pairs: Vec<_> = zip(irreps, freqs).collect();
     pairs.sort_by(|a, b| match a.0.cmp(b.0) {
         Ordering::Equal => a.1.partial_cmp(b.1).unwrap(),

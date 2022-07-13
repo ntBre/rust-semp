@@ -294,42 +294,8 @@ impl Optimize for Frequency {
 
         let rows = params.values.len();
         // build all the optimizations
-        static OPT_TMPL: Template =
-            Template::from("scfcrt=1.D-21 aux(precision=14) PM6");
-        let mut opts = Vec::new();
-        for row in 0..rows {
-            // forward
-            {
-                let mut pf = params.clone();
-                pf.values[row] += DELTA;
-                opts.push(Job::new(
-                    Mopac::new(
-                        format!("inp/opt{row}_fwd"),
-                        Some(Rc::new(pf)),
-                        Rc::new(molecules[0].geometry.clone()),
-                        molecules[0].charge,
-                        &OPT_TMPL,
-                    ),
-                    2 * row,
-                ));
-            }
+        let (mut opts, _indices) = jac_opt(rows, params, molecules);
 
-            // backward
-            {
-                let mut pb = params.clone();
-                pb.values[row] -= DELTA;
-                opts.push(Job::new(
-                    Mopac::new(
-                        format!("inp/opt{row}_bwd"),
-                        Some(Rc::new(pb)),
-                        Rc::new(molecules[0].geometry.clone()),
-                        molecules[0].charge,
-                        &OPT_TMPL,
-                    ),
-                    2 * row + 1,
-                ));
-            }
-        }
         setup();
         let mut geoms = vec![Default::default(); opts.len()];
         assert!(geoms.len() == 2 * rows);
@@ -341,7 +307,7 @@ impl Optimize for Frequency {
         );
         let start = std::time::SystemTime::now();
 
-        // build all the jobs, including optimizations
+        // build all the single-point energies
         let mut idx = 0;
         let mut jobs = Vec::new();
         let mut freqs = Vec::new();
@@ -421,6 +387,15 @@ impl Optimize for Frequency {
             let dir = format!("freqs{}", i);
             let _ = std::fs::remove_dir_all(&dir);
         }
+        // TODO loop over molecules somewhere around here. each column in the
+        // jacobian is composed of multiple molecules, so I think I need to
+        // build up the columns as Vecs before putting them into the matrix
+
+        // before this iteration, jac_t is a Vec<DVec> with alternating forward
+        // and backward DVecs. I probably want to keep this form for each
+        // molecule and then extend the condensed vectors for each molecule
+        // instead of trying to extend the fwd/bwd pairs. I wish there were an
+        // easy way to join matrices
         let jac_t: Vec<_> = freqs
             .chunks(2)
             .map(|pair| {
@@ -454,6 +429,57 @@ impl Optimize for Frequency {
         }
         writeln!(logger, "{:8.1}", mae(got, want)).unwrap();
     }
+}
+
+/// helper function for generating the optimizations for the jacobian. returns a
+/// vec of Jobs and also a vec of indices separating each molecule
+fn jac_opt(
+    rows: usize,
+    params: &Params,
+    molecules: &[config::Molecule],
+) -> (Vec<Job<Mopac>>, Vec<usize>) {
+    static OPT_TMPL: Template =
+        Template::from("scfcrt=1.D-21 aux(precision=14) PM6");
+    let mut opts = Vec::new();
+    let mut indices = vec![0; molecules.len()];
+    // each row corresponds to one parameter
+    for row in 0..rows {
+        for (i, molecule) in molecules.iter().enumerate() {
+            // forward
+            {
+                let mut pf = params.clone();
+                pf.values[row] += DELTA;
+                opts.push(Job::new(
+                    Mopac::new(
+                        format!("inp/opt{row}_fwd"),
+                        Some(Rc::new(pf)),
+                        Rc::new(molecule.geometry.clone()),
+                        molecule.charge,
+                        &OPT_TMPL,
+                    ),
+                    2 * row,
+                ));
+            }
+
+            // backward
+            {
+                let mut pb = params.clone();
+                pb.values[row] -= DELTA;
+                opts.push(Job::new(
+                    Mopac::new(
+                        format!("inp/opt{row}_bwd"),
+                        Some(Rc::new(pb)),
+                        Rc::new(molecule.geometry.clone()),
+                        molecule.charge,
+                        &OPT_TMPL,
+                    ),
+                    2 * row + 1,
+                ));
+            }
+            indices[i] += 2;
+        }
+    }
+    (opts, indices)
 }
 
 fn mae(a: &DVector<f64>, b: &DVector<f64>) -> f64 {

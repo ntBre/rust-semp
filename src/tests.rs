@@ -7,6 +7,7 @@ use crate::{
 };
 
 use psqs::queue::{local::LocalQueue, slurm::Slurm};
+use rust_pbqff::Intder;
 
 use super::*;
 
@@ -301,6 +302,7 @@ fn test_num_jac() {
         charge: 0,
         dummies: vec![],
         geometry: config.molecules[0].geometry.clone(),
+        intder: Intder::load_file("test_files/intder.in"),
     }];
     {
         let moles = load_geoms("test_files/small07", &names);
@@ -506,6 +508,7 @@ fn test_algo() {
         charge: 0,
         dummies: vec![],
         geometry: config.molecules[0].geometry.clone(),
+        intder: Intder::load_file("test_files/intder.in"),
     }];
     let queue = LocalQueue {
         chunk_size: 128,
@@ -536,8 +539,6 @@ fn test_algo() {
 fn freq_semi_empirical() {
     let config = Config::load("test_files/test.toml");
     let freq = Frequency::new(
-        rust_pbqff::Intder::load_file("test_files/intder.in"),
-        rust_pbqff::Spectro::load("test_files/spectro.in"),
         vec![],
         false,
         vec![],
@@ -574,6 +575,7 @@ FN11           C      0.046302000000"
             charge: 0,
             dummies: vec![],
             geometry: config.molecules[0].geometry.clone(),
+            intder: Intder::load_file("test_files/intder.in"),
         }],
     );
     let got = got.as_mut_slice();
@@ -594,8 +596,6 @@ fn freq_num_jac() {
     // this test takes 23 minutes with the current implementation at work
     let config = Config::load("test_files/test.toml");
     let freq = Frequency::new(
-        rust_pbqff::Intder::load_file("test_files/intder.in"),
-        rust_pbqff::Spectro::load("test_files/spectro.in"),
         vec![],
         false,
         Frequency::load_irreps("test_files/c3h2.symm"),
@@ -632,6 +632,7 @@ fn freq_num_jac() {
             charge: 0,
             dummies: vec![],
             geometry: config.molecules[0].geometry.clone(),
+            intder: Intder::load_file("test_files/intder.in"),
         }],
     );
     let want = load_mat("test_files/freq.jac");

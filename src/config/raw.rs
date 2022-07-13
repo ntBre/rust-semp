@@ -68,6 +68,8 @@ pub(super) struct RawMolecule {
     pub dummies: Vec<(usize, usize)>,
 
     pub geometry: String,
+
+    pub intder_file: String,
 }
 
 impl RawConfig {
@@ -127,6 +129,7 @@ CH =                  1.07692776
 HCC =               147.81488230
 "
                 .to_string(),
+                intder_file: "test_files/intder.in".to_string(),
             }],
             broyden: false,
             broyd_int: 10,

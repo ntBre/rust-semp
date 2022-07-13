@@ -45,3 +45,4 @@ CCC =                55.60133141
 CH =                  1.07692776
 HCC =               147.81488230
 """
+intder_file = "test_files/intder.in"

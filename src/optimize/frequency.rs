@@ -4,7 +4,7 @@ use psqs::program::mopac::{Mopac, Params};
 use psqs::program::{Job, Template};
 use psqs::queue::Queue;
 use rust_pbqff::coord_type::generate_pts;
-use rust_pbqff::Intder;
+use rust_pbqff::{Intder, Spectro};
 use symm::{Irrep, Molecule, PointGroup};
 use taylor::Taylor;
 
@@ -31,8 +31,6 @@ fn output_stream() -> Box<dyn Write> {
 }
 
 pub struct Frequency {
-    pub intder: rust_pbqff::Intder,
-    pub spectro: rust_pbqff::Spectro,
     pub dummies: Vec<(usize, usize)>,
     pub reorder: bool,
     pub irreps: Vec<Irrep>,
@@ -98,8 +96,6 @@ type Dummies = Vec<(usize, usize)>;
 
 impl Frequency {
     pub fn new(
-        intder: rust_pbqff::Intder,
-        spectro: rust_pbqff::Spectro,
         dummies: Dummies,
         reorder: bool,
         irreps: Vec<Irrep>,
@@ -111,8 +107,6 @@ impl Frequency {
                 .expect("failed to create 'freqs.log'"),
         );
         Self {
-            intder,
-            spectro,
             dummies,
             logger,
             reorder,
@@ -139,7 +133,7 @@ impl Frequency {
         params: &Params,
         start_index: usize,
         job_num: usize,
-        charge: isize,
+        molecule: &config::Molecule,
     ) -> (FreqParts, Vec<Job<Mopac>>)
     where
         W: Write,
@@ -169,7 +163,7 @@ impl Frequency {
         writeln!(w, "Normalized Geometry:\n{:20.12}", mol).unwrap();
         writeln!(w, "Point Group = {}", pg).unwrap();
 
-        let mut intder = self.intder.clone();
+        let mut intder = molecule.intder.clone();
         let (moles, taylor, taylor_disps, atomic_numbers) =
             generate_pts(w, &mol, &pg, &mut intder, STEP_SIZE, &self.dummies);
 
@@ -184,7 +178,7 @@ impl Frequency {
             start_index,
             1.0,
             job_num,
-            charge,
+            molecule.charge,
             &MOPAC_TMPL,
         );
         (
@@ -192,8 +186,9 @@ impl Frequency {
             jobs,
         )
     }
-    /// call `rust_pbqff::coord_type::freqs`, but sort the frequencies by irrep and
-    /// then frequency and return the result as a DVector
+
+    /// call `rust_pbqff::coord_type::freqs`, but sort the frequencies by irrep
+    /// and then frequency and return the result as a DVector
     pub fn freqs<W: std::io::Write>(
         &self,
         w: &mut W,
@@ -204,6 +199,17 @@ impl Frequency {
         taylor_disps: &Vec<Vec<isize>>,
         atomic_numbers: &Vec<usize>,
     ) -> DVector<f64> {
+        let spec = Spectro {
+            // only important fields are 1=Ncart to ignore curvils, 2=Isotop to
+            // use default weights, 8=Nderiv to do a QFF, and 21=Iaverg to get
+            // vibrationally averaged coordinates (that one might not be
+            // important)
+            header: vec![
+                99, 1, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+                0, 0, 0, 0, 0, 0, 0, 0, 0,
+            ],
+            ..Spectro::default()
+        };
         let summary = rust_pbqff::coord_type::freqs(
             w,
             &dir,
@@ -212,13 +218,68 @@ impl Frequency {
             taylor,
             taylor_disps,
             atomic_numbers,
-            &self.spectro,
+            &spec,
             &self.gspectro_cmd,
             &self.spectro_cmd,
             STEP_SIZE,
         );
         let freqs = sort_irreps(&summary.corr, &summary.irreps);
         DVector::from(freqs)
+    }
+
+    /// helper method for computing the single-point energies for the jacobian
+    fn jac_energies(
+        &self,
+        rows: usize,
+        params: &Params,
+        geoms: Vec<Geom>,
+        molecules: &[config::Molecule],
+    ) -> (Vec<Job<Mopac>>, Vec<FreqParts>, usize) {
+        let mut idx = 0;
+        let mut jobs = Vec::new();
+        let mut freqs = Vec::new();
+        let mut cols = 0;
+        // TODO I think this is also where to return indices. there doesn't seem
+        // to be as clear a way to separate the energies without it
+        for row in 0..rows {
+            for (i, molecule) in molecules.iter().enumerate() {
+                let mut pf = params.clone();
+                pf.values[row] += DELTA;
+                // idx = job_num so use it twice
+                let (freq, fwd_jobs) = self.build_jobs(
+                    &mut output_stream(),
+                    geoms[i * rows + 2 * row].clone(),
+                    &pf,
+                    idx,
+                    idx,
+                    molecule,
+                );
+                idx += fwd_jobs.len();
+                jobs.extend(fwd_jobs);
+                freqs.push(freq);
+
+                let mut pb = params.clone();
+                pb.values[row] -= DELTA;
+                let (freq, bwd_jobs) = self.build_jobs(
+                    &mut output_stream(),
+                    geoms[i * rows + 2 * row + 1].clone(),
+                    &pb,
+                    idx,
+                    idx,
+                    molecule,
+                );
+                idx += bwd_jobs.len();
+                if row == 0 {
+                    // set this once
+
+                    // TODO cols is different for each molecule, fml
+                    cols = bwd_jobs.len();
+                }
+                jobs.extend(bwd_jobs);
+                freqs.push(freq);
+            }
+        }
+        (jobs, freqs, cols)
     }
 }
 
@@ -238,7 +299,6 @@ impl Optimize for Frequency {
 
         for molecule in molecules {
             setup();
-            // TODO the Molecules should contain their own geometries
             let geom = optimize_geometry(
                 molecule.geometry.clone(),
                 params,
@@ -250,7 +310,7 @@ impl Optimize for Frequency {
             writeln!(w, "Optimized Geometry:\n{:20.12}", geom).unwrap();
 
             let (mut freq, mut jobs) =
-                self.build_jobs(&mut w, geom, params, 0, 0, molecule.charge);
+                self.build_jobs(&mut w, geom, params, 0, 0, molecule);
             writeln!(
                 w,
                 "\n{} atoms require {} jobs",
@@ -294,7 +354,7 @@ impl Optimize for Frequency {
 
         let rows = params.values.len();
         // build all the optimizations
-        let (mut opts, _indices) = jac_opt(rows, params, molecules);
+        let mut opts = jac_opt(rows, params, molecules);
 
         setup();
         let mut geoms = vec![Default::default(); opts.len()];
@@ -308,46 +368,10 @@ impl Optimize for Frequency {
         let start = std::time::SystemTime::now();
 
         // build all the single-point energies
-        let mut idx = 0;
-        let mut jobs = Vec::new();
-        let mut freqs = Vec::new();
-        let mut cols = 0;
-        for row in 0..rows {
-            let mut pf = params.clone();
-            pf.values[row] += DELTA;
-            // idx = job_num so use it twice
-            let (freq, fwd_jobs) = self.build_jobs(
-                &mut output_stream(),
-                geoms[2 * row].clone(),
-                &pf,
-                idx,
-                idx,
-                molecules[0].charge,
-            );
-            idx += fwd_jobs.len();
-            jobs.extend(fwd_jobs);
-            freqs.push(freq);
-
-            let mut pb = params.clone();
-            pb.values[row] -= DELTA;
-            let (freq, bwd_jobs) = self.build_jobs(
-                &mut output_stream(),
-                geoms[2 * row + 1].clone(),
-                &pb,
-                idx,
-                idx,
-                molecules[0].charge,
-            );
-            idx += bwd_jobs.len();
-            if row == 0 {
-                // set this once
-                cols = bwd_jobs.len();
-            }
-            jobs.extend(bwd_jobs);
-            freqs.push(freq);
-        }
+        let (mut jobs, freqs, cols) =
+            self.jac_energies(rows, params, geoms, molecules);
         // run all of the energies
-        let mut energies = vec![0.0; idx];
+        let mut energies = vec![0.0; jobs.len()];
         setup();
         submitter.drain(&mut jobs, &mut energies);
         takedown();
@@ -437,11 +461,10 @@ fn jac_opt(
     rows: usize,
     params: &Params,
     molecules: &[config::Molecule],
-) -> (Vec<Job<Mopac>>, Vec<usize>) {
+) -> Vec<Job<Mopac>> {
     static OPT_TMPL: Template =
         Template::from("scfcrt=1.D-21 aux(precision=14) PM6");
     let mut opts = Vec::new();
-    let mut indices = vec![0; molecules.len()];
     // each row corresponds to one parameter
     for row in 0..rows {
         for (i, molecule) in molecules.iter().enumerate() {
@@ -457,7 +480,10 @@ fn jac_opt(
                         molecule.charge,
                         &OPT_TMPL,
                     ),
-                    2 * row,
+                    // this is the index because I have rows entries for each
+                    // molecule. for the first molecule i = 0 and this reduces
+                    // to the original formula of 2*row
+                    i * rows + 2 * row,
                 ));
             }
 
@@ -473,13 +499,12 @@ fn jac_opt(
                         molecule.charge,
                         &OPT_TMPL,
                     ),
-                    2 * row + 1,
+                    i * rows + 2 * row + 1,
                 ));
             }
-            indices[i] += 2;
         }
     }
-    (opts, indices)
+    opts
 }
 
 fn mae(a: &DVector<f64>, b: &DVector<f64>) -> f64 {

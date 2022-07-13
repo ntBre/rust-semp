@@ -7,8 +7,6 @@ use rust_semp::{
 fn main() {
     let config = rust_semp::config::Config::load("test_files/test.toml");
     let freq = Frequency::new(
-        rust_pbqff::Intder::load_file("test_files/intder.in"),
-        rust_pbqff::Spectro::load("test_files/spectro.in"),
         vec![],
         false,
         Frequency::load_irreps("test_files/c3h2.symm"),

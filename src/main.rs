@@ -76,8 +76,6 @@ fn main() {
                 queue,
                 conf.reset_lambda,
                 Frequency::new(
-                    rust_pbqff::Intder::load_file("intder.in"),
-                    rust_pbqff::Spectro::load("spectro.in"),
                     conf.molecules[0].dummies.clone(),
                     conf.reorder,
                     irreps,

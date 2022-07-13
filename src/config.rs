@@ -1,3 +1,4 @@
+use rust_pbqff::Intder;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug, PartialEq)]
@@ -73,6 +74,8 @@ pub struct Molecule {
     pub dummies: Vec<(usize, usize)>,
 
     pub geometry: psqs::geom::Geom,
+
+    pub intder: Intder,
 }
 
 impl Config {
@@ -89,6 +92,7 @@ impl Config {
                 charge: molecule.charge,
                 dummies: molecule.dummies,
                 geometry: molecule.geometry.parse().unwrap(),
+                intder: Intder::load_file(&molecule.intder_file),
             });
         }
         Self {

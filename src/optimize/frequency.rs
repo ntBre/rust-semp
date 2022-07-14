@@ -5,12 +5,12 @@ use psqs::program::{Job, Template};
 use psqs::queue::Queue;
 use rust_pbqff::coord_type::generate_pts;
 use rust_pbqff::{Intder, Spectro};
-use symm::{Irrep, Molecule, PointGroup};
+use symm::{Molecule, PointGroup};
 use taylor::Taylor;
 
 use crate::{config, setup, sort_irreps, takedown, MOPAC_TMPL};
 use nalgebra as na;
-use std::fs::{read_to_string, File};
+use std::fs::File;
 use std::io::Write;
 use std::rc::Rc;
 use std::sync::Mutex;
@@ -111,16 +111,6 @@ impl Frequency {
             spectro_cmd,
             gspectro_cmd,
         }
-    }
-
-    pub fn load_irreps(filename: &str) -> Vec<Irrep> {
-        let data = read_to_string(filename).expect("failed to load irrep file");
-        data.lines()
-            .map(|s| match s.trim().parse() {
-                Ok(v) => v,
-                Err(_) => panic!("failed to parse irrep {}", s),
-            })
-            .collect()
     }
 
     fn build_jobs<W>(

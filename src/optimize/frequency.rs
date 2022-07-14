@@ -234,15 +234,14 @@ impl Frequency {
         params: &Params,
         geoms: Vec<Geom>,
         molecules: &[config::Molecule],
-    ) -> (Vec<Job<Mopac>>, Vec<FreqParts>, usize) {
+    ) -> (Vec<Job<Mopac>>, Vec<Vec<FreqParts>>, Vec<usize>, Vec<usize>) {
         let mut idx = 0;
         let mut jobs = Vec::new();
-        let mut freqs = Vec::new();
-        let mut cols = 0;
-        // TODO I think this is also where to return indices. there doesn't seem
-        // to be as clear a way to separate the energies without it
-        for row in 0..rows {
-            for (i, molecule) in molecules.iter().enumerate() {
+        let mut freqs = vec![vec![]; molecules.len()];
+        let mut cols = vec![0; molecules.len()];
+        let mut indices = vec![0];
+        for (i, molecule) in molecules.iter().enumerate() {
+            for row in 0..rows {
                 let mut pf = params.clone();
                 pf.values[row] += DELTA;
                 // idx = job_num so use it twice
@@ -256,7 +255,7 @@ impl Frequency {
                 );
                 idx += fwd_jobs.len();
                 jobs.extend(fwd_jobs);
-                freqs.push(freq);
+                freqs[i].push(freq);
 
                 let mut pb = params.clone();
                 pb.values[row] -= DELTA;
@@ -269,17 +268,16 @@ impl Frequency {
                     molecule,
                 );
                 idx += bwd_jobs.len();
+                // set this on the first iteration
                 if row == 0 {
-                    // set this once
-
-                    // TODO cols is different for each molecule, fml
-                    cols = bwd_jobs.len();
+                    cols[i] = bwd_jobs.len();
                 }
                 jobs.extend(bwd_jobs);
-                freqs.push(freq);
+                freqs[i].push(freq);
             }
+            indices.push(idx);
         }
-        (jobs, freqs, cols)
+        (jobs, freqs, cols, indices)
     }
 }
 
@@ -368,13 +366,15 @@ impl Optimize for Frequency {
         let start = std::time::SystemTime::now();
 
         // build all the single-point energies
-        let (mut jobs, freqs, cols) =
+        let (mut jobs, mut freqs, cols, indices) =
             self.jac_energies(rows, params, geoms, molecules);
         // run all of the energies
         let mut energies = vec![0.0; jobs.len()];
         setup();
         submitter.drain(&mut jobs, &mut energies);
         takedown();
+        // reverse the freqs so I can pop instead of cloning out of it
+        freqs.reverse();
 
         eprintln!(
             "finished energies after {:.1} sec",
@@ -385,60 +385,72 @@ impl Optimize for Frequency {
         use rayon::prelude::*;
 
         // calculate all of the frequencies and assemble the jacobian
-        let energies = energies.chunks_exact_mut(cols).map(|c| c.to_vec());
-        let pairs: Vec<_> = energies.zip(freqs).collect();
-        let freqs: Vec<_> = pairs
-            .par_iter()
-            .enumerate()
-            .map(|(i, (energy, freq))| {
-                let mut energy = energy.clone();
-                let mut freq = freq.clone();
-                let dir = format!("freqs{}", i);
-                let _ = std::fs::create_dir(&dir);
-                self.freqs(
-                    &mut output_stream(),
-                    &dir,
-                    &mut energy,
-                    &mut freq.intder,
-                    &freq.taylor,
-                    &freq.taylor_disps,
-                    &freq.atomic_numbers,
-                )
-            })
-            .collect();
-        // remove the directories created by the iteration above
-        for i in 0..pairs.len() {
-            let dir = format!("freqs{}", i);
-            let _ = std::fs::remove_dir_all(&dir);
-        }
-        // TODO loop over molecules somewhere around here. each column in the
-        // jacobian is composed of multiple molecules, so I think I need to
-        // build up the columns as Vecs before putting them into the matrix
+        let mut jacs = Vec::new();
 
-        // before this iteration, jac_t is a Vec<DVec> with alternating forward
-        // and backward DVecs. I probably want to keep this form for each
-        // molecule and then extend the condensed vectors for each molecule
-        // instead of trying to extend the fwd/bwd pairs. I wish there were an
-        // easy way to join matrices
-        let jac_t: Vec<_> = freqs
-            .chunks(2)
-            .map(|pair| {
-                // use 'let else' if that gets stabilized
-                let (fwd, bwd) = if let [fwd, bwd] = pair {
-                    (fwd, bwd)
-                } else {
-                    panic!("unmatched pair");
-                };
-                (fwd - bwd) / (2. * DELTA)
-            })
-            .collect();
+        for i in 0..molecules.len() {
+            let slice = &mut energies[indices[i]..indices[i + 1]];
+            let slice = slice.chunks_exact_mut(cols[i]).map(|c| c.to_vec());
+            let pairs: Vec<_> = slice.zip(freqs.pop().unwrap()).collect();
+            let freqs: Vec<_> = pairs
+                .par_iter()
+                .enumerate()
+                .map(|(i, (energy, freq))| {
+                    let mut energy = energy.clone();
+                    let mut freq = freq.clone();
+                    let dir = format!("freqs{}", i);
+                    let _ = std::fs::create_dir(&dir);
+                    self.freqs(
+                        &mut output_stream(),
+                        &dir,
+                        &mut energy,
+                        &mut freq.intder,
+                        &freq.taylor,
+                        &freq.taylor_disps,
+                        &freq.atomic_numbers,
+                    )
+                })
+                .collect();
+            // remove the directories created by the iteration above
+            for i in 0..pairs.len() {
+                let dir = format!("freqs{}", i);
+                let _ = std::fs::remove_dir_all(&dir);
+            }
+            let jac_t: Vec<_> = freqs
+                .chunks(2)
+                .map(|pair| {
+                    // use 'let else' if that gets stabilized
+                    let (fwd, bwd) = if let [fwd, bwd] = pair {
+                        (fwd, bwd)
+                    } else {
+                        panic!("unmatched pair");
+                    };
+                    (fwd - bwd) / (2. * DELTA)
+                })
+                .collect();
+            jacs.push(jac_t);
+        }
+
+        // join the columns from different molecules
+
+        let mut cols = Vec::new();
+        // the length of each jacobian should be the same for each molecule
+        // since it is determined by the number of parameters
+        for i in 0..jacs[0].len() {
+            let mut tmp = Vec::new();
+            // for each molecule
+            for jac in &jacs {
+                assert_eq!(params.len(), jac.len());
+                tmp.extend(jac[i].iter());
+            }
+            cols.push(DVector::from(tmp));
+        }
 
         eprintln!(
             "finished frequencies after {:.1} sec",
             start.elapsed().unwrap().as_millis() as f64 / 1000.
         );
 
-        na::DMatrix::from_columns(&jac_t)
+        na::DMatrix::from_columns(&cols)
     }
 
     fn stat_multiplier(&self) -> f64 {
@@ -466,8 +478,8 @@ fn jac_opt(
         Template::from("scfcrt=1.D-21 aux(precision=14) PM6");
     let mut opts = Vec::new();
     // each row corresponds to one parameter
-    for row in 0..rows {
-        for (i, molecule) in molecules.iter().enumerate() {
+    for (i, molecule) in molecules.iter().enumerate() {
+        for row in 0..rows {
             // forward
             {
                 let mut pf = params.clone();

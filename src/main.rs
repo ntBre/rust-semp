@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::io::Write;
 use std::iter::zip;
 use std::os::unix::io::AsRawFd;
 
@@ -71,6 +72,7 @@ fn main() {
                 }
                 ai.extend(a);
             }
+            write_true(&ai);
             run_algo(
                 &mut param_log,
                 &conf.molecules,
@@ -90,4 +92,16 @@ fn main() {
             );
         }
     }
+}
+
+/// write the `true` frequencies to `true.dat` in the same format used in the
+/// log
+fn write_true(tru: &[f64]) {
+    let mut f =
+        std::fs::File::create("true.dat").expect("failed to make true.dat");
+    write!(f, "{:5}", "true").unwrap();
+    for t in tru {
+        write!(f, "{:8.1}", t).unwrap();
+    }
+    writeln!(f).unwrap();
 }

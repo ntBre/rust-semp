@@ -58,6 +58,7 @@ fn main() {
         // 6. an empty `file07`
         // 7. irreps for each of the frequencies in rel.dat in `symm`
         config::Protocol::Frequency => {
+            // TODO load freqs and irreps for each molecule and combine them
             let ai = Vec::from(load_energies("rel.dat").as_slice());
             let irreps = Frequency::load_irreps("symm");
             let ai = sort_irreps(&ai, &irreps);
@@ -78,7 +79,6 @@ fn main() {
                 Frequency::new(
                     conf.molecules[0].dummies.clone(),
                     conf.reorder,
-                    irreps,
                     conf.gspectro_cmd,
                     conf.spectro_cmd,
                 ),

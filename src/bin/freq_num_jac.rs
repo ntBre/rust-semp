@@ -6,13 +6,8 @@ use rust_semp::{
 
 fn main() {
     let config = rust_semp::config::Config::load("test_files/test.toml");
-    let freq = Frequency::new(
-        vec![],
-        false,
-        Frequency::load_irreps("test_files/c3h2.symm"),
-        config.gspectro_cmd,
-        config.spectro_cmd,
-    );
+    let freq =
+        Frequency::new(vec![], false, config.gspectro_cmd, config.spectro_cmd);
     setup();
     let queue = LocalQueue::new("inp", 128);
     freq.num_jac(

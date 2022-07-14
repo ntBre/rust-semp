@@ -75,6 +75,7 @@ pub struct Molecule {
 
     pub geometry: psqs::geom::Geom,
 
+    /* from here down only needed for frequencies */
     pub intder: Intder,
 }
 

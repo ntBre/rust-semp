@@ -229,12 +229,13 @@ impl Frequency {
         let mut indices = vec![0];
         for (i, molecule) in molecules.iter().enumerate() {
             for row in 0..rows {
+                let index = 2 * i * rows + 2 * row;
                 let mut pf = params.clone();
                 pf.values[row] += DELTA;
                 // idx = job_num so use it twice
                 let (freq, fwd_jobs) = self.build_jobs(
                     &mut output_stream(),
-                    geoms[i * rows + 2 * row].clone(),
+                    geoms[index].clone(),
                     &pf,
                     idx,
                     idx,
@@ -248,7 +249,7 @@ impl Frequency {
                 pb.values[row] -= DELTA;
                 let (freq, bwd_jobs) = self.build_jobs(
                     &mut output_stream(),
-                    geoms[i * rows + 2 * row + 1].clone(),
+                    geoms[index + 1].clone(),
                     &pb,
                     idx,
                     idx,
@@ -373,9 +374,9 @@ impl Optimize for Frequency {
         // calculate all of the frequencies and assemble the jacobian
         let mut jacs = Vec::new();
 
-        for i in 0..molecules.len() {
-            let slice = &mut energies[indices[i]..indices[i + 1]];
-            let slice = slice.chunks_exact_mut(cols[i]).map(|c| c.to_vec());
+        for m in 0..molecules.len() {
+            let slice = &mut energies[indices[m]..indices[m + 1]];
+            let slice = slice.chunks_exact_mut(cols[m]).map(|c| c.to_vec());
             let pairs: Vec<_> = slice.zip(freqs.pop().unwrap()).collect();
             let freqs: Vec<_> = pairs
                 .par_iter()
@@ -383,7 +384,7 @@ impl Optimize for Frequency {
                 .map(|(i, (energy, freq))| {
                     let mut energy = energy.clone();
                     let mut freq = freq.clone();
-                    let dir = format!("freqs{}", i);
+                    let dir = format!("freqs{}_{}", i, m);
                     let _ = std::fs::create_dir(&dir);
                     self.freqs(
                         &mut output_stream(),
@@ -398,7 +399,7 @@ impl Optimize for Frequency {
                 .collect();
             // remove the directories created by the iteration above
             for i in 0..pairs.len() {
-                let dir = format!("freqs{}", i);
+                let dir = format!("freqs{}_{}", i, m);
                 let _ = std::fs::remove_dir_all(&dir);
             }
             let jac_t: Vec<_> = freqs
@@ -466,13 +467,14 @@ fn jac_opt(
     // each row corresponds to one parameter
     for (i, molecule) in molecules.iter().enumerate() {
         for row in 0..rows {
+            let index = 2 * i * rows + 2 * row;
             // forward
             {
                 let mut pf = params.clone();
                 pf.values[row] += DELTA;
                 opts.push(Job::new(
                     Mopac::new(
-                        format!("inp/opt{row}_fwd"),
+                        format!("inp/opt{row}_fwd{i}"),
                         Some(Rc::new(pf)),
                         Rc::new(molecule.geometry.clone()),
                         molecule.charge,
@@ -481,7 +483,7 @@ fn jac_opt(
                     // this is the index because I have rows entries for each
                     // molecule. for the first molecule i = 0 and this reduces
                     // to the original formula of 2*row
-                    i * rows + 2 * row,
+                    index,
                 ));
             }
 
@@ -491,13 +493,13 @@ fn jac_opt(
                 pb.values[row] -= DELTA;
                 opts.push(Job::new(
                     Mopac::new(
-                        format!("inp/opt{row}_bwd"),
+                        format!("inp/opt{row}_bwd{i}"),
                         Some(Rc::new(pb)),
                         Rc::new(molecule.geometry.clone()),
                         molecule.charge,
                         &OPT_TMPL,
                     ),
-                    i * rows + 2 * row + 1,
+                    index + 1,
                 ));
             }
         }

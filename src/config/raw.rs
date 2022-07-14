@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use symm::Irrep;
 
 use super::Protocol;
 
@@ -70,6 +71,10 @@ pub(super) struct RawMolecule {
     pub geometry: String,
 
     pub intder_file: String,
+
+    pub true_freqs: Vec<f64>,
+
+    pub irreps: Vec<Irrep>,
 }
 
 impl RawConfig {
@@ -88,6 +93,7 @@ mod tests {
 
     #[test]
     fn test_load_full() {
+        use symm::Irrep::*;
         let got = RawConfig::load("test_files/test.toml").unwrap();
         let want = RawConfig {
             job_limit: 10000,
@@ -130,6 +136,11 @@ HCC =               147.81488230
 "
                 .to_string(),
                 intder_file: "test_files/intder.in".to_string(),
+                true_freqs: vec![
+                    3139.8, 3108.7, 1595.1, 1275.8, 1056.9, 1007.9, 876.8,
+                    876.5, 772.7,
+                ],
+                irreps: vec![A1, B2, A1, A1, B2, A2, A1, B2, B1],
             }],
             broyden: false,
             broyd_int: 10,

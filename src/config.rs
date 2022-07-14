@@ -11,6 +11,7 @@ pub enum Protocol {
 
 mod raw;
 use raw::*;
+use symm::Irrep;
 
 pub struct Config {
     /// The maximum number of jobs that should be written/submitted to the Queue
@@ -77,6 +78,10 @@ pub struct Molecule {
 
     /* from here down only needed for frequencies */
     pub intder: Intder,
+
+    pub true_freqs: Vec<f64>,
+
+    pub irreps: Vec<Irrep>,
 }
 
 impl Config {
@@ -94,6 +99,8 @@ impl Config {
                 dummies: molecule.dummies,
                 geometry: molecule.geometry.parse().unwrap(),
                 intder: Intder::load_file(&molecule.intder_file),
+                true_freqs: molecule.true_freqs,
+                irreps: molecule.irreps,
             });
         }
         Self {

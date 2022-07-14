@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::iter::zip;
 use std::os::unix::io::AsRawFd;
 
 use nalgebra as na;
@@ -58,13 +59,17 @@ fn main() {
         // 6. an empty `file07`
         // 7. irreps for each of the frequencies in rel.dat in `symm`
         config::Protocol::Frequency => {
-            // TODO load freqs and irreps for each molecule and combine them
-            let ai = Vec::from(load_energies("rel.dat").as_slice());
-            let irreps = Frequency::load_irreps("symm");
-            let ai = sort_irreps(&ai, &irreps);
+            let mut ai = Vec::new();
             eprintln!("symmetry-sorted true frequencies:");
-            for a in &ai {
-                eprintln!("{a:8.1}");
+            for (i, mol) in conf.molecules.iter().enumerate() {
+                eprintln!("Molecule {i}");
+                let a = mol.true_freqs.clone();
+                let irreps = mol.irreps.clone();
+                let a = sort_irreps(&a, &irreps);
+                for (i, a) in zip(irreps, a.clone()) {
+                    eprintln!("{i} {a:8.1}");
+                }
+                ai.extend(a);
             }
             run_algo(
                 &mut param_log,

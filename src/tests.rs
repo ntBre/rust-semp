@@ -7,7 +7,6 @@ use crate::{
 };
 
 use psqs::queue::{local::LocalQueue, slurm::Slurm};
-use rust_pbqff::Intder;
 
 use super::*;
 
@@ -297,13 +296,6 @@ fn comp_mat(got: na::DMatrix<f64>, want: na::DMatrix<f64>, eps: f64) -> bool {
 fn test_num_jac() {
     let config = crate::config::Config::load("test_files/test.toml");
     let names = string!["C", "C", "C", "H", "H"];
-    let molecules = [Molecule {
-        atom_names: names.clone(),
-        charge: 0,
-        dummies: vec![],
-        geometry: config.molecules[0].geometry.clone(),
-        intder: Intder::load_file("test_files/intder.in"),
-    }];
     {
         let moles = load_geoms("test_files/small07", &names);
         let params = load_params("test_files/small.params");
@@ -314,7 +306,7 @@ fn test_num_jac() {
                 chunk_size: 128,
                 dir: "inp".to_string(),
             },
-            &molecules,
+            &config.molecules,
         );
         assert!(comp_mat(got, want, 1e-5));
     }
@@ -329,7 +321,7 @@ fn test_num_jac() {
                 chunk_size: 128,
                 dir: "inp".to_string(),
             },
-            &molecules,
+            &config.molecules,
         );
         let tol = match hostname().as_str() {
             "cactus" | "bonsai" => 3e-6,
@@ -503,13 +495,6 @@ fn test_algo() {
         },
     };
     let config = Config::load("test_files/test.toml");
-    let names = vec![Molecule {
-        atom_names: string!["C", "C", "C", "H", "H"],
-        charge: 0,
-        dummies: vec![],
-        geometry: config.molecules[0].geometry.clone(),
-        intder: Intder::load_file("test_files/intder.in"),
-    }];
     let queue = LocalQueue {
         chunk_size: 128,
         dir: "inp".to_string(),
@@ -519,7 +504,7 @@ fn test_algo() {
     let energy_file = "test_files/25.dat";
     let got = run_algo(
         &mut std::io::sink(),
-        &names,
+        &config.molecules,
         load_params(param_file),
         load_energies(energy_file),
         5,
@@ -528,7 +513,7 @@ fn test_algo() {
         queue,
         false,
         Energy {
-            moles: load_geoms(geom_file, &names[0].atom_names),
+            moles: load_geoms(geom_file, &config.molecules[0].atom_names),
         },
     );
     assert_eq!(got, want);
@@ -565,13 +550,7 @@ FN11           C      0.046302000000"
             .parse()
             .unwrap(),
         &queue,
-        &[Molecule {
-            atom_names: vec![],
-            charge: 0,
-            dummies: vec![],
-            geometry: config.molecules[0].geometry.clone(),
-            intder: Intder::load_file("test_files/intder.in"),
-        }],
+        &config.molecules,
     );
     let got = got.as_mut_slice();
     got.sort_by(|a, b| b.partial_cmp(a).unwrap());
@@ -617,13 +596,7 @@ fn freq_num_jac() {
             .parse()
             .unwrap(),
         &queue,
-        &[Molecule {
-            atom_names: vec![],
-            charge: 0,
-            dummies: vec![],
-            geometry: config.molecules[0].geometry.clone(),
-            intder: Intder::load_file("test_files/intder.in"),
-        }],
+        &config.molecules,
     );
     let want = load_mat("test_files/freq.jac");
     // this should agree to 1e-12 depending on the computer I guess, I printed

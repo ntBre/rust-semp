@@ -343,7 +343,6 @@ impl Optimize for Frequency {
 
         setup();
         let mut geoms = vec![Default::default(); opts.len()];
-        assert!(geoms.len() == 2 * rows);
         submitter.optimize(&mut opts, &mut geoms);
 
         eprintln!(

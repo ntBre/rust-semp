@@ -315,7 +315,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
     let mut stats = Stats::new(&ai, &se, conv);
     let mut last_stats = Stats::default();
     Stats::print_header();
-    stats.print_step(0, &last_stats, 0);
+    stats.print_step(0, &last_stats, 0, LAMBDA0);
     last_stats = stats;
     // start looping
     let mut iter = 1;
@@ -448,7 +448,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
         }
 
         // end of loop updates
-        stats.print_step(iter, &last_stats, time);
+        stats.print_step(iter, &last_stats, time, lambda);
         old_se = se;
         se = new_se;
         optimizer.log(iter, &se, &ai);

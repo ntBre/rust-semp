@@ -30,24 +30,31 @@ impl Stats {
     }
     pub fn print_header() {
         println!(
-            "{:>17}{:>12}{:>12}{:>12}{:>12}{:>12}",
-            "cm-1", "cm-1", "cm-1", "cm-1", "cm-1", "s"
+            "{:>17}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+            "cm-1", "cm-1", "cm-1", "cm-1", "cm-1", "arb", "s"
         );
         println!(
-            "{:>5}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
-            "Iter", "Norm", "ΔNorm", "RMSD", "ΔRMSD", "Max", "Time"
+            "{:>5}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+            "Iter", "Norm", "ΔNorm", "RMSD", "ΔRMSD", "Max", "λ", "Time"
         );
     }
 
-    pub fn print_step(&self, iter: usize, last: &Self, time_milli: u128) {
+    pub fn print_step(
+        &self,
+        iter: usize,
+        last: &Self,
+        time_milli: u128,
+        lambda: f64,
+    ) {
         print!(
-            "{:5}{:12.4}{:12.4}{:12.4}{:12.4}{:12.4}{:12.1}\n",
+            "{:5}{:12.4}{:12.4}{:12.4}{:12.4}{:12.4}{:12.3e}{:12.1}\n",
             iter,
             self.norm,
             self.norm - last.norm,
             self.rmsd,
             self.rmsd - last.rmsd,
             self.max,
+            lambda,
             time_milli as f64 / 1000.,
         );
     }

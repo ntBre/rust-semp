@@ -16,9 +16,9 @@ use std::cmp::Ordering;
 use std::iter::zip;
 use symm::Irrep;
 
+use psqs::geom::Geom;
 use psqs::program::mopac::{Mopac, Params};
 use psqs::queue::Queue;
-use psqs::{geom::Geom, program::Template};
 use stats::Stats;
 use symm::atom::Atom;
 
@@ -36,8 +36,14 @@ pub static LAMBDA0: f64 = 1e-8;
 pub static NU: f64 = 2.0;
 pub static MAX_TRIES: usize = 10;
 
-static MOPAC_TMPL: Template =
-    Template::from("XYZ A0 scfcrt=1.D-21 aux(precision=14) PM6");
+#[macro_export]
+macro_rules! MOPAC_TMPL {
+    () => {
+        psqs::program::Template::from(
+            "XYZ A0 scfcrt=1.D-21 aux(precision=14) PM6",
+        )
+    };
+}
 
 /// from [StackOverflow](https://stackoverflow.com/a/45145246)
 #[macro_export]

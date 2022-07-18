@@ -50,15 +50,13 @@ pub fn optimize_geometry<Q: Queue<Mopac>>(
     dir: &str,
     name: &str,
 ) -> Geom {
-    static OPT_TMPL: Template =
-        Template::from("scfcrt=1.D-21 aux(precision=14) PM6");
     let opt = Job::new(
         Mopac::new(
             format!("{}/{}", dir, name),
             Some(Rc::new(params.clone())),
             Rc::new(geom),
             0,
-            &OPT_TMPL,
+            Template::from("scfcrt=1.D-21 aux(precision=14) PM6"),
         ),
         0,
     );
@@ -166,7 +164,7 @@ impl Frequency {
             1.0,
             job_num,
             molecule.charge,
-            &MOPAC_TMPL,
+            MOPAC_TMPL!(),
         );
         (
             FreqParts::new(intder, taylor, taylor_disps, atomic_numbers),
@@ -186,17 +184,7 @@ impl Frequency {
         taylor_disps: &Vec<Vec<isize>>,
         atomic_numbers: &Vec<usize>,
     ) -> DVector<f64> {
-        let spec = Spectro {
-            // only important fields are 1=Ncart to ignore curvils, 2=Isotop to
-            // use default weights, 8=Nderiv to do a QFF, and 21=Iaverg to get
-            // vibrationally averaged coordinates (that one might not be
-            // important)
-            header: vec![
-                99, 1, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-                0, 0, 0, 0, 0, 0, 0, 0, 0,
-            ],
-            ..Spectro::default()
-        };
+        let spec = Spectro::nocurvil();
         let summary = rust_pbqff::coord_type::freqs(
             w,
             &dir,
@@ -461,8 +449,6 @@ fn jac_opt(
     params: &Params,
     molecules: &[config::Molecule],
 ) -> Vec<Job<Mopac>> {
-    static OPT_TMPL: Template =
-        Template::from("scfcrt=1.D-21 aux(precision=14) PM6");
     let mut opts = Vec::new();
     // each row corresponds to one parameter
     for (i, molecule) in molecules.iter().enumerate() {
@@ -478,7 +464,7 @@ fn jac_opt(
                         Some(Rc::new(pf)),
                         Rc::new(molecule.geometry.clone()),
                         molecule.charge,
-                        &OPT_TMPL,
+                        Template::from("scfcrt=1.D-21 aux(precision=14) PM6"),
                     ),
                     // this is the index because I have rows entries for each
                     // molecule. for the first molecule i = 0 and this reduces
@@ -497,7 +483,7 @@ fn jac_opt(
                         Some(Rc::new(pb)),
                         Rc::new(molecule.geometry.clone()),
                         molecule.charge,
-                        &OPT_TMPL,
+                        Template::from("scfcrt=1.D-21 aux(precision=14) PM6"),
                     ),
                     index + 1,
                 ));

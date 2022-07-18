@@ -4,9 +4,6 @@ use psqs::queue::local::LocalQueue;
 use psqs::queue::Queue;
 use rust_semp::*;
 
-static MOPAC_TMPL: Template =
-    Template::from("XYZ A0 scfcrt=1.D-21 aux(precision=14) PM6");
-
 fn main() {
     let names = string!["C", "C", "C", "H", "H"];
     let moles = load_geoms("test_files/quarter07", &names);
@@ -20,7 +17,7 @@ fn main() {
         1.0,
         0,
         0,
-        &MOPAC_TMPL,
+        Template::from("XYZ A0 scfcrt=1.D-21 aux(precision=14) PM6"),
     );
     let mut energies = vec![0.; ml];
     setup();

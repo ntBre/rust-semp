@@ -33,7 +33,7 @@ impl Optimize for Energy {
             1.0,
             0,
             molecules[0].charge,
-            &MOPAC_TMPL,
+            MOPAC_TMPL!(),
         );
         let mut got = vec![0.0; jobs.len()];
         setup();
@@ -71,7 +71,7 @@ impl Optimize for Energy {
                 DELTA_FWD,
                 job_num,
                 molecules[0].charge,
-                &MOPAC_TMPL,
+                MOPAC_TMPL!(),
             );
             job_num += fwd_jobs.len();
             jobs.append(&mut fwd_jobs);
@@ -85,7 +85,7 @@ impl Optimize for Energy {
                 DELTA_BWD,
                 job_num,
                 molecules[0].charge,
-                &MOPAC_TMPL,
+                MOPAC_TMPL!(),
             );
             job_num += bwd_jobs.len();
             jobs.append(&mut bwd_jobs);
@@ -105,5 +105,13 @@ impl Optimize for Energy {
     fn stat_multiplier(&self) -> f64 {
         static HT_TO_CM: f64 = 219_474.5459784;
         HT_TO_CM
+    }
+
+    fn log(
+        &self,
+        _iter: usize,
+        _got: &na::DVector<f64>,
+        _want: &na::DVector<f64>,
+    ) {
     }
 }

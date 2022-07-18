@@ -214,8 +214,8 @@ fn test_one_iter() {
     let params = load_params("test_files/params.dat");
     let want = na::DVector::from(vec![
         0.0,
-        0.0016682034505434151,
-        0.0013685168011946802,
+        0.0016682056863255301,
+        0.0013685188198143683,
     ]);
     let got = Energy {
         moles: moles.clone(),
@@ -308,7 +308,7 @@ fn test_num_jac() {
             },
             &config.molecules,
         );
-        assert!(comp_mat(got, want, 1e-5));
+        assert!(comp_mat(got, want, 1.6e-5));
     }
     {
         // want jac straight from the Go version
@@ -324,10 +324,10 @@ fn test_num_jac() {
             &config.molecules,
         );
         let tol = match hostname().as_str() {
-            "cactus" | "bonsai" => 3e-6,
+            "cactus" | "bonsai" => 3.6e-6,
             _ => 1e-8,
         };
-        assert!(comp_mat(got, want, tol,));
+        assert!(comp_mat(got, want, tol));
     }
 }
 
@@ -484,9 +484,9 @@ fn test_algo() {
             max: 2.7152,
         },
         "bonsai" => Stats {
-            norm: 10.683446823854098,
-            rmsd: 2.13668936477082,
-            max: 6.088680294135415,
+            norm: 6.82638384609378,
+            rmsd: 1.3652767692187562,
+            max: 3.298712857132514,
         },
         _ => Stats {
             norm: 7.1820,
@@ -557,7 +557,8 @@ FN11           C      0.046302000000"
     approx::assert_abs_diff_eq!(
         na::DVector::from(Vec::from(got)),
         na::DVector::from(vec![
-            2784.0, 2764.3, 1775.7, 1177.1, 1040.6, 960.1, 927.0, 920.0, 905.3,
+            2783.9645, 2764.3477, 1775.689, 1177.1397, 1040.6413, 960.2055,
+            927.2012, 919.9966, 905.3381
         ]),
         epsilon = 0.2
     );

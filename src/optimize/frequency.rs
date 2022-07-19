@@ -3,10 +3,9 @@ use psqs::geom::Geom;
 use psqs::program::mopac::{Mopac, Params};
 use psqs::program::{Job, Template};
 use psqs::queue::Queue;
-use rust_pbqff::coord_type::{cart, sic};
-use rust_pbqff::{Intder, Spectro};
+use rust_pbqff::coord_type::sic;
+use rust_pbqff::Spectro;
 use symm::{Molecule, PointGroup};
-use taylor::Taylor;
 
 use crate::{config, setup, sort_irreps, takedown, MOPAC_TMPL};
 use nalgebra as na;

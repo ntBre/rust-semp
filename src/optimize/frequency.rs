@@ -3,7 +3,7 @@ use psqs::geom::Geom;
 use psqs::program::mopac::{Mopac, Params};
 use psqs::program::{Job, Template};
 use psqs::queue::Queue;
-use rust_pbqff::coord_type::generate_pts;
+use rust_pbqff::coord_type::{cart, sic};
 use rust_pbqff::{Intder, Spectro};
 use symm::{Molecule, PointGroup};
 use taylor::Taylor;
@@ -119,7 +119,7 @@ impl Frequency {
         start_index: usize,
         job_num: usize,
         molecule: &config::Molecule,
-    ) -> (FreqParts, Vec<Job<Mopac>>)
+    ) -> (Option<FreqParts>, Vec<Job<Mopac>>)
     where
         W: Write,
     {
@@ -148,56 +148,73 @@ impl Frequency {
         writeln!(w, "Normalized Geometry:\n{:20.12}", mol).unwrap();
         writeln!(w, "Point Group = {}", pg).unwrap();
 
-        let mut intder = molecule.intder.clone();
-        let (moles, taylor, taylor_disps, atomic_numbers) =
-            generate_pts(w, &mol, &pg, &mut intder, STEP_SIZE, &self.dummies);
+        match &molecule.intder {
+            Some(intder) => {
+                let mut intder = intder.clone();
+                let (moles, taylor, taylor_disps, atomic_numbers) =
+                    sic::generate_pts(
+                        w,
+                        &mol,
+                        &pg,
+                        &mut intder,
+                        STEP_SIZE,
+                        &self.dummies,
+                    );
 
-        // dir created in generate_pts but unused here
-        let _ = std::fs::remove_dir_all("pts");
+                // dir created in generate_pts but unused here
+                let _ = std::fs::remove_dir_all("pts");
 
-        // call build_jobs like before
-        let jobs = Mopac::build_jobs(
-            &moles,
-            Some(&params),
-            "inp",
-            start_index,
-            1.0,
-            job_num,
-            molecule.charge,
-            MOPAC_TMPL!(),
-        );
-        (
-            FreqParts::new(intder, taylor, taylor_disps, atomic_numbers),
-            jobs,
-        )
+                // call build_jobs like before
+                let jobs = Mopac::build_jobs(
+                    &moles,
+                    Some(&params),
+                    "inp",
+                    start_index,
+                    1.0,
+                    job_num,
+                    molecule.charge,
+                    MOPAC_TMPL!(),
+                );
+                (
+                    Some(FreqParts::new(
+                        intder,
+                        taylor,
+                        taylor_disps,
+                        atomic_numbers,
+                    )),
+                    jobs,
+                )
+            }
+            None => todo!("build cartesian points"),
+        }
     }
 
     /// call `rust_pbqff::coord_type::freqs`, but sort the frequencies by irrep
     /// and then frequency and return the result as a DVector
-    pub fn freqs<W: std::io::Write>(
+    fn freqs<W: std::io::Write>(
         &self,
         w: &mut W,
         dir: &str,
         energies: &mut [f64],
-        intder: &mut Intder,
-        taylor: &Taylor,
-        taylor_disps: &Vec<Vec<isize>>,
-        atomic_numbers: &Vec<usize>,
+        freq: &mut Option<FreqParts>,
     ) -> DVector<f64> {
         let spec = Spectro::nocurvil();
-        let summary = rust_pbqff::coord_type::freqs(
-            w,
-            &dir,
-            energies,
-            intder,
-            taylor,
-            taylor_disps,
-            atomic_numbers,
-            &spec,
-            &self.gspectro_cmd,
-            &self.spectro_cmd,
-            STEP_SIZE,
-        );
+        let summary = match freq {
+            Some(freq) => rust_pbqff::coord_type::sic::freqs(
+                w,
+                &dir,
+                energies,
+                &mut freq.intder,
+                &freq.taylor,
+                &freq.taylor_disps,
+                &freq.atomic_numbers,
+                &spec,
+                &self.gspectro_cmd,
+                &self.spectro_cmd,
+                STEP_SIZE,
+            ),
+            None => todo!("use cart::freqs"),
+        };
         let freqs = sort_irreps(&summary.corr, &summary.irreps);
         DVector::from(freqs)
     }
@@ -209,7 +226,12 @@ impl Frequency {
         params: &Params,
         geoms: Vec<Geom>,
         molecules: &[config::Molecule],
-    ) -> (Vec<Job<Mopac>>, Vec<Vec<FreqParts>>, Vec<usize>, Vec<usize>) {
+    ) -> (
+        Vec<Job<Mopac>>,
+        Vec<Vec<Option<FreqParts>>>,
+        Vec<usize>,
+        Vec<usize>,
+    ) {
         let mut idx = 0;
         let mut jobs = Vec::new();
         let mut freqs = vec![vec![]; molecules.len()];
@@ -288,7 +310,7 @@ impl Optimize for Frequency {
             writeln!(
                 w,
                 "\n{} atoms require {} jobs",
-                freq.atomic_numbers.len(),
+                molecule.atom_names.len(),
                 jobs.len()
             )
             .unwrap();
@@ -300,15 +322,7 @@ impl Optimize for Frequency {
             takedown();
             // convert energies to frequencies and return those
             let _ = std::fs::create_dir("freqs");
-            let res = self.freqs(
-                &mut w,
-                "freqs",
-                &mut energies,
-                &mut freq.intder,
-                &freq.taylor,
-                &freq.taylor_disps,
-                &freq.atomic_numbers,
-            );
+            let res = self.freqs(&mut w, "freqs", &mut energies, &mut freq);
             let _ = std::fs::remove_dir_all("freqs");
             ret.extend(res.iter());
         }
@@ -378,10 +392,7 @@ impl Optimize for Frequency {
                         &mut output_stream(),
                         &dir,
                         &mut energy,
-                        &mut freq.intder,
-                        &freq.taylor,
-                        &freq.taylor_disps,
-                        &freq.atomic_numbers,
+                        &mut freq,
                     )
                 })
                 .collect();

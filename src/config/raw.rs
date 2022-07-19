@@ -70,7 +70,7 @@ pub(super) struct RawMolecule {
 
     pub geometry: String,
 
-    pub intder_file: String,
+    pub intder_file: Option<String>,
 
     pub true_freqs: Vec<f64>,
 
@@ -135,7 +135,7 @@ CH =                  1.07692776
 HCC =               147.81488230
 "
                 .to_string(),
-                intder_file: "test_files/intder.in".to_string(),
+                intder_file: Some("test_files/intder.in".to_string()),
                 true_freqs: vec![
                     3139.8, 3108.7, 1595.1, 1275.8, 1056.9, 1007.9, 876.8,
                     876.5, 772.7,

@@ -77,7 +77,7 @@ pub struct Molecule {
     pub geometry: psqs::geom::Geom,
 
     /* from here down only needed for frequencies */
-    pub intder: Intder,
+    pub intder: Option<Intder>,
 
     pub true_freqs: Vec<f64>,
 
@@ -98,7 +98,10 @@ impl Config {
                 charge: molecule.charge,
                 dummies: molecule.dummies,
                 geometry: molecule.geometry.parse().unwrap(),
-                intder: Intder::load_file(&molecule.intder_file),
+                intder: match &molecule.intder_file {
+                    Some(f) => Some(Intder::load_file(f)),
+                    None => None,
+                },
                 true_freqs: molecule.true_freqs,
                 irreps: molecule.irreps,
             });

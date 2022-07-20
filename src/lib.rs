@@ -43,6 +43,9 @@ macro_rules! MOPAC_TMPL {
             "XYZ A0 scfcrt=1.D-21 aux(precision=14) PM6",
         )
     };
+    ($_:ident) => {
+        psqs::program::Template::from("XYZ scfcrt=1.D-21 aux(precision=14) PM6")
+    };
 }
 
 /// from [StackOverflow](https://stackoverflow.com/a/45145246)

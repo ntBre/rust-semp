@@ -1,9 +1,10 @@
 use na::DVector;
 use psqs::geom::Geom;
 use psqs::program::mopac::{Mopac, Params};
-use psqs::program::{Job, Template};
+use psqs::program::{Job, ProgramResult, Template};
 use psqs::queue::Queue;
-use rust_pbqff::coord_type::sic;
+use rust_pbqff::coord_type::cart::{make_fcs, BigHash};
+use rust_pbqff::coord_type::{sic, Cart};
 use rust_pbqff::Spectro;
 use symm::{Molecule, PointGroup};
 
@@ -48,7 +49,7 @@ pub fn optimize_geometry<Q: Queue<Mopac>>(
     queue: &Q,
     dir: &str,
     name: &str,
-) -> Geom {
+) -> ProgramResult {
     let opt = Job::new(
         Mopac::new(
             format!("{}/{}", dir, name),
@@ -59,8 +60,8 @@ pub fn optimize_geometry<Q: Queue<Mopac>>(
         ),
         0,
     );
-    let mut res = vec![Geom::default(); 1];
-    queue.optimize(&mut [opt], &mut res);
+    let mut res = vec![Default::default(); 1];
+    queue.energize(&mut [opt], &mut res);
     res.pop().unwrap()
 }
 
@@ -72,10 +73,18 @@ enum FreqParts {
         taylor_disps: Vec<Vec<isize>>,
         atomic_numbers: Vec<usize>,
     },
+    Cart {
+        fcs: Vec<f64>,
+        target_map: BigHash,
+        n: usize,
+        nfc2: usize,
+        nfc3: usize,
+        mol: Molecule,
+    },
 }
 
 impl FreqParts {
-    fn new(
+    fn sic(
         intder: rust_pbqff::Intder,
         taylor: taylor::Taylor,
         taylor_disps: Vec<Vec<isize>>,
@@ -86,6 +95,24 @@ impl FreqParts {
             taylor,
             taylor_disps,
             atomic_numbers,
+        }
+    }
+
+    fn cart(
+        fcs: Vec<f64>,
+        target_map: BigHash,
+        n: usize,
+        nfc2: usize,
+        nfc3: usize,
+        mol: Molecule,
+    ) -> Self {
+        Self::Cart {
+            fcs,
+            target_map,
+            n,
+            nfc2,
+            nfc3,
+            mol,
         }
     }
 }
@@ -115,7 +142,7 @@ impl Frequency {
     fn build_jobs<W>(
         &self,
         w: &mut W,
-        geom: Geom,
+        geom: ProgramResult,
         params: &Params,
         start_index: usize,
         job_num: usize,
@@ -125,7 +152,7 @@ impl Frequency {
         W: Write,
     {
         let mol = {
-            let mut mol = Molecule::new(geom.xyz().unwrap().to_vec());
+            let mut mol = Molecule::new(geom.cart_geom);
             mol.normalize();
             if self.reorder {
                 mol.reorder();
@@ -177,7 +204,7 @@ impl Frequency {
                     MOPAC_TMPL!(),
                 );
                 (
-                    FreqParts::new(
+                    FreqParts::sic(
                         intder,
                         taylor,
                         taylor_disps,
@@ -186,7 +213,29 @@ impl Frequency {
                     jobs,
                 )
             }
-            None => todo!("build cartesian points"),
+            None => {
+                let n = 3 * mol.atoms.len();
+                let nfc2 = n * n;
+                let nfc3 = n * (n + 1) * (n + 2) / 6;
+                let nfc4 = n * (n + 1) * (n + 2) * (n + 3) / 24;
+                let mut fcs = vec![0.0; nfc2 + nfc3 + nfc4];
+
+                let mut target_map = BigHash::new(mol.clone());
+
+                let jobs = Cart.build_points(
+                    "inp",
+                    Geom::Xyz(mol.atoms.clone()),
+                    STEP_SIZE,
+                    molecule.charge,
+                    MOPAC_TMPL!(cart),
+                    geom.energy,
+                    nfc2,
+                    nfc3,
+                    &mut fcs,
+                    &mut target_map,
+                );
+                (FreqParts::cart(fcs, target_map, n, nfc2, nfc3, mol), jobs)
+            }
         }
     }
 
@@ -219,6 +268,23 @@ impl Frequency {
                 &self.spectro_cmd,
                 STEP_SIZE,
             ),
+            FreqParts::Cart {
+                fcs,
+                target_map,
+                n,
+                nfc2,
+                nfc3,
+                mol,
+            } => {
+                make_fcs(target_map, &energies, fcs, *n, *nfc2, *nfc3, dir);
+                rust_pbqff::coord_type::cart::freqs(
+                    dir,
+                    &spec,
+                    &self.gspectro_cmd,
+                    &self.spectro_cmd,
+                    mol,
+                )
+            }
         };
         let freqs = sort_irreps(&summary.corr, &summary.irreps);
         DVector::from(freqs)
@@ -229,7 +295,7 @@ impl Frequency {
         &self,
         rows: usize,
         params: &Params,
-        geoms: Vec<Geom>,
+        geoms: &[ProgramResult],
         molecules: &[config::Molecule],
     ) -> (Vec<Job<Mopac>>, Vec<Vec<FreqParts>>, Vec<usize>, Vec<usize>) {
         let mut idx = 0;
@@ -303,7 +369,12 @@ impl Optimize for Frequency {
                 "opt",
             );
 
-            writeln!(w, "Optimized Geometry:\n{:20.12}", geom).unwrap();
+            writeln!(
+                w,
+                "Optimized Geometry:\n{:20.12}",
+                Molecule::new(geom.cart_geom.clone())
+            )
+            .unwrap();
 
             let (mut freq, mut jobs) =
                 self.build_jobs(&mut w, geom, params, 0, 0, molecule);
@@ -346,7 +417,7 @@ impl Optimize for Frequency {
 
         setup();
         let mut geoms = vec![Default::default(); opts.len()];
-        submitter.optimize(&mut opts, &mut geoms);
+        submitter.energize(&mut opts, &mut geoms);
 
         eprintln!(
             "finished optimizations after {:.1} sec",
@@ -356,7 +427,7 @@ impl Optimize for Frequency {
 
         // build all the single-point energies
         let (mut jobs, mut freqs, cols, indices) =
-            self.jac_energies(rows, params, geoms, molecules);
+            self.jac_energies(rows, params, &geoms, molecules);
         // run all of the energies
         let mut energies = vec![0.0; jobs.len()];
         setup();

@@ -220,7 +220,7 @@ impl Frequency {
                 let nfc4 = n * (n + 1) * (n + 2) * (n + 3) / 24;
                 let mut fcs = vec![0.0; nfc2 + nfc3 + nfc4];
 
-                let mut target_map = BigHash::new(mol.clone());
+                let mut target_map = BigHash::new(mol.clone(), pg);
 
                 let jobs = Cart.build_points(
                     "inp",

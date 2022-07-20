@@ -65,11 +65,13 @@ pub fn optimize_geometry<Q: Queue<Mopac>>(
 }
 
 #[derive(Clone)]
-struct FreqParts {
-    intder: rust_pbqff::Intder,
-    taylor: taylor::Taylor,
-    taylor_disps: Vec<Vec<isize>>,
-    atomic_numbers: Vec<usize>,
+enum FreqParts {
+    SIC {
+        intder: rust_pbqff::Intder,
+        taylor: taylor::Taylor,
+        taylor_disps: Vec<Vec<isize>>,
+        atomic_numbers: Vec<usize>,
+    },
 }
 
 impl FreqParts {
@@ -79,7 +81,7 @@ impl FreqParts {
         taylor_disps: Vec<Vec<isize>>,
         atomic_numbers: Vec<usize>,
     ) -> Self {
-        Self {
+        Self::SIC {
             intder,
             taylor,
             taylor_disps,
@@ -118,7 +120,7 @@ impl Frequency {
         start_index: usize,
         job_num: usize,
         molecule: &config::Molecule,
-    ) -> (Option<FreqParts>, Vec<Job<Mopac>>)
+    ) -> (FreqParts, Vec<Job<Mopac>>)
     where
         W: Write,
     {
@@ -175,12 +177,12 @@ impl Frequency {
                     MOPAC_TMPL!(),
                 );
                 (
-                    Some(FreqParts::new(
+                    FreqParts::new(
                         intder,
                         taylor,
                         taylor_disps,
                         atomic_numbers,
-                    )),
+                    ),
                     jobs,
                 )
             }
@@ -195,24 +197,28 @@ impl Frequency {
         w: &mut W,
         dir: &str,
         energies: &mut [f64],
-        freq: &mut Option<FreqParts>,
+        freq: &mut FreqParts,
     ) -> DVector<f64> {
         let spec = Spectro::nocurvil();
         let summary = match freq {
-            Some(freq) => rust_pbqff::coord_type::sic::freqs(
+            FreqParts::SIC {
+                intder,
+                taylor,
+                taylor_disps,
+                atomic_numbers,
+            } => rust_pbqff::coord_type::sic::freqs(
                 w,
                 &dir,
                 energies,
-                &mut freq.intder,
-                &freq.taylor,
-                &freq.taylor_disps,
-                &freq.atomic_numbers,
+                &mut intder.clone(),
+                &taylor,
+                &taylor_disps,
+                &atomic_numbers,
                 &spec,
                 &self.gspectro_cmd,
                 &self.spectro_cmd,
                 STEP_SIZE,
             ),
-            None => todo!("use cart::freqs"),
         };
         let freqs = sort_irreps(&summary.corr, &summary.irreps);
         DVector::from(freqs)
@@ -225,12 +231,7 @@ impl Frequency {
         params: &Params,
         geoms: Vec<Geom>,
         molecules: &[config::Molecule],
-    ) -> (
-        Vec<Job<Mopac>>,
-        Vec<Vec<Option<FreqParts>>>,
-        Vec<usize>,
-        Vec<usize>,
-    ) {
+    ) -> (Vec<Job<Mopac>>, Vec<Vec<FreqParts>>, Vec<usize>, Vec<usize>) {
         let mut idx = 0;
         let mut jobs = Vec::new();
         let mut freqs = vec![vec![]; molecules.len()];

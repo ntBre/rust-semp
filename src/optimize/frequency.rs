@@ -65,7 +65,7 @@ pub fn optimize_geometry<Q: Queue<Mopac>>(
     res.pop().unwrap()
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum FreqParts {
     SIC {
         intder: rust_pbqff::Intder,
@@ -228,7 +228,7 @@ impl Frequency {
                     STEP_SIZE,
                     molecule.charge,
                     MOPAC_TMPL!(cart),
-                    start_index,
+                    dbg!(start_index),
                     geom.energy,
                     nfc2,
                     nfc3,
@@ -277,6 +277,7 @@ impl Frequency {
                 nfc3,
                 mol,
             } => {
+                // NOTE: running this again with DEBUG=fcs
                 make_fcs(target_map, &energies, fcs, *n, *nfc2, *nfc3, dir);
                 rust_pbqff::coord_type::cart::freqs(
                     dir,
@@ -429,11 +430,13 @@ impl Optimize for Frequency {
         // build all the single-point energies
         let (mut jobs, mut freqs, cols, indices) =
             self.jac_energies(rows, params, &geoms, molecules);
+
         // run all of the energies
         let mut energies = vec![0.0; jobs.len()];
         setup();
         submitter.drain(&mut jobs, &mut energies);
         takedown();
+
         // reverse the freqs so I can pop instead of cloning out of it
         freqs.reverse();
 
@@ -449,30 +452,37 @@ impl Optimize for Frequency {
         let mut jacs = Vec::new();
 
         for m in 0..molecules.len() {
+            // first grab the part of energies for this molecule
             let slice = &mut energies[indices[m]..indices[m + 1]];
+            // break it into chunks corresponding to each column of the jacobian
             let slice = slice.chunks_exact_mut(cols[m]).map(|c| c.to_vec());
+            // zip it with the FreqParts
             let pairs: Vec<_> = slice.zip(freqs.pop().unwrap()).collect();
+            // iterate over the energy/freqparts pairs in parallel
             let freqs: Vec<_> = pairs
-                .par_iter()
+                .iter()
                 .enumerate()
                 .map(|(i, (energy, freq))| {
                     let mut energy = energy.clone();
                     let mut freq = freq.clone();
                     let dir = format!("freqs{}_{}", i, m);
                     let _ = std::fs::create_dir(&dir);
-                    self.freqs(
+                    let f = self.freqs(
                         &mut output_stream(),
                         &dir,
                         &mut energy,
                         &mut freq,
-                    )
+                    );
+                    std::process::exit(1);
+                    f
                 })
                 .collect();
+            // NOTE: checking that the directories look okay
             // remove the directories created by the iteration above
-            for i in 0..pairs.len() {
-                let dir = format!("freqs{}_{}", i, m);
-                let _ = std::fs::remove_dir_all(&dir);
-            }
+            // for i in 0..pairs.len() {
+            //     let dir = format!("freqs{}_{}", i, m);
+            //     let _ = std::fs::remove_dir_all(&dir);
+            // }
             let jac_t: Vec<_> = freqs
                 .chunks(2)
                 .map(|pair| {

@@ -228,6 +228,7 @@ impl Frequency {
                     STEP_SIZE,
                     molecule.charge,
                     MOPAC_TMPL!(cart),
+                    start_index,
                     geom.energy,
                     nfc2,
                     nfc3,

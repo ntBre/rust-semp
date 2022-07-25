@@ -219,6 +219,7 @@ fn test_one_iter() {
         &moles,
         &params,
         &LocalQueue {
+            chunk_size: 128,
             dir: "inp".to_string(),
         },
         0,
@@ -298,6 +299,7 @@ fn test_num_jac() {
             &moles,
             &params,
             &LocalQueue {
+                chunk_size: 128,
                 dir: "inp".to_string(),
             },
             0,
@@ -313,6 +315,7 @@ fn test_num_jac() {
             &moles,
             &params,
             &LocalQueue {
+                chunk_size: 128,
                 dir: "inp".to_string(),
             },
             0,
@@ -441,14 +444,17 @@ fn test_solve() {
         -0.029828987570,
         0.072728316382
     ];
-    let lhs = match na::linalg::Cholesky::new(lhs) {
-        Some(a) => a,
+    let got = match na::linalg::Cholesky::new(lhs.clone()) {
+        Some(a) => {
+            let lhs = a;
+            lhs.solve(&rhs)
+        }
         None => {
             eprintln!("cholesky decomposition failed");
-            std::process::exit(1);
+            let lhs = na::linalg::LU::new(lhs);
+            lhs.solve(&rhs).expect("LU decomposition also failed")
         }
     };
-    let got = lhs.solve(&rhs);
     assert!(comp_dvec(got, want, 1.04e-6));
 }
 
@@ -487,6 +493,7 @@ fn test_algo() {
     };
     let names = string!["C", "C", "C", "H", "H"];
     let queue = LocalQueue {
+        chunk_size: 128,
         dir: "inp".to_string(),
     };
     let geom_file = "test_files/small07";
@@ -497,12 +504,13 @@ fn test_algo() {
         names,
         geom_file,
         load_params(param_file),
-        energy_file,
+        load_energies(energy_file),
         5,
         true,
         5,
         queue,
         0,
+        false,
         Energy,
     );
     assert_eq!(got, want);
@@ -515,12 +523,16 @@ fn freq_semi_empirical() {
         rust_pbqff::config::Config::load("test_files/pbqff.toml"),
         rust_pbqff::Intder::load_file("test_files/intder.in"),
         rust_pbqff::Spectro::load("test_files/spectro.in"),
+        vec![],
+        false,
+        vec![],
     );
     setup();
     let queue = LocalQueue {
+        chunk_size: 128,
         dir: "inp".to_string(),
     };
-    let got = freq.semi_empirical(
+    let mut got = freq.semi_empirical(
         &Vec::new(),
         &"USS            H    -11.246958000000
 ZS             H      1.268641000000
@@ -543,12 +555,14 @@ FN11           C      0.046302000000"
         &queue,
         0,
     );
+    let got = got.as_mut_slice();
+    got.sort_by(|a, b| b.partial_cmp(a).unwrap());
     approx::assert_abs_diff_eq!(
-        got,
+        na::DVector::from(Vec::from(got)),
         na::DVector::from(vec![
-            2784.0, 2764.3, 1775.7, 1177.1, 1040.6, 960.1, 920.0, 927.0, 905.3,
+            2784.0, 2764.3, 1775.7, 1177.1, 1040.6, 960.1, 927.0, 920.0, 905.3,
         ]),
-        epsilon = 1.0
+        epsilon = 0.2
     );
     takedown();
 }
@@ -561,9 +575,13 @@ fn freq_num_jac() {
         rust_pbqff::config::Config::load("test_files/pbqff.toml"),
         rust_pbqff::Intder::load_file("test_files/intder.in"),
         rust_pbqff::Spectro::load("test_files/spectro.in"),
+        vec![],
+        false,
+        Frequency::load_irreps("test_files/c3h2.symm"),
     );
     setup();
     let queue = LocalQueue {
+        chunk_size: 128,
         dir: "inp".to_string(),
     };
     let got = freq.num_jac(
@@ -594,4 +612,13 @@ fn freq_num_jac() {
     // `got` to 12 decimal places when obtaining the `want` value
     approx::assert_abs_diff_eq!(got, want, epsilon = 1e-5,);
     takedown();
+}
+
+#[test]
+fn test_load_irreps() {
+    use symm::Irrep::*;
+
+    let got = Frequency::load_irreps("test_files/symm");
+    let want = vec![B2u, B1g, Ag, B3u, Ag, B3u, Ag, B1g, Au, B1u, B2g, B2u];
+    assert_eq!(got, want);
 }

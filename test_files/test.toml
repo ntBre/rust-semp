@@ -25,3 +25,6 @@ broyden = false
 broyd_int = 10
 charge = 0
 optimize = "energy"
+dummies = []
+reorder = false
+reset_lambda = false

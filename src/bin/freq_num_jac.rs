@@ -9,11 +9,12 @@ fn main() {
         rust_pbqff::config::Config::load("test_files/pbqff.toml"),
         rust_pbqff::Intder::load_file("test_files/intder.in"),
         rust_pbqff::Spectro::load("test_files/spectro.in"),
+        vec![],
+        false,
+        Frequency::load_irreps("test_files/c3h2.symm"),
     );
     setup();
-    let queue = LocalQueue {
-        dir: "inp".to_string(),
-    };
+    let queue = LocalQueue::new("inp", 128);
     freq.num_jac(
         &Vec::new(),
         &"USS            H    -11.246958000000

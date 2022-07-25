@@ -1,11 +1,16 @@
+use na::DVector;
 use psqs::geom::Geom;
 use psqs::program::mopac::{Mopac, Params};
 use psqs::program::{Job, Template};
 use psqs::queue::Queue;
+use rust_pbqff::coord_type::generate_pts;
+use rust_pbqff::Intder;
+use symm::{Irrep, Molecule, PointGroup};
+use taylor::Taylor;
 
-use crate::{build_jobs, setup, takedown};
+use crate::{setup, sort_irreps, takedown, MOPAC_TMPL};
 use nalgebra as na;
-use std::fs::File;
+use std::fs::{read_to_string, File};
 use std::io::Write;
 use std::rc::Rc;
 use std::sync::Mutex;
@@ -14,10 +19,23 @@ use super::Optimize;
 
 static DELTA: f64 = 1e-4;
 
+static DEBUG: bool = true;
+
+fn output_stream() -> Box<dyn Write> {
+    if DEBUG {
+        Box::new(std::io::stderr())
+    } else {
+        Box::new(std::io::sink())
+    }
+}
+
 pub struct Frequency {
     pub config: rust_pbqff::config::Config,
     pub intder: rust_pbqff::Intder,
     pub spectro: rust_pbqff::Spectro,
+    pub dummies: Vec<(usize, usize)>,
+    pub reorder: bool,
+    pub irreps: Vec<Irrep>,
     logger: Mutex<File>,
 }
 
@@ -69,11 +87,16 @@ impl FreqParts {
     }
 }
 
+type Dummies = Vec<(usize, usize)>;
+
 impl Frequency {
     pub fn new(
         config: rust_pbqff::config::Config,
         intder: rust_pbqff::Intder,
         spectro: rust_pbqff::Spectro,
+        dummies: Dummies,
+        reorder: bool,
+        irreps: Vec<Irrep>,
     ) -> Self {
         let logger = Mutex::new(
             std::fs::File::create("freqs.log")
@@ -83,35 +106,116 @@ impl Frequency {
             config,
             intder,
             spectro,
+            dummies,
             logger,
+            reorder,
+            irreps,
         }
     }
 
-    fn build_jobs(
+    pub fn load_irreps(filename: &str) -> Vec<Irrep> {
+        let data = read_to_string(filename).expect("failed to load irrep file");
+        data.lines()
+            .map(|s| match s.trim().parse() {
+                Ok(v) => v,
+                Err(_) => panic!("failed to parse irrep {}", s),
+            })
+            .collect()
+    }
+
+    fn build_jobs<W>(
         &self,
+        w: &mut W,
         geom: Geom,
         params: &Params,
         start_index: usize,
         job_num: usize,
         charge: isize,
-    ) -> (FreqParts, Vec<Job<Mopac>>) {
+    ) -> (FreqParts, Vec<Job<Mopac>>)
+    where
+        W: Write,
+    {
+        let mol = {
+            let mut mol = Molecule::new(geom.xyz().unwrap().to_vec());
+            mol.normalize();
+            if self.reorder {
+                mol.reorder();
+            }
+            mol
+        };
+        const SYMM_EPS: f64 = 1e-6;
+        let pg = mol.point_group_approx(SYMM_EPS);
+
+        // TODO assuming that the intder coordinates max out at C2v, this was
+        // the case for ethylene
+        let pg = if let PointGroup::D2h { axes, planes } = pg {
+            PointGroup::C2v {
+                axis: axes[0],
+                planes: [planes[1], planes[2]],
+            }
+        } else {
+            pg
+        };
+
+        writeln!(w, "Normalized Geometry:\n{:20.12}", mol).unwrap();
+        writeln!(w, "Point Group = {}", pg).unwrap();
+
         let mut intder = self.intder.clone();
-        // generate pts == moles
-        let (moles, taylor, taylor_disps, atomic_numbers) =
-            rust_pbqff::coord_type::generate_pts(
-                geom,
-                &mut intder,
-                self.config.step_size,
-            );
+        let (moles, taylor, taylor_disps, atomic_numbers) = generate_pts(
+            w,
+            &mol,
+            &pg,
+            &mut intder,
+            self.config.step_size,
+            &self.dummies,
+        );
+
         // dir created in generate_pts but unused here
         let _ = std::fs::remove_dir_all("pts");
+
         // call build_jobs like before
-        let jobs =
-            build_jobs(&moles, params, start_index, 1.0, job_num, charge);
+        let jobs = Mopac::build_jobs(
+            &moles,
+            Some(&params),
+            "inp",
+            start_index,
+            1.0,
+            job_num,
+            charge,
+            &MOPAC_TMPL,
+        );
         (
             FreqParts::new(intder, taylor, taylor_disps, atomic_numbers),
             jobs,
         )
+    }
+    /// call `rust_pbqff::coord_type::freqs`, but sort the frequencies by irrep and
+    /// then frequency and return the result as a DVector
+    pub fn freqs<W: std::io::Write>(
+        &self,
+        w: &mut W,
+        dir: &str,
+        energies: &mut [f64],
+        intder: &mut Intder,
+        taylor: &Taylor,
+        taylor_disps: &Vec<Vec<isize>>,
+        atomic_numbers: &Vec<usize>,
+    ) -> DVector<f64> {
+        let summary = rust_pbqff::coord_type::freqs(
+            w,
+            &dir,
+            energies,
+            intder,
+            taylor,
+            taylor_disps,
+            atomic_numbers,
+            &self.spectro,
+            &self.config.gspectro_cmd,
+            &self.config.spectro_cmd,
+            self.config.step_size,
+        );
+        let freqs = sort_irreps(&summary.corr, &summary.irreps);
+        DVector::from(freqs)
     }
 }
 
@@ -123,7 +227,11 @@ impl Optimize for Frequency {
         params: &Params,
         submitter: &Q,
         charge: isize,
-    ) -> na::DVector<f64> {
+    ) -> DVector<f64> {
+        let mut w = output_stream();
+
+        writeln!(w, "Params:\n{}", params.to_string()).unwrap();
+
         setup();
         let geom = optimize_geometry(
             self.config.geometry.clone(),
@@ -132,9 +240,19 @@ impl Optimize for Frequency {
             "inp",
             "opt",
         );
-        // start_index and job_num always zero for this since I'm only running
-        // one set of jobs at a time
-        let (mut freq, mut jobs) = self.build_jobs(geom, params, 0, 0, charge);
+
+        writeln!(w, "Optimized Geometry:\n{:20.12}", geom).unwrap();
+
+        let (mut freq, mut jobs) =
+            self.build_jobs(&mut w, geom, params, 0, 0, charge);
+        writeln!(
+            w,
+            "\n{} atoms require {} jobs",
+            freq.atomic_numbers.len(),
+            jobs.len()
+        )
+        .unwrap();
+
         let mut energies = vec![0.0; jobs.len()];
         // drain to get energies
         setup();
@@ -142,20 +260,14 @@ impl Optimize for Frequency {
         takedown();
         // convert energies to frequencies and return those
         let _ = std::fs::create_dir("freqs");
-        let res = na::DVector::from(
-            rust_pbqff::coord_type::freqs(
-                "freqs",
-                &mut energies,
-                &mut freq.intder,
-                &freq.taylor,
-                &freq.taylor_disps,
-                &freq.atomic_numbers,
-                &self.spectro,
-                &self.config.gspectro_cmd,
-                &self.config.spectro_cmd,
-                self.config.step_size,
-            )
-            .corr,
+        let res = self.freqs(
+            &mut w,
+            "freqs",
+            &mut energies,
+            &mut freq.intder,
+            &freq.taylor,
+            &freq.taylor_disps,
+            &freq.atomic_numbers,
         );
         let _ = std::fs::remove_dir_all("freqs");
         res
@@ -231,8 +343,14 @@ impl Optimize for Frequency {
             let mut pf = params.clone();
             pf.values[row] += DELTA;
             // idx = job_num so use it twice
-            let (freq, fwd_jobs) =
-                self.build_jobs(geoms[2 * row].clone(), &pf, idx, idx, charge);
+            let (freq, fwd_jobs) = self.build_jobs(
+                &mut output_stream(),
+                geoms[2 * row].clone(),
+                &pf,
+                idx,
+                idx,
+                charge,
+            );
             idx += fwd_jobs.len();
             jobs.extend(fwd_jobs);
             freqs.push(freq);
@@ -240,6 +358,7 @@ impl Optimize for Frequency {
             let mut pb = params.clone();
             pb.values[row] -= DELTA;
             let (freq, bwd_jobs) = self.build_jobs(
+                &mut output_stream(),
                 geoms[2 * row + 1].clone(),
                 &pb,
                 idx,
@@ -280,20 +399,14 @@ impl Optimize for Frequency {
                 let mut freq = freq.clone();
                 let dir = format!("freqs{}", i);
                 let _ = std::fs::create_dir(&dir);
-                na::DVector::from(
-                    rust_pbqff::coord_type::freqs(
-                        &dir,
-                        &mut energy,
-                        &mut freq.intder,
-                        &freq.taylor,
-                        &freq.taylor_disps,
-                        &freq.atomic_numbers,
-                        &self.spectro,
-                        &self.config.gspectro_cmd,
-                        &self.config.spectro_cmd,
-                        self.config.step_size,
-                    )
-                    .corr,
+                self.freqs(
+                    &mut output_stream(),
+                    &dir,
+                    &mut energy,
+                    &mut freq.intder,
+                    &freq.taylor,
+                    &freq.taylor_disps,
+                    &freq.atomic_numbers,
                 )
             })
             .collect();
@@ -327,8 +440,9 @@ impl Optimize for Frequency {
         1.0
     }
 
-    fn log(&self, got: &na::DVector<f64>, want: &na::DVector<f64>) {
+    fn log(&self, iter: usize, got: &DVector<f64>, want: &DVector<f64>) {
         let mut logger = self.logger.lock().unwrap();
+        write!(logger, "{:5}", iter).unwrap();
         for g in got {
             write!(logger, "{:8.1}", g).unwrap();
         }
@@ -336,7 +450,7 @@ impl Optimize for Frequency {
     }
 }
 
-fn mae(a: &na::DVector<f64>, b: &na::DVector<f64>) -> f64 {
+fn mae(a: &DVector<f64>, b: &DVector<f64>) -> f64 {
     (a - b).abs().sum() / a.len() as f64
 }
 

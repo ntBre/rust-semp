@@ -11,9 +11,11 @@ use std::{
 };
 
 use nalgebra as na;
+use std::cmp::Ordering;
+use std::iter::zip;
+use symm::Irrep;
 
 use psqs::program::mopac::{Mopac, Params};
-use psqs::program::Job;
 use psqs::queue::Queue;
 use psqs::{geom::Geom, program::Template};
 use stats::Stats;
@@ -170,40 +172,6 @@ pub fn parse_params(params: &str) -> Params {
     Params::from(names, atoms, values)
 }
 
-/// Build the jobs described by `moles` in memory, but don't write any of their
-/// files yet
-pub fn build_jobs(
-    moles: &Vec<Rc<Geom>>,
-    params: &Params,
-    start_index: usize,
-    coeff: f64,
-    job_num: usize,
-    charge: isize,
-) -> Vec<Job<Mopac>> {
-    let mut count: usize = start_index;
-    let mut job_num = job_num;
-    let mut jobs = Vec::new();
-    let params = Rc::new(params.clone());
-    for mol in moles {
-        let filename = format!("inp/job.{:08}", job_num);
-        job_num += 1;
-        let mut job = Job::new(
-            Mopac::new(
-                filename,
-                Some(params.clone()),
-                mol.clone(),
-                charge,
-                &MOPAC_TMPL,
-            ),
-            count,
-        );
-        job.coeff = coeff;
-        jobs.push(job);
-        count += 1;
-    }
-    jobs
-}
-
 /// Solve (JᵀJ + λI)δ = Jᵀ[y - f(β)] for δ. y is the vector of "true" training
 /// energies, and f(β) represents the current semi-empirical energies.
 pub fn lev_mar(
@@ -239,15 +207,17 @@ pub fn lev_mar(
     };
     // add A* to λI (left-hand side) and compute the Cholesky decomposition
     let lhs = a_star + li;
-    let lhs = match na::linalg::Cholesky::new(lhs) {
-        Some(a) => a,
+    let mut d = match na::linalg::Cholesky::new(lhs.clone()) {
+        Some(a) => {
+            let lhs = a;
+            lhs.solve(&g_star)
+        }
         None => {
             eprintln!("cholesky decomposition failed");
-            eprintln!("jacobian: \n{:12.8}", jac);
-            std::process::exit(1);
+            let lhs = na::linalg::LU::new(lhs);
+            lhs.solve(&g_star).expect("LU decomposition also failed")
         }
     };
-    let mut d = lhs.solve(&g_star);
     // convert back from δ* to δ
     for j in 0..rows {
         d[j] /= a[(j, j)].sqrt()
@@ -305,26 +275,44 @@ fn log_params<W: Write>(w: &mut W, iter: usize, params: &Params) {
     let _ = writeln!(w, "{}", params.to_string());
 }
 
+/// sort freqs by the irrep in the same position and then by frequency. if
+/// `freqs` and `irreps` are not the same length, just return the sorted
+/// frequencies.
+pub fn sort_irreps(freqs: &[f64], irreps: &[Irrep]) -> Vec<f64> {
+    if freqs.len() != irreps.len() {
+        let mut ret = Vec::from(freqs);
+        ret.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        return ret;
+    }
+    let mut pairs: Vec<_> = zip(irreps, freqs).collect();
+    pairs.sort_by(|a, b| match a.0.cmp(b.0) {
+        Ordering::Equal => a.1.partial_cmp(b.1).unwrap(),
+        other => other,
+    });
+    pairs.iter().map(|x| x.1.clone()).collect()
+}
+
 pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
     param_log: &mut W,
     atom_names: Vec<String>,
     geom_file: &str,
     params: Params,
-    energy_file: &str,
+    ai: na::DVector<f64>,
     max_iter: usize,
     broyden: bool,
     broyd_int: usize,
     queue: Q,
     charge: isize,
+    reset_lambda: bool,
     optimizer: O,
 ) -> Stats {
     let conv = optimizer.stat_multiplier();
     let moles = load_geoms(geom_file, &atom_names);
     let mut params = params.clone();
     log_params(param_log, 0, &params);
-    let ai = load_energies(energy_file);
     // initial semi-empirical energies and stats
     let mut se = optimizer.semi_empirical(&moles, &params, &queue, charge);
+    optimizer.log(0, &se, &ai);
     let mut old_se = se.clone();
     let mut stats = Stats::new(&ai, &se, conv);
     let mut last_stats = Stats::default();
@@ -411,6 +399,10 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
             }
         }
 
+        if reset_lambda {
+            lambda /= NU.powi(i as i32);
+        }
+
         // adjusting λ failed to decrease the norm. try decreasing the step size
         // K until the norm improves or k ≈ 0 or Δnorm increases
         let mut k = 1.0;
@@ -461,9 +453,9 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
 
         // end of loop updates
         stats.print_step(iter, &last_stats, time);
-        optimizer.log(&se, &ai);
         old_se = se;
         se = new_se;
+        optimizer.log(iter, &se, &ai);
         params = try_params;
         log_params(param_log, iter, &params);
         del_norm = stats.norm - last_stats.norm;

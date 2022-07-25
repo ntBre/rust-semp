@@ -1,6 +1,8 @@
 use std::fs::File;
 use std::os::unix::io::AsRawFd;
 
+use nalgebra as na;
+
 use psqs::queue::slurm::Slurm;
 use rust_semp::config::Config;
 use rust_semp::optimize::energy::Energy;
@@ -25,22 +27,25 @@ fn main() {
         libc::dup2(log_fd, 2);
     }
     let conf = Config::load(&conf_name);
-    let queue = Slurm::new(conf.chunk_size, conf.job_limit, conf.sleep_int);
+    let queue =
+        Slurm::new(conf.chunk_size, conf.job_limit, conf.sleep_int, "inp");
     let mut param_log = File::create("params.log")
         .expect("failed to create parameter log file");
     match conf.optimize {
         config::Protocol::Energy => {
+            let ai = load_energies("rel.dat");
             run_algo(
                 &mut param_log,
                 conf.atom_names,
                 "file07",
                 parse_params(&conf.params),
-                "rel.dat",
+                ai,
                 conf.max_iter,
                 conf.broyden,
                 conf.broyd_int,
                 queue,
                 conf.charge,
+                conf.reset_lambda,
                 Energy,
             );
         }
@@ -51,22 +56,34 @@ fn main() {
         // 4. optimize = "frequency" in `semp.toml`
         // 5. "true" frequencies in rel.dat
         // 6. an empty `file07`
+        // 7. irreps for each of the frequencies in rel.dat in `symm`
         config::Protocol::Frequency => {
+            let ai = Vec::from(load_energies("rel.dat").as_slice());
+            let irreps = Frequency::load_irreps("symm");
+            let ai = sort_irreps(&ai, &irreps);
+            eprintln!("symmetry-sorted true frequencies:");
+            for a in &ai {
+                eprintln!("{a:8.1}");
+            }
             run_algo(
                 &mut param_log,
                 conf.atom_names,
                 "file07",
                 parse_params(&conf.params),
-                "rel.dat",
+                na::DVector::from(ai),
                 conf.max_iter,
                 conf.broyden,
                 conf.broyd_int,
                 queue,
                 conf.charge,
+                conf.reset_lambda,
                 Frequency::new(
                     rust_pbqff::config::Config::load("pbqff.toml"),
                     rust_pbqff::Intder::load_file("intder.in"),
                     rust_pbqff::Spectro::load("spectro.in"),
+                    conf.dummies,
+                    conf.reorder,
+                    irreps,
                 ),
             );
         }

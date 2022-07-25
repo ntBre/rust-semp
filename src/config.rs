@@ -39,6 +39,16 @@ pub struct Config {
     pub charge: isize,
     /// the values to base the optimization on. energy or frequency
     pub optimize: Protocol,
+
+    /// dummy atoms of the form (axis, atom)
+    pub dummies: Vec<(usize, usize)>,
+
+    /// whether or not to try re-aligning the coordinates onto the z-axis
+    pub reorder: bool,
+
+    /// whether or not to reset lambda after failing to improve it by successive
+    /// multiplications by nu
+    pub reset_lambda: bool,
 }
 
 impl Config {
@@ -87,6 +97,9 @@ FN11       C      0.046302000000
             broyd_int: 10,
             charge: 0,
             optimize: Protocol::Energy,
+            dummies: vec![],
+            reorder: false,
+            reset_lambda: false,
         };
         assert_eq!(got, want);
     }

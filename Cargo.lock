@@ -338,6 +338,7 @@ name = "rust-pbqff"
 version = "0.1.0"
 dependencies = [
  "intder",
+ "libc",
  "nalgebra 0.30.1",
  "psqs",
  "rust-anpass",

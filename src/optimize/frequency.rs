@@ -222,19 +222,36 @@ impl Frequency {
 
                 let mut target_map = BigHash::new(mol.clone(), pg);
 
-                let jobs = Cart.build_points(
+                let geoms = Cart.build_points(
                     "inp",
                     Geom::Xyz(mol.atoms.clone()),
                     STEP_SIZE,
                     molecule.charge,
-                    MOPAC_TMPL!(cart),
-                    dbg!(start_index),
+                    start_index,
                     geom.energy,
                     nfc2,
                     nfc3,
                     &mut fcs,
                     &mut target_map,
                 );
+                let dir = "inp";
+                let mut job_num = start_index;
+                let mut jobs = Vec::new();
+                for mol in geoms {
+                    let filename = format!("{dir}/job.{:08}", job_num);
+                    job_num += 1;
+                    let mut job = Job::new(
+                        Mopac::new(
+                            filename,
+                            Some(Rc::new(params.clone())),
+                            Rc::new(mol.geom),
+                            molecule.charge,
+                            MOPAC_TMPL!(cart),
+                        ),
+                        mol.index + start_index,
+                    );
+                    jobs.push(job);
+                }
                 (FreqParts::cart(fcs, target_map, n, nfc2, nfc3, mol), jobs)
             }
         }
@@ -277,7 +294,6 @@ impl Frequency {
                 nfc3,
                 mol,
             } => {
-                // NOTE: running this again with DEBUG=fcs
                 make_fcs(target_map, &energies, fcs, *n, *nfc2, *nfc3, dir);
                 rust_pbqff::coord_type::cart::freqs(
                     dir,
@@ -393,6 +409,7 @@ impl Optimize for Frequency {
             setup();
             submitter.drain(&mut jobs, &mut energies);
             takedown();
+
             // convert energies to frequencies and return those
             let _ = std::fs::create_dir("freqs");
             let res = self.freqs(&mut w, "freqs", &mut energies, &mut freq);
@@ -460,7 +477,7 @@ impl Optimize for Frequency {
             let pairs: Vec<_> = slice.zip(freqs.pop().unwrap()).collect();
             // iterate over the energy/freqparts pairs in parallel
             let freqs: Vec<_> = pairs
-                .iter()
+                .par_iter()
                 .enumerate()
                 .map(|(i, (energy, freq))| {
                     let mut energy = energy.clone();
@@ -473,16 +490,13 @@ impl Optimize for Frequency {
                         &mut energy,
                         &mut freq,
                     );
-                    std::process::exit(1);
                     f
                 })
                 .collect();
-            // NOTE: checking that the directories look okay
-            // remove the directories created by the iteration above
-            // for i in 0..pairs.len() {
-            //     let dir = format!("freqs{}_{}", i, m);
-            //     let _ = std::fs::remove_dir_all(&dir);
-            // }
+            for i in 0..pairs.len() {
+                let dir = format!("freqs{}_{}", i, m);
+                let _ = std::fs::remove_dir_all(&dir);
+            }
             let jac_t: Vec<_> = freqs
                 .chunks(2)
                 .map(|pair| {

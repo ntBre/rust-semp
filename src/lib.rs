@@ -338,20 +338,6 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
     let mut start = std::time::SystemTime::now();
     let mut jac = optimizer.num_jac(&params, &queue, &molecules);
 
-    // TODO remove this
-    {
-        let dump = |name, mat| {
-            let mut f = File::create(name).unwrap();
-            write!(f, "{:8.3e}", mat).unwrap();
-            eprintln!("jac done");
-        };
-        // dump("jac", jac.slice((0, 0), (18, 16)));
-        // dump("jac1", jac.slice((0, 0), (9, 16)));
-        // dump("jac2", jac.slice((9, 0), (9, 16)));
-        dump("jac", jac);
-        std::process::exit(1);
-    }
-
     // have to "initialize" this to satisfy compiler, but any use should panic
     // since it has zero length
     let mut step = na::DVector::from(vec![]);

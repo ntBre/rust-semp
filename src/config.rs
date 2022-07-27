@@ -46,9 +46,6 @@ pub struct Config {
     /// the values to base the optimization on. energy or frequency
     pub optimize: Protocol,
 
-    /// whether or not to try re-aligning the coordinates onto the z-axis
-    pub reorder: bool,
-
     /// whether or not to reset lambda after failing to improve it by successive
     /// multiplications by nu
     pub reset_lambda: bool,
@@ -115,7 +112,6 @@ impl Config {
             broyden: raw.broyden,
             broyd_int: raw.broyd_int,
             optimize: raw.optimize,
-            reorder: raw.reorder,
             reset_lambda: raw.reset_lambda,
             molecules,
             spectro_cmd: raw.spectro_cmd,

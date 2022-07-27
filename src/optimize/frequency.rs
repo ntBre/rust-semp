@@ -32,7 +32,6 @@ fn output_stream() -> Box<dyn Write> {
 
 pub struct Frequency {
     pub dummies: Vec<(usize, usize)>,
-    pub reorder: bool,
     logger: Mutex<File>,
 
     /* these are inherited from the config */
@@ -122,7 +121,6 @@ type Dummies = Vec<(usize, usize)>;
 impl Frequency {
     pub fn new(
         dummies: Dummies,
-        reorder: bool,
         gspectro_cmd: String,
         spectro_cmd: String,
     ) -> Self {
@@ -133,7 +131,6 @@ impl Frequency {
         Self {
             dummies,
             logger,
-            reorder,
             spectro_cmd,
             gspectro_cmd,
         }
@@ -154,9 +151,7 @@ impl Frequency {
         let mol = {
             let mut mol = Molecule::new(geom.cart_geom);
             mol.normalize();
-            if self.reorder {
-                mol.reorder();
-            }
+            mol.reorder();
             mol
         };
         const SYMM_EPS: f64 = 1e-6;

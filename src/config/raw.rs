@@ -37,9 +37,6 @@ pub(super) struct RawConfig {
     /// the values to base the optimization on. energy or frequency
     pub optimize: Protocol,
 
-    /// whether or not to try re-aligning the coordinates onto the z-axis
-    pub reorder: bool,
-
     /// whether or not to reset lambda after failing to improve it by successive
     /// multiplications by nu
     pub reset_lambda: bool,
@@ -145,7 +142,6 @@ HCC =               147.81488230
             broyden: false,
             broyd_int: 10,
             optimize: Protocol::Energy,
-            reorder: false,
             reset_lambda: false,
             spectro_cmd: "/home/brent/Projects/pbqff/bin/spectro".to_string(),
             gspectro_cmd:

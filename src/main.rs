@@ -85,7 +85,6 @@ fn main() {
                 conf.reset_lambda,
                 Frequency::new(
                     conf.molecules[0].dummies.clone(),
-                    conf.reorder,
                     conf.gspectro_cmd,
                     conf.spectro_cmd,
                 ),

@@ -1,6 +1,6 @@
 BASE = /home/brent/Projects/rust-semp
 ARGS =
-TESTFLAGS = --test-threads=1 --nocapture
+TESTFLAGS = -- --test-threads=1 --nocapture
 SHORT = 0
 SKIP = --skip freq_num_jac
 
@@ -19,12 +19,14 @@ eland.scripts: scripts/time.awk
 	scp -C $? ${ELAND_DEST}
 
 test:
-	RUST_BACKTRACE=1 cargo test -- ${TESTFLAGS} ${ARGS} ${SKIP}
+	RUST_BACKTRACE=1 cargo test ${TESTFLAGS} ${ARGS} ${SKIP}
 
 profile = RUSTFLAGS='-g' cargo build --release --bin $(1); \
 	valgrind --tool=callgrind --callgrind-out-file=callgrind.out	\
 		--collect-jumps=yes --simulate-cache=yes		\
 		${BASE}/target/release/$(1)
+cover:
+	cargo tarpaulin --color=never --skip-clean ${TESTFLAGS} ${ARGS}
 
 profile.one_iter:
 	$(call profile,one_iter)

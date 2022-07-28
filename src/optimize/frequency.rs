@@ -215,14 +215,11 @@ impl Frequency {
                 let nfc4 = n * (n + 1) * (n + 2) * (n + 3) / 24;
                 let mut fcs = vec![0.0; nfc2 + nfc3 + nfc4];
 
-                let mut target_map = BigHash::new(mol.clone(), dbg!(pg));
+                let mut target_map = BigHash::new(mol.clone(), pg);
 
                 let geoms = Cart.build_points(
-                    "inp",
                     Geom::Xyz(mol.atoms.clone()),
                     STEP_SIZE,
-                    molecule.charge,
-                    start_index,
                     geom.energy,
                     nfc2,
                     nfc3,
@@ -310,24 +307,21 @@ impl Frequency {
         params: &Params,
         geoms: &[ProgramResult],
         molecules: &[config::Molecule],
-    ) -> (Vec<Job<Mopac>>, Vec<Vec<FreqParts>>, Vec<usize>, Vec<usize>) {
+    ) -> (
+        Vec<Job<Mopac>>,
+        Vec<Vec<FreqParts>>,
+        Vec<usize>,
+        Vec<Vec<usize>>,
+    ) {
         let mut idx = 0;
         let mut jobs = Vec::new();
         let mut freqs = vec![vec![]; molecules.len()];
         let mut cols = vec![0; molecules.len()];
-        let mut indices = vec![0];
+        // boundaries of each chunk for each molecule
+        let mut indices = vec![];
         for (i, molecule) in molecules.iter().enumerate() {
+            indices.push(vec![idx]);
             for row in 0..rows {
-                dbg!(row);
-                dbg!(idx);
-                // TODO only one set gets added when row = 2. wtf! no, sometimes
-                // fwd_jobs or bwd_jobs is only 39415 long. the point group must
-                // be changing for each geom, but it's not getting printed for
-                // some reason?
-
-                // - trying to actually implement D2h symmetry to see if that
-                // fixes it. I think some geometries are getting luckier with
-                // their symmetry even though they are all D2h
                 let index = 2 * i * rows + 2 * row;
                 let mut pf = params.clone();
                 pf.values[row] += DELTA;
@@ -340,7 +334,8 @@ impl Frequency {
                     idx,
                     molecule,
                 );
-                idx += dbg!(fwd_jobs.len());
+                idx += fwd_jobs.len();
+                indices[i].push(idx);
                 jobs.extend(fwd_jobs);
                 freqs[i].push(freq);
 
@@ -354,7 +349,8 @@ impl Frequency {
                     idx,
                     molecule,
                 );
-                idx += dbg!(bwd_jobs.len());
+                idx += bwd_jobs.len();
+                indices[i].push(idx);
                 // set this on the first iteration
                 if row == 0 {
                     cols[i] = bwd_jobs.len();
@@ -362,7 +358,6 @@ impl Frequency {
                 jobs.extend(bwd_jobs);
                 freqs[i].push(freq);
             }
-            indices.push(idx);
         }
         (jobs, freqs, cols, indices)
     }
@@ -453,18 +448,15 @@ impl Optimize for Frequency {
         let (mut jobs, mut freqs, cols, indices) =
             self.jac_energies(rows, params, &geoms, molecules);
 
+        eprintln!(
+            "finished building energies after {:.1} sec",
+            start.elapsed().unwrap().as_millis() as f64 / 1000.
+        );
+        let start = std::time::SystemTime::now();
+
         // freqs is nmolecules long, so check that set of freqs is equal to
         // 2*nparam since there is a forward and back for each
         assert!(freqs.iter().all(|x| x.len() == 2 * params.len()));
-
-        dbg!(&cols);
-        // TODO this is the issue 2090213 comes out which is not divisible by
-        // the number of points = 78888, so my chunks_exact is wrong. actually
-        // the division gives 26.5, so it's really wrong
-        dbg!(&indices);
-
-        // NOTE this assertion passes, but the next one fails. how?! must be the
-        // zip with slice below, whihc comes from energies and cols
 
         // run all of the energies
         let mut energies = vec![0.0; jobs.len()];
@@ -472,13 +464,11 @@ impl Optimize for Frequency {
         submitter.drain(&mut jobs, &mut energies);
         takedown();
 
-        dbg!(energies.len());
-
         // reverse the freqs so I can pop instead of cloning out of it
         freqs.reverse();
 
         eprintln!(
-            "finished energies after {:.1} sec",
+            "finished running energies after {:.1} sec",
             start.elapsed().unwrap().as_millis() as f64 / 1000.
         );
         let start = std::time::SystemTime::now();
@@ -489,12 +479,20 @@ impl Optimize for Frequency {
         let mut jacs = Vec::new();
 
         for m in 0..molecules.len() {
-            // first grab the part of energies for this molecule
-            let slice = &mut energies[indices[m]..indices[m + 1]];
-            // break it into chunks corresponding to each column of the jacobian
-            let slice = slice.chunks_exact_mut(cols[m]).map(|c| c.to_vec());
+            let mut energy_chunks = Vec::new();
+            assert_eq!(indices[m].len(), 2 * params.len() + 1);
+            // -1 because I'm going to refer to idx+1 in the loop
+            for idx in 0..indices[m].len() - 1 {
+                energy_chunks.push(
+                    energies[indices[m][idx]..indices[m][idx + 1]].to_vec(),
+                );
+            }
             // zip it with the FreqParts
-            let pairs: Vec<_> = slice.zip(freqs.pop().unwrap()).collect();
+            let pairs: Vec<_> = energy_chunks
+                .iter()
+                .cloned()
+                .zip(freqs.pop().unwrap())
+                .collect();
             // iterate over the energy/freqparts pairs in parallel
             let freqs: Vec<_> = pairs
                 .par_iter()
@@ -517,11 +515,10 @@ impl Optimize for Frequency {
             // should be a forward and backward step for each parameter
             assert_eq!(freqs.len(), 2 * params.len());
 
-            // TODO put this back in, checking ethylene issue
-            // for i in 0..pairs.len() {
-            //     let dir = format!("freqs{}_{}", i, m);
-            //     let _ = std::fs::remove_dir_all(&dir);
-            // }
+            for i in 0..pairs.len() {
+                let dir = format!("freqs{}_{}", i, m);
+                let _ = std::fs::remove_dir_all(&dir);
+            }
             let jac_t: Vec<_> = freqs
                 .chunks(2)
                 .map(|pair| {

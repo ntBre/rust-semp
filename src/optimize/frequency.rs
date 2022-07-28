@@ -157,23 +157,23 @@ impl Frequency {
         const SYMM_EPS: f64 = 1e-6;
         let pg = mol.point_group_approx(SYMM_EPS);
 
-        // TODO assuming that the intder coordinates max out at C2v, this was
-        // the case for ethylene
-        let pg = if let PointGroup::D2h { axes, planes } = pg {
-            PointGroup::C2v {
-                axis: axes[0],
-                planes: [planes[1], planes[2]],
-            }
-        } else {
-            pg
-        };
-
         writeln!(w, "Normalized Geometry:\n{:20.12}", mol).unwrap();
         writeln!(w, "Point Group = {}", pg).unwrap();
 
         match &molecule.intder {
             Some(intder) => {
                 let mut intder = intder.clone();
+                // NOTE: assuming that the intder coordinates max out at C2v,
+                // this was the case for ethylene
+                let pg = if let PointGroup::D2h { axes, planes } = pg {
+                    PointGroup::C2v {
+                        axis: axes[0],
+                        planes: [planes[1], planes[2]],
+                    }
+                } else {
+                    pg
+                };
+
                 let (moles, taylor, taylor_disps, atomic_numbers) =
                     sic::generate_pts(
                         w,
@@ -215,7 +215,7 @@ impl Frequency {
                 let nfc4 = n * (n + 1) * (n + 2) * (n + 3) / 24;
                 let mut fcs = vec![0.0; nfc2 + nfc3 + nfc4];
 
-                let mut target_map = BigHash::new(mol.clone(), pg);
+                let mut target_map = BigHash::new(mol.clone(), dbg!(pg));
 
                 let geoms = Cart.build_points(
                     "inp",
@@ -318,6 +318,16 @@ impl Frequency {
         let mut indices = vec![0];
         for (i, molecule) in molecules.iter().enumerate() {
             for row in 0..rows {
+                dbg!(row);
+                dbg!(idx);
+                // TODO only one set gets added when row = 2. wtf! no, sometimes
+                // fwd_jobs or bwd_jobs is only 39415 long. the point group must
+                // be changing for each geom, but it's not getting printed for
+                // some reason?
+
+                // - trying to actually implement D2h symmetry to see if that
+                // fixes it. I think some geometries are getting luckier with
+                // their symmetry even though they are all D2h
                 let index = 2 * i * rows + 2 * row;
                 let mut pf = params.clone();
                 pf.values[row] += DELTA;
@@ -330,7 +340,7 @@ impl Frequency {
                     idx,
                     molecule,
                 );
-                idx += fwd_jobs.len();
+                idx += dbg!(fwd_jobs.len());
                 jobs.extend(fwd_jobs);
                 freqs[i].push(freq);
 
@@ -344,7 +354,7 @@ impl Frequency {
                     idx,
                     molecule,
                 );
-                idx += bwd_jobs.len();
+                idx += dbg!(bwd_jobs.len());
                 // set this on the first iteration
                 if row == 0 {
                     cols[i] = bwd_jobs.len();
@@ -425,7 +435,7 @@ impl Optimize for Frequency {
     ) -> na::DMatrix<f64> {
         let start = std::time::SystemTime::now();
 
-        let rows = params.values.len();
+        let rows = params.len();
         // build all the optimizations
         let mut opts = jac_opt(rows, params, molecules);
 
@@ -443,11 +453,26 @@ impl Optimize for Frequency {
         let (mut jobs, mut freqs, cols, indices) =
             self.jac_energies(rows, params, &geoms, molecules);
 
+        // freqs is nmolecules long, so check that set of freqs is equal to
+        // 2*nparam since there is a forward and back for each
+        assert!(freqs.iter().all(|x| x.len() == 2 * params.len()));
+
+        dbg!(&cols);
+        // TODO this is the issue 2090213 comes out which is not divisible by
+        // the number of points = 78888, so my chunks_exact is wrong. actually
+        // the division gives 26.5, so it's really wrong
+        dbg!(&indices);
+
+        // NOTE this assertion passes, but the next one fails. how?! must be the
+        // zip with slice below, whihc comes from energies and cols
+
         // run all of the energies
         let mut energies = vec![0.0; jobs.len()];
         setup();
         submitter.drain(&mut jobs, &mut energies);
         takedown();
+
+        dbg!(energies.len());
 
         // reverse the freqs so I can pop instead of cloning out of it
         freqs.reverse();
@@ -488,10 +513,15 @@ impl Optimize for Frequency {
                     f
                 })
                 .collect();
-            for i in 0..pairs.len() {
-                let dir = format!("freqs{}_{}", i, m);
-                let _ = std::fs::remove_dir_all(&dir);
-            }
+
+            // should be a forward and backward step for each parameter
+            assert_eq!(freqs.len(), 2 * params.len());
+
+            // TODO put this back in, checking ethylene issue
+            // for i in 0..pairs.len() {
+            //     let dir = format!("freqs{}_{}", i, m);
+            //     let _ = std::fs::remove_dir_all(&dir);
+            // }
             let jac_t: Vec<_> = freqs
                 .chunks(2)
                 .map(|pair| {
@@ -504,6 +534,7 @@ impl Optimize for Frequency {
                     (fwd - bwd) / (2. * DELTA)
                 })
                 .collect();
+            assert_eq!(jac_t.len(), params.len());
             jacs.push(jac_t);
         }
 

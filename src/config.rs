@@ -1,3 +1,4 @@
+use psqs::program::Template;
 use rust_pbqff::Intder;
 use serde::Deserialize;
 
@@ -79,6 +80,8 @@ pub struct Molecule {
     pub true_freqs: Vec<f64>,
 
     pub irreps: Vec<Irrep>,
+
+    pub template: Template,
 }
 
 impl Config {
@@ -101,6 +104,7 @@ impl Config {
                 },
                 true_freqs: molecule.true_freqs,
                 irreps: molecule.irreps,
+                template: Template::from(&molecule.template),
             });
         }
         Self {

@@ -37,18 +37,6 @@ pub static LAMBDA0: f64 = 1e-8;
 pub static NU: f64 = 2.0;
 pub static MAX_TRIES: usize = 10;
 
-#[macro_export]
-macro_rules! MOPAC_TMPL {
-    () => {
-        psqs::program::Template::from(
-            "XYZ A0 scfcrt=1.D-21 aux(precision=14) PM6",
-        )
-    };
-    ($_:ident) => {
-        psqs::program::Template::from("XYZ scfcrt=1.D-21 aux(precision=14) PM6")
-    };
-}
-
 /// from [StackOverflow](https://stackoverflow.com/a/45145246)
 #[macro_export]
 macro_rules! string {

@@ -1,3 +1,4 @@
+use psqs::program::Template;
 use serde::Deserialize;
 use symm::Irrep;
 
@@ -72,6 +73,8 @@ pub(super) struct RawMolecule {
     pub true_freqs: Vec<f64>,
 
     pub irreps: Vec<Irrep>,
+
+    pub template: String,
 }
 
 impl RawConfig {
@@ -138,6 +141,9 @@ HCC =               147.81488230
                     876.5, 772.7,
                 ],
                 irreps: vec![A1, B2, A1, A1, B2, A2, A1, B2, B1],
+                template: String::from(
+                    "A0 scfcrt=1.D-21 aux(precision=14) PM6",
+                ),
             }],
             broyden: false,
             broyd_int: 10,

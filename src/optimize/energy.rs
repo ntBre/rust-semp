@@ -3,7 +3,7 @@ use psqs::program::mopac::{Mopac, Params};
 use psqs::queue::Queue;
 
 use crate::config::Molecule;
-use crate::{relative, setup, takedown, DEBUG, MOPAC_TMPL};
+use crate::{relative, setup, takedown, DEBUG};
 use nalgebra as na;
 use std::rc::Rc;
 
@@ -25,6 +25,7 @@ impl Optimize for Energy {
         submitter: &Q,
         molecules: &[Molecule],
     ) -> na::DVector<f64> {
+        // NOTE: still no loop over molecules here
         let mut jobs = Mopac::build_jobs(
             &self.moles,
             Some(params),
@@ -33,7 +34,7 @@ impl Optimize for Energy {
             1.0,
             0,
             molecules[0].charge,
-            MOPAC_TMPL!(),
+            molecules[0].template.clone(),
         );
         let mut got = vec![0.0; jobs.len()];
         setup();
@@ -51,6 +52,7 @@ impl Optimize for Energy {
         submitter: &Q,
         molecules: &[Molecule],
     ) -> na::DMatrix<f64> {
+        // NOTE: no loop over molecules here
         let rows = params.values.len();
         let cols = self.moles.len();
         let mut jac_t = vec![0.; rows * cols];
@@ -71,7 +73,7 @@ impl Optimize for Energy {
                 DELTA_FWD,
                 job_num,
                 molecules[0].charge,
-                MOPAC_TMPL!(),
+                molecules[0].template.clone(),
             );
             job_num += fwd_jobs.len();
             jobs.append(&mut fwd_jobs);
@@ -85,7 +87,7 @@ impl Optimize for Energy {
                 DELTA_BWD,
                 job_num,
                 molecules[0].charge,
-                MOPAC_TMPL!(),
+                molecules[0].template.clone(),
             );
             job_num += bwd_jobs.len();
             jobs.append(&mut bwd_jobs);

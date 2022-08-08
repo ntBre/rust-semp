@@ -232,7 +232,7 @@ fn test_one_iter() {
         // "cactus" => 4e-9,
         _ => 1e-14,
     };
-    assert!(comp_dvec(got, want, eps));
+    assert!(comp_dvec(got.unwrap(), want, eps));
 }
 
 /// load a matrix from a file. each line becomes a row in the resulting matrix.
@@ -532,8 +532,9 @@ fn freq_semi_empirical() {
         chunk_size: 128,
         dir: "inp".to_string(),
     };
-    let mut got = freq.semi_empirical(
-        &"USS            H    -11.246958000000
+    let mut got = freq
+        .semi_empirical(
+            &"USS            H    -11.246958000000
 ZS             H      1.268641000000
 BETAS          H     -8.352984000000
 GSS            H     14.448686000000
@@ -549,11 +550,12 @@ GSP            C     11.528134000000
 GP2            C      9.486212000000
 HSP            C      0.717322000000
 FN11           C      0.046302000000"
-            .parse()
-            .unwrap(),
-        &queue,
-        &config.molecules,
-    );
+                .parse()
+                .unwrap(),
+            &queue,
+            &config.molecules,
+        )
+        .unwrap();
     let got = got.as_mut_slice();
     got.sort_by(|a, b| b.partial_cmp(a).unwrap());
     approx::assert_abs_diff_eq!(

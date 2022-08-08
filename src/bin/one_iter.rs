@@ -21,7 +21,9 @@ fn main() {
     );
     let mut energies = vec![0.; ml];
     setup();
-    LocalQueue::new("inp", 128).drain(&mut jobs, &mut energies);
+    LocalQueue::new("inp", 128)
+        .drain(&mut jobs, &mut energies)
+        .unwrap();
     takedown();
     for (i, e) in energies.iter().enumerate() {
         println!("{i:5}{e:20.12}");

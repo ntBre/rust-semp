@@ -1,4 +1,3 @@
-use psqs::program::Template;
 use serde::Deserialize;
 use symm::Irrep;
 

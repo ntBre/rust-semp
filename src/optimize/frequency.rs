@@ -50,7 +50,7 @@ pub fn optimize_geometry<Q: Queue<Mopac>>(
     name: &str,
     charge: isize,
     template: Template,
-) -> ProgramResult {
+) -> Option<ProgramResult> {
     let opt = Job::new(
         Mopac::new(
             format!("{}/{}", dir, name),
@@ -62,8 +62,11 @@ pub fn optimize_geometry<Q: Queue<Mopac>>(
         0,
     );
     let mut res = vec![Default::default(); 1];
-    queue.energize(&mut [opt], &mut res);
-    res.pop().unwrap()
+    let status = queue.energize(&mut [opt], &mut res);
+    if status.is_err() {
+        return None;
+    }
+    Some(res.pop().unwrap())
 }
 
 #[derive(Clone, Debug)]
@@ -234,7 +237,7 @@ impl Frequency {
                 for mol in geoms {
                     let filename = format!("{dir}/job.{:08}", job_num);
                     job_num += 1;
-                    let mut job = Job::new(
+                    jobs.push(Job::new(
                         Mopac::new(
                             filename,
                             Some(Rc::new(params.clone())),
@@ -243,8 +246,7 @@ impl Frequency {
                             molecule.template.clone(),
                         ),
                         mol.index + start_index,
-                    );
-                    jobs.push(job);
+                    ));
                 }
                 (FreqParts::cart(fcs, target_map, n, nfc2, nfc3, mol), jobs)
             }
@@ -309,16 +311,10 @@ impl Frequency {
         params: &Params,
         geoms: &[ProgramResult],
         molecules: &[config::Molecule],
-    ) -> (
-        Vec<Job<Mopac>>,
-        Vec<Vec<FreqParts>>,
-        Vec<usize>,
-        Vec<Vec<usize>>,
-    ) {
+    ) -> (Vec<Job<Mopac>>, Vec<Vec<FreqParts>>, Vec<Vec<usize>>) {
         let mut idx = 0;
         let mut jobs = Vec::new();
         let mut freqs = vec![vec![]; molecules.len()];
-        let mut cols = vec![0; molecules.len()];
         // boundaries of each chunk for each molecule
         let mut indices = vec![];
         for (i, molecule) in molecules.iter().enumerate() {
@@ -353,15 +349,11 @@ impl Frequency {
                 );
                 idx += bwd_jobs.len();
                 indices[i].push(idx);
-                // set this on the first iteration
-                if row == 0 {
-                    cols[i] = bwd_jobs.len();
-                }
                 jobs.extend(bwd_jobs);
                 freqs[i].push(freq);
             }
         }
-        (jobs, freqs, cols, indices)
+        (jobs, freqs, indices)
     }
 }
 
@@ -372,7 +364,7 @@ impl Optimize for Frequency {
         params: &Params,
         submitter: &Q,
         molecules: &[config::Molecule],
-    ) -> DVector<f64> {
+    ) -> Option<DVector<f64>> {
         let mut w = output_stream();
 
         writeln!(w, "Params:\n{}", params.to_string()).unwrap();
@@ -390,6 +382,12 @@ impl Optimize for Frequency {
                 molecule.charge,
                 molecule.template.clone(),
             );
+
+            let geom = if let Some(geom) = geom {
+                geom
+            } else {
+                return None;
+            };
 
             writeln!(
                 w,
@@ -411,8 +409,12 @@ impl Optimize for Frequency {
             let mut energies = vec![0.0; jobs.len()];
             // drain to get energies
             setup();
-            submitter.drain(&mut jobs, &mut energies);
+            let status = submitter.drain(&mut jobs, &mut energies);
             takedown();
+
+            if status.is_err() {
+                return None;
+            }
 
             // convert energies to frequencies and return those
             let _ = std::fs::create_dir("freqs");
@@ -420,7 +422,7 @@ impl Optimize for Frequency {
             let _ = std::fs::remove_dir_all("freqs");
             ret.extend(res.iter());
         }
-        DVector::from(ret)
+        Some(DVector::from(ret))
     }
 
     /// Compute the numerical Jacobian for the geomeries in `moles` and the
@@ -440,7 +442,9 @@ impl Optimize for Frequency {
 
         setup();
         let mut geoms = vec![Default::default(); opts.len()];
-        submitter.energize(&mut opts, &mut geoms);
+        submitter
+            .energize(&mut opts, &mut geoms)
+            .expect("numjac optimizations failed");
 
         eprintln!(
             "finished optimizations after {:.1} sec",
@@ -449,7 +453,7 @@ impl Optimize for Frequency {
         let start = std::time::SystemTime::now();
 
         // build all the single-point energies
-        let (mut jobs, mut freqs, cols, indices) =
+        let (mut jobs, mut freqs, indices) =
             self.jac_energies(rows, params, &geoms, molecules);
 
         eprintln!(
@@ -465,7 +469,9 @@ impl Optimize for Frequency {
         // run all of the energies
         let mut energies = vec![0.0; jobs.len()];
         setup();
-        submitter.drain(&mut jobs, &mut energies);
+        submitter
+            .drain(&mut jobs, &mut energies)
+            .expect("numjac optimizations failed");
         takedown();
 
         // reverse the freqs so I can pop instead of cloning out of it

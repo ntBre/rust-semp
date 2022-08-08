@@ -24,7 +24,7 @@ impl Optimize for Energy {
         params: &Params,
         submitter: &Q,
         molecules: &[Molecule],
-    ) -> na::DVector<f64> {
+    ) -> Option<na::DVector<f64>> {
         // NOTE: still no loop over molecules here
         let mut jobs = Mopac::build_jobs(
             &self.moles,
@@ -38,9 +38,11 @@ impl Optimize for Energy {
         );
         let mut got = vec![0.0; jobs.len()];
         setup();
-        submitter.drain(&mut jobs, &mut got);
+        submitter
+            .drain(&mut jobs, &mut got)
+            .expect("energies failed");
         takedown();
-        relative(&na::DVector::from(got))
+        Some(relative(&na::DVector::from(got)))
     }
 
     /// Compute the numerical Jacobian for the geomeries in `moles` and the
@@ -96,7 +98,9 @@ impl Optimize for Energy {
             eprintln!("num_jac: running {} jobs", jobs.len());
         }
         setup();
-        submitter.drain(&mut jobs, &mut jac_t);
+        submitter
+            .drain(&mut jobs, &mut jac_t)
+            .expect("numjac energies failed");
         takedown();
         // nalgebra does from_vec in col-major order, so lead with cols and I get
         // jac_t_t or jac back

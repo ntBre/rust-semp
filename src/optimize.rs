@@ -14,7 +14,7 @@ pub trait Optimize {
         params: &Params,
         submitter: &Q,
         molecules: &[Molecule],
-    ) -> na::DVector<f64>;
+    ) -> Option<na::DVector<f64>>;
 
     fn num_jac<Q: Queue<Mopac>>(
         &self,

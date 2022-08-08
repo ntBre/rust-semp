@@ -1,4 +1,3 @@
-#![allow(unused)]
 #[cfg(test)]
 mod tests;
 
@@ -307,7 +306,9 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
     let mut params = params.clone();
     log_params(param_log, 0, &params);
     // initial semi-empirical energies and stats
-    let mut se = optimizer.semi_empirical(&params, &queue, &molecules);
+    let mut se = optimizer
+        .semi_empirical(&params, &queue, &molecules)
+        .unwrap_or(na::DVector::zeros(ai.len()));
     optimizer.log(0, &se, &ai);
     let mut old_se = se.clone();
     let mut stats = Stats::new(&ai, &se, conv);
@@ -360,8 +361,9 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
             params.atoms.clone(),
             &params.values + &step,
         );
-        let mut new_se =
-            optimizer.semi_empirical(&try_params, &queue, &molecules);
+        let mut new_se = optimizer
+            .semi_empirical(&try_params, &queue, &molecules)
+            .unwrap_or(na::DVector::zeros(ai.len()));
         stats = Stats::new(&ai, &new_se, conv);
 
         // cases ii. and iii. from Marquardt63; first iteration is case ii.
@@ -385,7 +387,9 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
                 params.atoms.clone(),
                 &params.values + &step,
             );
-            new_se = optimizer.semi_empirical(&try_params, &queue, &molecules);
+            new_se = optimizer
+                .semi_empirical(&try_params, &queue, &molecules)
+                .unwrap_or(na::DVector::zeros(ai.len()));
             stats = Stats::new(&ai, &new_se, conv);
 
             i += 1;
@@ -419,7 +423,9 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
                 params.atoms.clone(),
                 &params.values + k * &step,
             );
-            new_se = optimizer.semi_empirical(&try_params, &queue, &molecules);
+            new_se = optimizer
+                .semi_empirical(&try_params, &queue, &molecules)
+                .unwrap_or(na::DVector::zeros(ai.len()));
             stats = Stats::new(&ai, &new_se, conv);
 
             if stats.norm - last_stats.norm > dnorm {

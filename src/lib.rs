@@ -124,8 +124,7 @@ pub fn setup() {
         match fs::create_dir(dir) {
             Ok(_) => (),
             Err(_) => {
-                eprintln!("can't create '{}'", dir);
-                std::process::exit(1);
+                panic!("can't create '{}'", dir);
             }
         }
     }
@@ -139,8 +138,7 @@ pub fn takedown() {
             match fs::remove_dir_all(dir) {
                 Ok(_) => (),
                 Err(_) => {
-                    eprintln!("can't remove '{}'", dir);
-                    std::process::exit(1);
+                    panic!("can't remove '{}'", dir);
                 }
             }
         }

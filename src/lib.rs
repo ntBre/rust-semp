@@ -123,22 +123,24 @@ pub fn setup() {
     for dir in DIRS {
         match fs::create_dir(dir) {
             Ok(_) => (),
-            Err(_) => {
-                panic!("can't create '{}'", dir);
+            Err(e) => {
+                panic!("can't create '{}' for '{}'", dir, e);
             }
         }
     }
 }
 
-// TODO don't do this if -nodel flag
 pub fn takedown() {
     for dir in DIRS {
         let path = Path::new(dir);
         if path.is_dir() {
             match fs::remove_dir_all(dir) {
                 Ok(_) => (),
-                Err(_) => {
-                    panic!("can't remove '{}'", dir);
+                Err(e) => {
+                    // assume it's okay if the directory already doesn't exist
+                    if Path::new(dir).exists() {
+                        panic!("can't remove '{}' for '{}'", dir, e);
+                    }
                 }
             }
         }

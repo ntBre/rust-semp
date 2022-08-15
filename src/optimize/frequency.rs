@@ -557,6 +557,12 @@ impl Optimize for Frequency {
                 assert_eq!(params.len(), jac.len());
                 tmp.extend(jac[i].iter());
             }
+            // if the whole column is zeros, make the first element 1 to avoid
+            // linear algebra issues
+            if tmp.iter().all(|s| *s == 0.0) {
+                eprintln!("singular column in jacobian, fixing");
+                tmp[0] = 1.0;
+            }
             cols.push(DVector::from(tmp));
         }
 

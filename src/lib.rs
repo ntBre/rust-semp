@@ -202,7 +202,7 @@ pub fn lev_mar(
         i
     };
     // add A* to λI (left-hand side) and compute the Cholesky decomposition
-    let lhs = a_star + li;
+    let lhs = a_star.clone() + li;
     let mut d = match na::linalg::Cholesky::new(lhs.clone()) {
         Some(a) => {
             let lhs = a;
@@ -210,6 +210,10 @@ pub fn lev_mar(
         }
         None => {
             eprintln!("cholesky decomposition failed");
+            eprintln!("jac\n{:.8}", jac);
+            eprintln!("a\n{:.8}", a);
+            eprintln!("a*\n{:.8}", a_star);
+            eprintln!("lhs\n{:.8}", lhs);
             let lhs = na::linalg::LU::new(lhs);
             lhs.solve(&g_star).expect("LU decomposition also failed")
         }

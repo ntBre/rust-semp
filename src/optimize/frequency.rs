@@ -156,7 +156,6 @@ impl Frequency {
         let mol = {
             let mut mol = Molecule::new(geom.cart_geom);
             mol.normalize();
-            mol.reorder();
             mol
         };
         const SYMM_EPS: f64 = 1e-6;

@@ -103,7 +103,7 @@ name = "intder"
 version = "0.1.0"
 dependencies = [
  "approx",
- "nalgebra 0.30.1",
+ "nalgebra",
  "psqs",
  "regex",
  "symm",
@@ -154,25 +154,9 @@ dependencies = [
 
 [[package]]
 name = "nalgebra"
-version = "0.30.1"
+version = "0.31.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fb2d0de08694bed883320212c18ee3008576bfe8c306f4c3c4a58b4876998be"
-dependencies = [
- "approx",
- "matrixmultiply",
- "nalgebra-macros",
- "num-complex",
- "num-rational",
- "num-traits",
- "simba",
- "typenum",
-]
-
-[[package]]
-name = "nalgebra"
-version = "0.31.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18a89248335f688e4bd994e6d030fd7e185eb41769b8c435395075425e100ac6"
+checksum = "e9e0a04ce089f9401aac565c740ed30c46291260f27d4911fdbaa6ca65fa3044"
 dependencies = [
  "approx",
  "matrixmultiply",
@@ -264,7 +248,7 @@ name = "psqs"
 version = "0.1.0"
 dependencies = [
  "lazy_static",
- "nalgebra 0.30.1",
+ "nalgebra",
  "regex",
  "symm",
 ]
@@ -330,7 +314,7 @@ name = "rust-anpass"
 version = "0.1.0"
 dependencies = [
  "approx",
- "nalgebra 0.30.1",
+ "nalgebra",
  "regex",
 ]
 
@@ -340,7 +324,7 @@ version = "0.1.0"
 dependencies = [
  "intder",
  "libc",
- "nalgebra 0.30.1",
+ "nalgebra",
  "psqs",
  "rust-anpass",
  "serde",
@@ -358,7 +342,7 @@ version = "0.1.0"
 dependencies = [
  "approx",
  "libc",
- "nalgebra 0.30.1",
+ "nalgebra",
  "psqs",
  "rayon",
  "rust-pbqff",
@@ -438,7 +422,7 @@ name = "spectro"
 version = "0.1.0"
 dependencies = [
  "approx",
- "nalgebra 0.30.1",
+ "nalgebra",
  "symm",
  "tensor",
 ]
@@ -448,7 +432,7 @@ name = "summarize"
 version = "0.1.0"
 dependencies = [
  "lazy_static",
- "nalgebra 0.31.0",
+ "nalgebra",
  "regex",
  "symm",
 ]
@@ -458,7 +442,7 @@ name = "symm"
 version = "0.1.0"
 dependencies = [
  "approx",
- "nalgebra 0.30.1",
+ "nalgebra",
  "serde",
 ]
 
@@ -480,6 +464,9 @@ version = "0.1.0"
 [[package]]
 name = "tensor"
 version = "0.1.0"
+dependencies = [
+ "approx",
+]
 
 [[package]]
 name = "toml"

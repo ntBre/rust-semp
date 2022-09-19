@@ -107,17 +107,16 @@ pub fn setup() {
 }
 
 pub fn takedown() {
-    for dir in DIRS {
+    'outer: for dir in DIRS {
         let path = Path::new(dir);
         if path.is_dir() {
-            match fs::remove_dir_all(dir) {
-                Ok(_) => (),
-                Err(e) => {
-                    // assume it's okay if the directory already doesn't exist
-                    if Path::new(dir).exists() {
-                        panic!("can't remove '{}' for '{}'", dir, e);
-                    }
+            while let Err(e) = fs::remove_dir_all(dir) {
+                // assume it's okay if the directory already doesn't exist
+                if !Path::new(dir).exists() {
+                    continue 'outer;
                 }
+                eprintln!("trying to remove '{}' with '{}'", dir, e);
+                std::thread::sleep(std::time::Duration::from_secs(1));
             }
         }
     }

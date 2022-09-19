@@ -2,6 +2,7 @@ use psqs::program::mopac::Mopac;
 use psqs::program::Template;
 use psqs::queue::local::LocalQueue;
 use psqs::queue::Queue;
+use rust_semp::utils::*;
 use rust_semp::*;
 
 fn main() {

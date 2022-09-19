@@ -2,6 +2,7 @@ use psqs::queue::local::LocalQueue;
 use rust_semp::{
     config::Config,
     optimize::{energy::Energy, Optimize},
+    utils::{load_geoms, load_params},
     *,
 };
 

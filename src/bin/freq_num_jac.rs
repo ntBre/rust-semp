@@ -1,8 +1,6 @@
 use psqs::queue::local::LocalQueue;
-use rust_semp::{
-    optimize::{frequency::Frequency, Optimize},
-    *,
-};
+use rust_semp::optimize::{frequency::Frequency, Optimize};
+use rust_semp::utils::setup;
 
 fn main() {
     let config = rust_semp::config::Config::load("test_files/test.toml");

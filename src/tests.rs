@@ -1,19 +1,30 @@
-use std::{fs, ops::Deref};
+use std::{
+    fs::{self, File},
+    io::{BufRead, BufReader},
+    ops::Deref,
+};
 
 use crate::{
     config::Config,
     optimize::{energy::Energy, frequency::Frequency},
     stats::Stats,
+    utils::{load_energies, load_params},
 };
 
-use psqs::queue::{local::LocalQueue, slurm::Slurm};
+use psqs::{
+    geom::Geom,
+    queue::{local::LocalQueue, slurm::Slurm},
+};
+use symm::Atom;
 
 use super::*;
 
 #[test]
 fn test_load_geoms() {
-    let got =
-        load_geoms("test_files/three07", &string!["C", "C", "C", "H", "H"]);
+    let got = utils::load_geoms(
+        "test_files/three07",
+        &string!["C", "C", "C", "H", "H"],
+    );
     let want = vec![
         Geom::Xyz(vec![
             Atom::new_from_label(
@@ -210,8 +221,8 @@ export LD_LIBRARY_PATH=/home/qc/mopac2016/
 fn test_one_iter() {
     let config = Config::load("test_files/test.toml");
     let names = string!["C", "C", "C", "H", "H"];
-    let moles = load_geoms("test_files/three07", &names);
-    let params = load_params("test_files/params.dat");
+    let moles = utils::load_geoms("test_files/three07", &names);
+    let params = utils::load_params("test_files/params.dat");
     let want = na::DVector::from(vec![
         0.0,
         0.0016682056863255301,
@@ -300,8 +311,8 @@ fn test_num_jac() {
     let config = crate::config::Config::load("test_files/test.toml");
     let names = string!["C", "C", "C", "H", "H"];
     {
-        let moles = load_geoms("test_files/small07", &names);
-        let params = load_params("test_files/small.params");
+        let moles = utils::load_geoms("test_files/small07", &names);
+        let params = utils::load_params("test_files/small.params");
         let want = load_mat("test_files/small.jac");
         let got = Energy { moles }.num_jac(
             &params,
@@ -315,8 +326,8 @@ fn test_num_jac() {
     }
     {
         // want jac straight from the Go version
-        let moles = load_geoms("test_files/three07", &names);
-        let params = load_params("test_files/three.params");
+        let moles = utils::load_geoms("test_files/three07", &names);
+        let params = utils::load_params("test_files/three.params");
         let want = load_mat("test_files/three.jac");
         let got = Energy { moles }.num_jac(
             &params,
@@ -508,15 +519,18 @@ fn test_algo() {
     let got = run_algo(
         &mut std::io::sink(),
         &config.molecules,
-        load_params(param_file),
-        load_energies(energy_file),
+        utils::load_params(param_file),
+        utils::load_energies(energy_file),
         5,
         true,
         5,
         queue,
         false,
         Energy {
-            moles: load_geoms(geom_file, &config.molecules[0].atom_names),
+            moles: utils::load_geoms(
+                geom_file,
+                &config.molecules[0].atom_names,
+            ),
         },
     );
     assert_eq!(got, want);
@@ -527,7 +541,7 @@ fn test_algo() {
 fn freq_semi_empirical() {
     let config = Config::load("test_files/test.toml");
     let freq = Frequency::new(vec![], config.gspectro_cmd, config.spectro_cmd);
-    setup();
+    utils::setup();
     let queue = LocalQueue {
         chunk_size: 128,
         dir: "inp".to_string(),
@@ -566,7 +580,7 @@ FN11           C      0.046302000000"
         ]),
         epsilon = 0.2
     );
-    takedown();
+    utils::takedown();
 }
 
 #[test]
@@ -575,7 +589,7 @@ fn freq_num_jac() {
     // this test takes 23 minutes with the current implementation at work
     let config = Config::load("test_files/test.toml");
     let freq = Frequency::new(vec![], config.gspectro_cmd, config.spectro_cmd);
-    setup();
+    utils::setup();
     let queue = LocalQueue {
         chunk_size: 128,
         dir: "inp".to_string(),
@@ -606,5 +620,5 @@ fn freq_num_jac() {
     // this should agree to 1e-12 depending on the computer I guess, I printed
     // `got` to 12 decimal places when obtaining the `want` value
     approx::assert_abs_diff_eq!(got, want, epsilon = 1e-5,);
-    takedown();
+    utils::takedown();
 }

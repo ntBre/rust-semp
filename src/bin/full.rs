@@ -1,6 +1,7 @@
 use psqs::queue::local::LocalQueue;
 use rust_semp::config::Config;
 use rust_semp::optimize::energy::Energy;
+use rust_semp::utils::*;
 use rust_semp::*;
 
 fn main() {

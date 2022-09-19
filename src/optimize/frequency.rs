@@ -8,7 +8,8 @@ use rust_pbqff::coord_type::{sic, Cart};
 use rust_pbqff::Spectro;
 use symm::{Molecule, PointGroup};
 
-use crate::{config, setup, sort_irreps, takedown};
+use crate::utils::sort_irreps;
+use crate::{config, utils::setup, utils::takedown};
 use nalgebra as na;
 use std::fs::File;
 use std::io::Write;

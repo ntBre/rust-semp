@@ -3,7 +3,8 @@ use psqs::program::mopac::{Mopac, Params};
 use psqs::queue::Queue;
 
 use crate::config::Molecule;
-use crate::{relative, setup, takedown, DEBUG};
+use crate::utils::relative;
+use crate::{utils::setup, utils::takedown, DEBUG};
 use nalgebra as na;
 use std::rc::Rc;
 

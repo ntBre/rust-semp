@@ -9,6 +9,7 @@ use psqs::queue::slurm::Slurm;
 use rust_semp::config::Config;
 use rust_semp::optimize::energy::Energy;
 use rust_semp::optimize::frequency::Frequency;
+use rust_semp::utils::{load_energies, load_geoms, parse_params, sort_irreps};
 use rust_semp::*;
 
 fn main() {

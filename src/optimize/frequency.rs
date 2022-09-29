@@ -5,7 +5,6 @@ use psqs::program::{Job, ProgramResult, Template};
 use psqs::queue::Queue;
 use rust_pbqff::coord_type::cart::{make_fcs, BigHash};
 use rust_pbqff::coord_type::{sic, Cart};
-use rust_pbqff::Spectro;
 use symm::{Molecule, PointGroup};
 
 use crate::utils::sort_irreps;
@@ -262,8 +261,7 @@ impl Frequency {
         energies: &mut [f64],
         freq: &mut FreqParts,
     ) -> DVector<f64> {
-        let spec = Spectro::nocurvil();
-        let summary = match freq {
+        let (_, summary) = match freq {
             FreqParts::Sic {
                 intder,
                 taylor,
@@ -277,7 +275,6 @@ impl Frequency {
                 taylor,
                 taylor_disps,
                 atomic_numbers,
-                &spec,
                 STEP_SIZE,
             ),
             FreqParts::Cart {
@@ -288,8 +285,9 @@ impl Frequency {
                 nfc3,
                 mol,
             } => {
-                make_fcs(target_map, energies, fcs, *n, *nfc2, *nfc3, dir);
-                rust_pbqff::coord_type::cart::freqs(dir, &spec, mol)
+                let (fc2, f3, f4) =
+                    make_fcs(target_map, energies, fcs, *n, *nfc2, *nfc3, dir);
+                rust_pbqff::coord_type::cart::freqs(dir, mol, fc2, f3, f4)
             }
         };
         let freqs = sort_irreps(&summary.corrs, &summary.irreps);

@@ -46,8 +46,8 @@ impl Stats {
         time_milli: u128,
         lambda: f64,
     ) {
-        print!(
-            "{:5}{:12.4}{:12.4}{:12.4}{:12.4}{:12.4}{:12.3e}{:12.1}\n",
+        println!(
+            "{:5}{:12.4}{:12.4}{:12.4}{:12.4}{:12.4}{:12.3e}{:12.1}",
             iter,
             self.norm,
             self.norm - last.norm,

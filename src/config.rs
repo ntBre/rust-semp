@@ -2,7 +2,7 @@ use psqs::program::Template;
 use rust_pbqff::Intder;
 use serde::Deserialize;
 
-#[derive(Deserialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq, Eq)]
 pub enum Protocol {
     #[serde(alias = "energy")]
     Energy,
@@ -98,10 +98,10 @@ impl Config {
                 charge: molecule.charge,
                 dummies: molecule.dummies,
                 geometry: molecule.geometry.parse().unwrap(),
-                intder: match &molecule.intder_file {
-                    Some(f) => Some(Intder::load_file(f)),
-                    None => None,
-                },
+                intder: molecule
+                    .intder_file
+                    .as_ref()
+                    .map(|f| Intder::load_file(f)),
                 true_freqs: molecule.true_freqs,
                 irreps: molecule.irreps,
                 template: Template::from(&molecule.template),

@@ -105,8 +105,8 @@ impl Optimize for Energy {
         takedown();
         // nalgebra does from_vec in col-major order, so lead with cols and I get
         // jac_t_t or jac back
-        let jac = na::DMatrix::from_vec(cols, rows, jac_t);
-        jac
+
+        na::DMatrix::from_vec(cols, rows, jac_t)
     }
 
     fn stat_multiplier(&self) -> f64 {

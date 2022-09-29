@@ -72,7 +72,7 @@ pub fn optimize_geometry<Q: Queue<Mopac>>(
 
 #[derive(Clone, Debug)]
 enum FreqParts {
-    SIC {
+    Sic {
         intder: rust_pbqff::Intder,
         taylor: taylor::Taylor,
         taylor_disps: Vec<Vec<isize>>,
@@ -95,7 +95,7 @@ impl FreqParts {
         taylor_disps: Vec<Vec<isize>>,
         atomic_numbers: Vec<usize>,
     ) -> Self {
-        Self::SIC {
+        Self::Sic {
             intder,
             taylor,
             taylor_disps,
@@ -195,7 +195,7 @@ impl Frequency {
                 // call build_jobs like before
                 let jobs = Mopac::build_jobs(
                     &moles,
-                    Some(&params),
+                    Some(params),
                     "inp",
                     start_index,
                     1.0,
@@ -264,19 +264,19 @@ impl Frequency {
     ) -> DVector<f64> {
         let spec = Spectro::nocurvil();
         let summary = match freq {
-            FreqParts::SIC {
+            FreqParts::Sic {
                 intder,
                 taylor,
                 taylor_disps,
                 atomic_numbers,
             } => rust_pbqff::coord_type::sic::freqs(
                 w,
-                &dir,
+                dir,
                 energies,
                 &mut intder.clone(),
-                &taylor,
-                &taylor_disps,
-                &atomic_numbers,
+                taylor,
+                taylor_disps,
+                atomic_numbers,
                 &spec,
                 STEP_SIZE,
             ),
@@ -288,7 +288,7 @@ impl Frequency {
                 nfc3,
                 mol,
             } => {
-                make_fcs(target_map, &energies, fcs, *n, *nfc2, *nfc3, dir);
+                make_fcs(target_map, energies, fcs, *n, *nfc2, *nfc3, dir);
                 rust_pbqff::coord_type::cart::freqs(dir, &spec, mol)
             }
         };
@@ -297,6 +297,7 @@ impl Frequency {
     }
 
     /// helper method for computing the single-point energies for the jacobian
+    #[allow(clippy::type_complexity)]
     fn jac_energies(
         &self,
         rows: usize,
@@ -373,13 +374,7 @@ impl Optimize for Frequency {
                 "opt",
                 molecule.charge,
                 molecule.template.clone(),
-            );
-
-            let geom = if let Some(geom) = geom {
-                geom
-            } else {
-                return None;
-            };
+            )?;
 
             writeln!(
                 w,

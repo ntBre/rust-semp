@@ -91,7 +91,7 @@ pub fn load_params(filename: &str) -> Params {
     parse_params(&params)
 }
 
-pub(crate) static DIRS: &'static [&str] = &["inp", "tmparam"];
+pub(crate) static DIRS: &[&str] = &["inp", "tmparam"];
 
 /// set up the directories needed for the program after deleting existing ones
 pub fn setup() {
@@ -190,5 +190,5 @@ pub fn sort_irreps(freqs: &[f64], irreps: &[Irrep]) -> Vec<f64> {
         Ordering::Equal => a.1.partial_cmp(b.1).unwrap(),
         other => other,
     });
-    pairs.iter().map(|x| x.1.clone()).collect()
+    pairs.iter().map(|x| *x.1).collect()
 }

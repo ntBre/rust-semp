@@ -278,8 +278,6 @@ impl Frequency {
                 &taylor_disps,
                 &atomic_numbers,
                 &spec,
-                &self.gspectro_cmd,
-                &self.spectro_cmd,
                 STEP_SIZE,
             ),
             FreqParts::Cart {
@@ -291,16 +289,10 @@ impl Frequency {
                 mol,
             } => {
                 make_fcs(target_map, &energies, fcs, *n, *nfc2, *nfc3, dir);
-                rust_pbqff::coord_type::cart::freqs(
-                    dir,
-                    &spec,
-                    &self.gspectro_cmd,
-                    &self.spectro_cmd,
-                    mol,
-                )
+                rust_pbqff::coord_type::cart::freqs(dir, &spec, mol)
             }
         };
-        let freqs = sort_irreps(&summary.corr, &summary.irreps);
+        let freqs = sort_irreps(&summary.corrs, &summary.irreps);
         DVector::from(freqs)
     }
 

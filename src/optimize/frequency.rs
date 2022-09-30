@@ -52,7 +52,7 @@ pub fn optimize_geometry<Q: Queue<Mopac>>(
     template: Template,
 ) -> Option<ProgramResult> {
     let opt = Job::new(
-        Mopac::new(
+        Mopac::new_full(
             format!("{}/{}", dir, name),
             Some(Rc::new(params.clone())),
             Rc::new(geom),
@@ -154,7 +154,7 @@ impl Frequency {
         W: Write,
     {
         let mol = {
-            let mut mol = Molecule::new(geom.cart_geom);
+            let mut mol = Molecule::new(geom.cart_geom.unwrap());
             mol.normalize();
             mol
         };
@@ -193,7 +193,7 @@ impl Frequency {
 
                 // call build_jobs like before
                 let jobs = Mopac::build_jobs(
-                    &moles,
+                    &moles.into_iter().map(Rc::new).collect(),
                     Some(params),
                     "inp",
                     start_index,
@@ -237,7 +237,7 @@ impl Frequency {
                     let filename = format!("{dir}/job.{:08}", job_num);
                     job_num += 1;
                     jobs.push(Job::new(
-                        Mopac::new(
+                        Mopac::new_full(
                             filename,
                             Some(Rc::new(params.clone())),
                             Rc::new(mol.geom),
@@ -377,7 +377,7 @@ impl Optimize for Frequency {
             writeln!(
                 w,
                 "Optimized Geometry:\n{:20.12}",
-                Molecule::new(geom.cart_geom.clone())
+                Molecule::new(geom.cart_geom.clone().unwrap())
             )
             .unwrap();
 
@@ -590,7 +590,7 @@ fn jac_opt(
                 let mut pf = params.clone();
                 pf.values[row] += DELTA;
                 opts.push(Job::new(
-                    Mopac::new(
+                    Mopac::new_full(
                         format!("inp/opt{row}_fwd{i}"),
                         Some(Rc::new(pf)),
                         Rc::new(molecule.geometry.clone()),
@@ -609,7 +609,7 @@ fn jac_opt(
                 let mut pb = params.clone();
                 pb.values[row] -= DELTA;
                 opts.push(Job::new(
-                    Mopac::new(
+                    Mopac::new_full(
                         format!("inp/opt{row}_bwd{i}"),
                         Some(Rc::new(pb)),
                         Rc::new(molecule.geometry.clone()),

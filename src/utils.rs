@@ -39,7 +39,9 @@ pub fn load_geoms(filename: &str, atom_names: &[String]) -> Vec<Rc<Geom>> {
     for (i, line) in lines.map(|x| x.unwrap()).enumerate() {
         if line.contains("# GEOM") {
             if i > 0 {
-                ret.push(Rc::new(Geom::Xyz(buf)));
+                let mut mol = symm::Molecule::new(buf);
+                mol.to_angstrom();
+                ret.push(Rc::new(Geom::Xyz(mol.atoms)));
                 buf = Vec::new();
                 idx = 0;
             }
@@ -57,7 +59,9 @@ pub fn load_geoms(filename: &str, atom_names: &[String]) -> Vec<Rc<Geom>> {
         ));
         idx += 1;
     }
-    ret.push(Rc::new(Geom::Xyz(buf)));
+    let mut mol = symm::Molecule::new(buf);
+    mol.to_angstrom();
+    ret.push(Rc::new(Geom::Xyz(mol.atoms)));
     ret
 }
 

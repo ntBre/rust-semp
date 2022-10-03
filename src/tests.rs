@@ -4,6 +4,8 @@ use std::{
     ops::Deref,
 };
 
+use std::str::FromStr;
+
 use crate::{
     config::Config,
     optimize::{energy::Energy, frequency::Frequency},
@@ -15,7 +17,7 @@ use psqs::{
     geom::Geom,
     queue::{local::LocalQueue, slurm::Slurm},
 };
-use symm::Atom;
+use symm::Molecule;
 
 use super::*;
 
@@ -25,74 +27,45 @@ fn test_load_geoms() {
         "test_files/three07",
         &string!["C", "C", "C", "H", "H"],
     );
-    let want = vec![
-        Geom::Xyz(vec![
-            Atom::new_from_label(
-                "C",
-                0.0000000000,
-                0.0000000000,
-                -1.6794733900,
-            ),
-            Atom::new_from_label("C", 0.0000000000, 1.2524327590, 0.6959098120),
-            Atom::new_from_label(
-                "C",
-                0.0000000000,
-                -1.2524327590,
-                0.6959098120,
-            ),
-            Atom::new_from_label("H", 0.0000000000, 3.0146272390, 1.7138963510),
-            Atom::new_from_label(
-                "H",
-                0.0000000000,
-                -3.0146272390,
-                1.7138963510,
-            ),
-        ]),
-        Geom::Xyz(vec![
-            Atom::new_from_label(
-                "C",
-                0.0000000000,
-                0.0000000000,
-                -1.6929508795,
-            ),
-            Atom::new_from_label("C", 0.0000000000, 1.2335354991, 0.6923003326),
-            Atom::new_from_label(
-                "C",
-                0.0000000000,
-                -1.2335354991,
-                0.6923003326,
-            ),
-            Atom::new_from_label("H", 0.0000000000, 2.9875928126, 1.7242445752),
-            Atom::new_from_label(
-                "H",
-                0.0000000000,
-                -2.9875928126,
-                1.7242445752,
-            ),
-        ]),
-        Geom::Xyz(vec![
-            Atom::new_from_label(
-                "C",
-                0.0000000000,
-                0.0000000000,
-                -1.6826636598,
-            ),
-            Atom::new_from_label("C", 0.0000000000, 1.2382598141, 0.6926064201),
-            Atom::new_from_label(
-                "C",
-                0.0000000000,
-                -1.2382598141,
-                0.6926064201,
-            ),
-            Atom::new_from_label("H", 0.0000000000, 2.9956906742, 1.7187948778),
-            Atom::new_from_label(
-                "H",
-                0.0000000000,
-                -2.9956906742,
-                1.7187948778,
-            ),
-        ]),
+    let moles = [
+        Molecule::from_str(
+            "
+        C 0.0000000000        0.0000000000       -1.6794733900
+        C 0.0000000000        1.2524327590        0.6959098120
+        C 0.0000000000       -1.2524327590        0.6959098120
+        H 0.0000000000        3.0146272390        1.7138963510
+        H 0.0000000000       -3.0146272390        1.7138963510
+",
+        )
+        .unwrap(),
+        Molecule::from_str(
+            "
+        C 0.0000000000        0.0000000000       -1.6929508795
+        C 0.0000000000        1.2335354991        0.6923003326
+        C 0.0000000000       -1.2335354991        0.6923003326
+        H 0.0000000000        2.9875928126        1.7242445752
+        H 0.0000000000       -2.9875928126        1.7242445752
+",
+        )
+        .unwrap(),
+        Molecule::from_str(
+            "
+        C 0.0000000000        0.0000000000       -1.6826636598
+        C 0.0000000000        1.2382598141        0.6926064201
+        C 0.0000000000       -1.2382598141        0.6926064201
+        H 0.0000000000        2.9956906742        1.7187948778
+        H 0.0000000000       -2.9956906742        1.7187948778
+",
+        )
+        .unwrap(),
     ];
+    let want = moles
+        .into_iter()
+        .map(|mut m| {
+            m.to_angstrom();
+            Geom::Xyz(m.atoms)
+        })
+        .collect();
     assert!(comp_geoms(got, want, 1e-10));
 }
 
@@ -195,7 +168,8 @@ fn test_load_params() {
 
 #[test]
 fn test_write_submit_script() {
-    Slurm::default().write_submit_script(
+    <Slurm as Queue<Mopac>>::write_submit_script(
+        &Slurm::default(),
         &string!["input1", "input2", "input3"],
         "/tmp/submit.slurm",
     );
@@ -228,10 +202,7 @@ fn test_one_iter() {
         0.0016682056863255301,
         0.0013685188198143683,
     ]);
-    let got = Energy {
-        moles: moles.clone(),
-    }
-    .semi_empirical(
+    let got = Energy { moles }.semi_empirical(
         &params,
         &LocalQueue {
             chunk_size: 128,
@@ -240,7 +211,7 @@ fn test_one_iter() {
         &config.molecules,
     );
     let eps = match hostname().as_str() {
-        // "cactus" => 4e-9,
+        "cactus" => 4e-8,
         _ => 1e-14,
     };
     assert!(comp_dvec(got.unwrap(), want, eps));
@@ -262,7 +233,6 @@ fn load_mat(filename: &str) -> na::DMatrix<f64> {
     let mut rows = 0;
     for line in lines {
         let sp: Vec<f64> = line
-            .trim()
             .split_whitespace()
             .skip(1)
             .map(|x| x.parse().unwrap())
@@ -322,7 +292,7 @@ fn test_num_jac() {
             },
             &config.molecules,
         );
-        assert!(comp_mat(got, want, 1.6e-5));
+        assert!(comp_mat(got, want, 2e-5));
     }
     {
         // want jac straight from the Go version
@@ -493,9 +463,9 @@ fn test_algo() {
     // loading everything
     let want = match hostname().as_str() {
         "cactus" => Stats {
-            norm: 23.333169455509847,
-            rmsd: 4.66663389110197,
-            max: 11.364077671789438,
+            norm: 17.68655029777878,
+            rmsd: 3.537310059555756,
+            max: 7.453759816083651,
         },
         "bonsai" => Stats {
             norm: 6.82638384609378,

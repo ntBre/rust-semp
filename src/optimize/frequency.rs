@@ -62,7 +62,7 @@ pub fn optimize_geometry<Q: Queue<Mopac>>(
         0,
     );
     let mut res = vec![Default::default(); 1];
-    let status = queue.energize(&mut [opt], &mut res);
+    let status = queue.energize(dir, &mut [opt], &mut res);
     if status.is_err() {
         return None;
     }
@@ -394,7 +394,7 @@ impl Optimize for Frequency {
             let mut energies = vec![0.0; jobs.len()];
             // drain to get energies
             setup();
-            let status = submitter.drain(&mut jobs, &mut energies);
+            let status = submitter.drain("inp", &mut jobs, &mut energies);
             takedown();
 
             if status.is_err() {
@@ -428,7 +428,7 @@ impl Optimize for Frequency {
         setup();
         let mut geoms = vec![Default::default(); opts.len()];
         submitter
-            .energize(&mut opts, &mut geoms)
+            .energize("inp", &mut opts, &mut geoms)
             .expect("numjac optimizations failed");
 
         eprintln!(
@@ -455,7 +455,7 @@ impl Optimize for Frequency {
         let mut energies = vec![0.0; jobs.len()];
         setup();
         submitter
-            .drain(&mut jobs, &mut energies)
+            .drain("inp", &mut jobs, &mut energies)
             .expect("numjac optimizations failed");
         takedown();
 

@@ -9,11 +9,18 @@ TESTFLAGS += --include-ignored
 endif
 
 ELAND_DEST = 'eland:programs/semp/.'
-eland:
+WOODS_DEST = 'woods:Programs/semp/.'
+
+build:
 # see https://msfjarvis.dev/posts/building-static-rust-binaries-for-linux
 	RUSTFLAGS='-C target-feature=+crt-static' \
 	cargo build --release --target x86_64-unknown-linux-gnu --bin rust-semp
+
+eland: build
 	scp -C ${BASE}/target/x86_64-unknown-linux-gnu/release/rust-semp ${ELAND_DEST}
+
+woods: build
+	scp -C ${BASE}/target/x86_64-unknown-linux-gnu/release/rust-semp ${WOODS_DEST}
 
 eland.scripts: scripts/time.awk
 	scp -C $? ${ELAND_DEST}

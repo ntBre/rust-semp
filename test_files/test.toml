@@ -25,8 +25,7 @@ optimize = "energy"
 broyden = false
 broyd_int = 10
 reset_lambda = false
-spectro_cmd = "/home/brent/Projects/pbqff/bin/spectro"
-gspectro_cmd = "/home/brent/Projects/chemutils/spectro/spectro/spectro"
+queue = "slurm"
 
 [[molecule]]
 atom_names = ["C", "C", "C", "H", "H"]

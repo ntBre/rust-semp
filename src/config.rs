@@ -1,5 +1,5 @@
 use psqs::program::Template;
-use rust_pbqff::Intder;
+use rust_pbqff::{config::Queue, Intder};
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug, PartialEq, Eq)]
@@ -10,7 +10,7 @@ pub enum Protocol {
     Frequency,
 }
 
-mod raw;
+pub mod raw;
 use raw::*;
 use symm::Irrep;
 
@@ -54,11 +54,7 @@ pub struct Config {
     /// individual molecules
     pub molecules: Vec<Molecule>,
 
-    /// path to the actual spectro program to run in gspectro
-    pub spectro_cmd: String,
-
-    /// path to gspectro
-    pub gspectro_cmd: String,
+    pub queue: Queue,
 }
 
 pub struct Molecule {
@@ -118,8 +114,7 @@ impl Config {
             optimize: raw.optimize,
             reset_lambda: raw.reset_lambda,
             molecules,
-            spectro_cmd: raw.spectro_cmd,
-            gspectro_cmd: raw.gspectro_cmd,
+            queue: raw.queue,
         }
     }
 }

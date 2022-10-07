@@ -510,7 +510,7 @@ fn test_algo() {
 #[ignore]
 fn freq_semi_empirical() {
     let config = Config::load("test_files/test.toml");
-    let freq = Frequency::new(vec![], config.gspectro_cmd, config.spectro_cmd);
+    let freq = Frequency::new(vec![]);
     utils::setup();
     let queue = LocalQueue {
         chunk_size: 128,
@@ -565,7 +565,7 @@ FN11           C      0.046302000000"
 fn freq_num_jac() {
     // this test takes 23 minutes with the current implementation at work
     let config = Config::load("test_files/test.toml");
-    let freq = Frequency::new(vec![], config.gspectro_cmd, config.spectro_cmd);
+    let freq = Frequency::new(vec![]);
     utils::setup();
     let queue = LocalQueue {
         chunk_size: 128,

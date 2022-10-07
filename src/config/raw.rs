@@ -44,11 +44,8 @@ pub(super) struct RawConfig {
     /// individual molecules
     pub molecule: Vec<RawMolecule>,
 
-    /// path to the actual spectro program to run in gspectro
-    pub spectro_cmd: String,
-
-    /// path to gspectro
-    pub gspectro_cmd: String,
+    /// the queueing system to use
+    pub queue: rust_pbqff::config::Queue,
 }
 
 /// deserialize into this for the String geometry before converting to a real
@@ -86,6 +83,8 @@ impl RawConfig {
 
 #[cfg(test)]
 mod tests {
+    use rust_pbqff::config::Queue;
+
     use crate::string;
 
     use super::*;
@@ -146,10 +145,7 @@ HCC =               147.81488230
             broyd_int: 10,
             optimize: Protocol::Energy,
             reset_lambda: false,
-            spectro_cmd: "/home/brent/Projects/pbqff/bin/spectro".to_string(),
-            gspectro_cmd:
-                "/home/brent/Projects/chemutils/spectro/spectro/spectro"
-                    .to_string(),
+            queue: Queue::Slurm,
         };
         assert_eq!(got, want);
     }

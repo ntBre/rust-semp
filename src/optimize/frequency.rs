@@ -33,13 +33,6 @@ fn output_stream() -> Box<dyn Write> {
 pub struct Frequency {
     pub dummies: Vec<(usize, usize)>,
     logger: Mutex<File>,
-
-    /* these are inherited from the config */
-    /// path to the actual spectro program to run in gspectro
-    pub spectro_cmd: String,
-
-    /// path to gspectro
-    pub gspectro_cmd: String,
 }
 
 pub fn optimize_geometry<Q: Queue<Mopac>>(
@@ -124,21 +117,12 @@ impl FreqParts {
 type Dummies = Vec<(usize, usize)>;
 
 impl Frequency {
-    pub fn new(
-        dummies: Dummies,
-        gspectro_cmd: String,
-        spectro_cmd: String,
-    ) -> Self {
+    pub fn new(dummies: Dummies) -> Self {
         let logger = Mutex::new(
             std::fs::File::create("freqs.log")
                 .expect("failed to create 'freqs.log'"),
         );
-        Self {
-            dummies,
-            logger,
-            spectro_cmd,
-            gspectro_cmd,
-        }
+        Self { dummies, logger }
     }
 
     fn build_jobs<W>(

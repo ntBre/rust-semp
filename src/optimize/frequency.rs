@@ -274,6 +274,10 @@ impl Frequency {
                 rust_pbqff::coord_type::cart::freqs(dir, mol, fc2, f3, f4)
             }
         };
+        if DEBUG {
+            writeln!(w, "dir={dir}").unwrap();
+            writeln!(w, "{}", summary).unwrap();
+        }
         let freqs = sort_irreps(&summary.corrs, &summary.irreps);
         DVector::from(freqs)
     }

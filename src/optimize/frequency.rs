@@ -485,13 +485,12 @@ impl Optimize for Frequency {
                     let mut freq = freq.clone();
                     let dir = format!("freqs{}_{}", i, m);
                     let _ = std::fs::create_dir(&dir);
-                    let f = self.freqs(
+                    self.freqs(
                         &mut output_stream(),
                         &dir,
                         &mut energy,
                         &mut freq,
-                    );
-                    f
+                    )
                 })
                 .collect();
 

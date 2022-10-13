@@ -125,6 +125,9 @@ impl Frequency {
         Self { dummies, logger }
     }
 
+    /// build jobs for a fixed set of Params. instead of passing the params as
+    /// part of each separate Mopac, write the parameters once and update the
+    /// Template passed to Mopac::new
     fn build_jobs<W>(
         &self,
         w: &mut W,
@@ -147,6 +150,12 @@ impl Frequency {
 
         writeln!(w, "Normalized Geometry:\n{:20.12}", mol).unwrap();
         writeln!(w, "Point Group = {}", pg).unwrap();
+
+        let param_file = Rc::new(format!("tmparam/{}.dat", job_num));
+        Mopac::write_params(params, &param_file);
+        let mut tmpl = molecule.template.clone();
+        use std::fmt::Write;
+        write!(tmpl.header, " external={}", param_file).unwrap();
 
         match &molecule.intder {
             Some(intder) => {
@@ -178,13 +187,13 @@ impl Frequency {
                 // call build_jobs like before
                 let jobs = Mopac::build_jobs(
                     &moles.into_iter().map(Rc::new).collect(),
-                    Some(params),
+                    None,
                     "inp",
                     start_index,
                     1.0,
                     job_num,
                     molecule.charge,
-                    molecule.template.clone(),
+                    tmpl,
                 );
                 (
                     FreqParts::sic(
@@ -223,10 +232,10 @@ impl Frequency {
                     jobs.push(Job::new(
                         Mopac::new_full(
                             filename,
-                            Some(Rc::new(params.clone())),
+                            None,
                             Rc::new(mol.geom),
                             molecule.charge,
-                            molecule.template.clone(),
+                            tmpl.clone(),
                         ),
                         mol.index + start_index,
                     ));
@@ -346,7 +355,7 @@ impl Optimize for Frequency {
     ) -> Option<DVector<f64>> {
         let mut w = output_stream();
 
-        writeln!(w, "Params:\n{}", params.to_string()).unwrap();
+        writeln!(w, "Params:\n{}", params).unwrap();
 
         let mut ret = Vec::new();
 
@@ -369,6 +378,9 @@ impl Optimize for Frequency {
             )
             .unwrap();
 
+            // have to call this before build_jobs since it writes params now
+            setup();
+
             let (mut freq, mut jobs) =
                 self.build_jobs(&mut w, geom, params, 0, 0, molecule);
             writeln!(
@@ -381,13 +393,12 @@ impl Optimize for Frequency {
 
             let mut energies = vec![0.0; jobs.len()];
             // drain to get energies
-            setup();
             let status = submitter.drain("inp", &mut jobs, &mut energies);
-            takedown();
 
             if status.is_err() {
                 return None;
             }
+            takedown();
 
             // convert energies to frequencies and return those
             let _ = std::fs::create_dir("freqs");
@@ -425,6 +436,9 @@ impl Optimize for Frequency {
         );
         let start = std::time::Instant::now();
 
+        // jac_energies writes to tmparam so have to setup first
+        setup();
+
         // build all the single-point energies
         let (mut jobs, mut freqs, indices) =
             self.jac_energies(rows, params, &geoms, molecules);
@@ -442,7 +456,6 @@ impl Optimize for Frequency {
 
         // run all of the energies
         let mut energies = vec![0.0; jobs.len()];
-        setup();
         submitter
             .drain("inp", &mut jobs, &mut energies)
             .expect("numjac optimizations failed");

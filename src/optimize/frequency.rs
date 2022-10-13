@@ -407,7 +407,7 @@ impl Optimize for Frequency {
         submitter: &Q,
         molecules: &[config::Molecule],
     ) -> na::DMatrix<f64> {
-        let start = std::time::SystemTime::now();
+        let start = std::time::Instant::now();
 
         let rows = params.len();
         // build all the optimizations
@@ -421,19 +421,20 @@ impl Optimize for Frequency {
 
         eprintln!(
             "finished optimizations after {:.1} sec",
-            start.elapsed().unwrap().as_millis() as f64 / 1000.
+            start.elapsed().as_millis() as f64 / 1000.
         );
-        let start = std::time::SystemTime::now();
+        let start = std::time::Instant::now();
 
         // build all the single-point energies
         let (mut jobs, mut freqs, indices) =
             self.jac_energies(rows, params, &geoms, molecules);
 
         eprintln!(
-            "finished building energies after {:.1} sec",
-            start.elapsed().unwrap().as_millis() as f64 / 1000.
+            "finished building {} energies after {:.1} sec",
+            jobs.len(),
+            start.elapsed().as_millis() as f64 / 1000.
         );
-        let start = std::time::SystemTime::now();
+        let start = std::time::Instant::now();
 
         // freqs is nmolecules long, so check that set of freqs is equal to
         // 2*nparam since there is a forward and back for each
@@ -452,9 +453,9 @@ impl Optimize for Frequency {
 
         eprintln!(
             "finished running energies after {:.1} sec",
-            start.elapsed().unwrap().as_millis() as f64 / 1000.
+            start.elapsed().as_millis() as f64 / 1000.
         );
-        let start = std::time::SystemTime::now();
+        let start = std::time::Instant::now();
 
         use rayon::prelude::*;
 
@@ -540,7 +541,7 @@ impl Optimize for Frequency {
 
         eprintln!(
             "finished frequencies after {:.1} sec",
-            start.elapsed().unwrap().as_millis() as f64 / 1000.
+            start.elapsed().as_millis() as f64 / 1000.
         );
 
         na::DMatrix::from_columns(&cols)

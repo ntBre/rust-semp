@@ -111,6 +111,8 @@ pub fn setup() {
 }
 
 pub fn takedown() {
+    let now = std::time::Instant::now();
+    eprintln!("starting takedown");
     'outer: for dir in DIRS {
         let path = Path::new(dir);
         if path.is_dir() {
@@ -124,6 +126,10 @@ pub fn takedown() {
             }
         }
     }
+    eprintln!(
+        "finished takdown after {:.1} s",
+        now.elapsed().as_millis() as f64 / 1000.0
+    );
 }
 
 /// parse a string containing lines like:

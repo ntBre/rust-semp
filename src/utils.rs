@@ -1,10 +1,8 @@
 use nalgebra as na;
 use psqs::geom::Geom;
 use psqs::program::mopac::Params;
-use std;
 use std::cmp::Ordering;
-use std::fs::File;
-use std::fs::{self, rename};
+use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Write};
 use std::iter::zip;
 use std::path::Path;
@@ -111,20 +109,18 @@ pub fn setup() {
 }
 
 pub fn takedown() {
+    use rayon::prelude::*;
     let now = std::time::Instant::now();
     eprintln!("starting takedown");
-    'outer: for dir in DIRS {
+    for dir in DIRS {
         let path = Path::new(dir);
         if path.is_dir() {
-            rename(path, "to_del").unwrap_or_else(|e| eprintln!("{e:?}"));
-            while let Err(e) = fs::remove_dir_all("to_del") {
-                // assume it's okay if the directory already doesn't exist
-                if !Path::new("to_del").exists() {
-                    continue 'outer;
-                }
-                eprintln!("trying to remove to_del with '{}'", e);
-                std::thread::sleep(std::time::Duration::from_secs(1));
+            if let Ok(files) = path.read_dir() {
+                files.par_bridge().for_each(|f| {
+                    fs::remove_file(f.unwrap().path()).unwrap();
+                });
             }
+            std::fs::remove_dir_all(path).unwrap();
         }
     }
     eprintln!(

@@ -183,7 +183,7 @@ pub fn relative(energies: &na::DVector<f64>) -> na::DVector<f64> {
 
 pub(crate) fn log_params<W: Write>(w: &mut W, iter: usize, params: &Params) {
     let _ = writeln!(w, "Iter {}", iter);
-    let _ = writeln!(w, "{}", params.to_string());
+    let _ = writeln!(w, "{}", params);
 }
 
 /// sort freqs by the irrep in the same position and then by frequency. if

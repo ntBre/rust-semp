@@ -114,6 +114,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
     let conv = optimizer.stat_multiplier();
     let mut params = params;
     log_params(param_log, 0, &params);
+    let mut start = std::time::Instant::now();
     // initial semi-empirical energies and stats
     let mut se = optimizer
         .semi_empirical(&params, &queue, molecules)
@@ -123,7 +124,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
     let mut stats = Stats::new(&ai, &se, conv);
     let mut last_stats = Stats::default();
     Stats::print_header();
-    stats.print_step(0, &last_stats, 0, LAMBDA0);
+    stats.print_step(0, &last_stats, start.elapsed().as_millis(), LAMBDA0);
     last_stats = stats;
     // start looping
     let mut iter = 1;
@@ -133,7 +134,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
     let mut del_max: f64 = 1.0;
     let mut in_broyden = false;
     let mut need_num_jac = false;
-    let mut start = std::time::SystemTime::now();
+    start = std::time::Instant::now();
     let mut jac = optimizer.num_jac(&params, &queue, molecules);
 
     // have to "initialize" this to satisfy compiler, but any use should panic
@@ -147,12 +148,12 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
         if broyden && !need_num_jac && iter > 1 && iter % broyd_int != 1 {
             eprintln!("broyden on iter {}", iter);
             in_broyden = true;
-            start = std::time::SystemTime::now();
+            start = std::time::Instant::now();
             jac = broyden_update(&jac, &old_se, &se, &step);
         } else if iter > 1 {
             in_broyden = false;
             need_num_jac = false;
-            start = std::time::SystemTime::now();
+            start = std::time::Instant::now();
             jac = optimizer.num_jac(&params, &queue, molecules);
         } // else (first iteration) use jac from outside loop
 
@@ -244,11 +245,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
         }
 
         // log the time
-        let time = if let Ok(elapsed) = start.elapsed() {
-            elapsed.as_millis()
-        } else {
-            0
-        };
+        let time = start.elapsed().as_millis();
 
         // don't accept a bad step from broyden, do numjac
         if in_broyden && stats.norm > last_stats.norm {

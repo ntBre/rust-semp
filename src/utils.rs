@@ -117,7 +117,14 @@ pub fn takedown() {
         if path.is_dir() {
             if let Ok(files) = path.read_dir() {
                 files.par_bridge().for_each(|f| {
-                    fs::remove_file(f.unwrap().path()).unwrap();
+                    if let Ok(f) = f {
+                        let res = fs::remove_file(f.path());
+                        if let Err(e) = res {
+                            eprintln!("removing {f:?} failed with {e:?}");
+                        }
+                    } else {
+                        eprintln!("dir entry failed with {:?}", f);
+                    }
                 });
             }
             std::fs::remove_dir_all(path).unwrap();

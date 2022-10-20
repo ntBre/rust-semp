@@ -111,10 +111,13 @@ pub fn setup() {
 pub fn takedown() {
     use rayon::prelude::*;
     let now = std::time::Instant::now();
-    eprintln!("starting takedown");
+    eprint!("starting takedown, ");
+    let rename = Path::new("to_del");
     for dir in DIRS {
         let path = Path::new(dir);
         if path.is_dir() {
+	    std::fs::rename(path, rename).unwrap();
+	    let path = rename;
             if let Ok(files) = path.read_dir() {
                 files.par_bridge().for_each(|f| {
                     if let Ok(f) = f {
@@ -131,7 +134,7 @@ pub fn takedown() {
         }
     }
     eprintln!(
-        "finished takdown after {:.1} s",
+        "finished after {:.1} s",
         now.elapsed().as_millis() as f64 / 1000.0
     );
 }

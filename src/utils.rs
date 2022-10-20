@@ -6,7 +6,6 @@ use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Write};
 use std::iter::zip;
 use std::path::Path;
-use std::rc::Rc;
 use symm::atom::Atom;
 use symm::Irrep;
 
@@ -22,7 +21,7 @@ macro_rules! string {
 }
 
 /// Take an INTDER-style `file07` file and parse it into a Vec of geometries
-pub fn load_geoms(filename: &str, atom_names: &[String]) -> Vec<Rc<Geom>> {
+pub fn load_geoms(filename: &str, atom_names: &[String]) -> Vec<Geom> {
     let f = match File::open(filename) {
         Ok(f) => f,
         Err(e) => {
@@ -39,7 +38,7 @@ pub fn load_geoms(filename: &str, atom_names: &[String]) -> Vec<Rc<Geom>> {
             if i > 0 {
                 let mut mol = symm::Molecule::new(buf);
                 mol.to_angstrom();
-                ret.push(Rc::new(Geom::Xyz(mol.atoms)));
+                ret.push(Geom::Xyz(mol.atoms));
                 buf = Vec::new();
                 idx = 0;
             }
@@ -59,7 +58,7 @@ pub fn load_geoms(filename: &str, atom_names: &[String]) -> Vec<Rc<Geom>> {
     }
     let mut mol = symm::Molecule::new(buf);
     mol.to_angstrom();
-    ret.push(Rc::new(Geom::Xyz(mol.atoms)));
+    ret.push(Geom::Xyz(mol.atoms));
     ret
 }
 

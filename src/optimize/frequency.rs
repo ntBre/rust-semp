@@ -65,8 +65,8 @@ pub fn optimize_geometry<Q: Queue<Mopac>>(
     let opt = Job::new(
         Mopac::new_full(
             format!("{}/{}", dir, name),
-            Some(Rc::new(params.clone())),
-            Rc::new(geom),
+            Some(params.clone()),
+            geom,
             charge,
             template,
         ),
@@ -204,7 +204,7 @@ impl Frequency {
 
                 // call build_jobs like before
                 let jobs = Mopac::build_jobs(
-                    &moles.into_iter().map(Rc::new).collect(),
+                    &moles,
                     None,
                     "inp",
                     start_index,
@@ -251,7 +251,7 @@ impl Frequency {
                         Mopac::new_full(
                             filename,
                             None,
-                            Rc::new(mol.geom),
+                            mol.geom.clone(),
                             molecule.charge,
                             tmpl.clone(),
                         ),
@@ -611,8 +611,8 @@ fn jac_opt(
                 opts.push(Job::new(
                     Mopac::new_full(
                         format!("inp/opt{row}_fwd{i}"),
-                        Some(Rc::new(pf)),
-                        Rc::new(molecule.geometry.clone()),
+                        Some(pf),
+                        molecule.geometry.clone(),
                         molecule.charge,
                         molecule.template.clone(),
                     ),
@@ -630,8 +630,8 @@ fn jac_opt(
                 opts.push(Job::new(
                     Mopac::new_full(
                         format!("inp/opt{row}_bwd{i}"),
-                        Some(Rc::new(pb)),
-                        Rc::new(molecule.geometry.clone()),
+                        Some(pb),
+                        molecule.geometry.clone(),
                         molecule.charge,
                         molecule.template.clone(),
                     ),

@@ -1,7 +1,6 @@
 use std::{
     fs::{self, File},
     io::{BufRead, BufReader},
-    ops::Deref,
 };
 
 use std::str::FromStr;
@@ -86,10 +85,7 @@ fn comp_vec(got: &[f64], want: &[f64], eps: f64) -> bool {
     true
 }
 
-fn comp_geoms<T>(got: Vec<T>, want: Vec<Geom>, eps: f64) -> bool
-where
-    T: Deref<Target = Geom>,
-{
+fn comp_geoms(got: Vec<Geom>, want: Vec<Geom>, eps: f64) -> bool {
     for (i, mol) in got.iter().enumerate() {
         let mol = mol.xyz().unwrap();
         for (j, atom) in mol.iter().enumerate() {

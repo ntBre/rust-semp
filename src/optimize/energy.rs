@@ -6,7 +6,6 @@ use crate::config::Molecule;
 use crate::utils::relative;
 use crate::{utils::setup, utils::takedown, DEBUG};
 use nalgebra as na;
-use std::rc::Rc;
 
 use super::Optimize;
 
@@ -15,7 +14,7 @@ static DELTA_FWD: f64 = 5e7; // 1 / 2Δ
 static DELTA_BWD: f64 = -5e7; // -1 / 2Δ
 
 pub struct Energy {
-    pub moles: Vec<Rc<Geom>>,
+    pub moles: Vec<Geom>,
 }
 
 impl Optimize for Energy {

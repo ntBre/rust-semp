@@ -211,7 +211,7 @@ fn test_one_iter() {
         &config.molecules,
     );
     let eps = match hostname().as_str() {
-        "cactus" => 4e-8,
+        "cactus" | "keystone" => 4e-8,
         _ => 1e-14,
     };
     assert!(comp_dvec(got.unwrap(), want, eps));
@@ -308,7 +308,7 @@ fn test_num_jac() {
             &config.molecules,
         );
         let tol = match hostname().as_str() {
-            "cactus" | "bonsai" => 3.6e-6,
+            "cactus" | "bonsai" | "keystone" => 3.6e-6,
             _ => 1e-8,
         };
         assert!(comp_mat(got, want, tol));
@@ -320,7 +320,7 @@ fn test_norm() {
     // making sure the nalgebra vector norm is what I think it is
     let v = na::DVector::<f64>::from(vec![1.0, 2.0, 3.0]);
     let got = v.norm();
-    let want = ((1.0 + 4.0 + 9.0) as f64).sqrt();
+    let want = f64::sqrt(1.0 + 4.0 + 9.0);
     assert_eq!(got, want);
 }
 
@@ -471,6 +471,11 @@ fn test_algo() {
             norm: 6.82638384609378,
             rmsd: 1.3652767692187562,
             max: 3.298712857132514,
+        },
+        "keystone" => Stats {
+            norm: 8.965455654589451,
+            rmsd: 1.7930911309178905,
+            max: 4.355627903536737,
         },
         _ => Stats {
             norm: 7.1820,

@@ -33,7 +33,7 @@ fn main() {
     }
     // initialize global thread pool
     rayon::ThreadPoolBuilder::new()
-        .num_threads(4)
+        .num_threads(0)
         .build_global()
         .unwrap();
     let conf = Config::load(&conf_name);

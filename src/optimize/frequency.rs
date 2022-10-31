@@ -85,7 +85,7 @@ enum FreqParts {
     Sic {
         intder: rust_pbqff::Intder,
         taylor: taylor::Taylor,
-        taylor_disps: Vec<Vec<isize>>,
+        taylor_disps: taylor::Disps,
         atomic_numbers: Vec<usize>,
     },
     Cart {
@@ -102,7 +102,7 @@ impl FreqParts {
     fn sic(
         intder: rust_pbqff::Intder,
         taylor: taylor::Taylor,
-        taylor_disps: Vec<Vec<isize>>,
+        taylor_disps: taylor::Disps,
         atomic_numbers: Vec<usize>,
     ) -> Self {
         Self::Sic {

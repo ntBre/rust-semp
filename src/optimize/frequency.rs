@@ -49,7 +49,7 @@ fn output_stream() -> Box<dyn Write> {
 }
 
 pub struct Frequency {
-    pub dummies: Vec<(usize, usize)>,
+    pub dummies: Vec<usize>,
     logger: Mutex<File>,
 }
 
@@ -132,7 +132,7 @@ impl FreqParts {
     }
 }
 
-type Dummies = Vec<(usize, usize)>;
+type Dummies = Vec<usize>;
 
 impl Frequency {
     pub fn new(dummies: Dummies) -> Self {

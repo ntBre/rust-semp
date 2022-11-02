@@ -65,8 +65,9 @@ pub struct Molecule {
     /// so on
     pub charge: isize,
 
-    /// dummy atoms of the form (axis, atom)
-    pub dummies: Vec<(usize, usize)>,
+    /// dummy atoms represented by the index of the atom they attach to. these
+    /// are assumed to correspond to LIN1 coordinates
+    pub dummies: Vec<usize>,
 
     pub geometry: psqs::geom::Geom,
 

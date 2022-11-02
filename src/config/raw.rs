@@ -59,8 +59,8 @@ pub(super) struct RawMolecule {
     /// so on
     pub charge: isize,
 
-    /// dummy atoms of the form (axis, atom)
-    pub dummies: Vec<(usize, usize)>,
+    /// dummy atoms represented by the index of the real atom they attach to
+    pub dummies: Vec<usize>,
 
     pub geometry: String,
 

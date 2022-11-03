@@ -31,11 +31,6 @@ fn main() {
         libc::dup2(out_fd, 1);
         libc::dup2(log_fd, 2);
     }
-    // initialize global thread pool
-    rayon::ThreadPoolBuilder::new()
-        .num_threads(0)
-        .build_global()
-        .unwrap();
     let conf = Config::load(&conf_name);
     let mut param_log = File::create("params.log")
         .expect("failed to create parameter log file");

@@ -56,6 +56,9 @@ memprofile = RUSTFLAGS='-g' cargo build --release --bin $(1); \
 memprofile.full:
 	$(call memprofile,full)
 
+memprofile.freq_num_jac:
+	$(call memprofile,freq_num_jac)
+
 time:
 	RUSTFLAGS='-g' cargo build --release --bin full
 	sh -c "time ${BASE}/target/release/full"

@@ -6,6 +6,9 @@ use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Write};
 use std::iter::zip;
 use std::path::Path;
+use std::sync::mpsc::Sender;
+use std::sync::{mpsc, Mutex, Once};
+use std::thread::{self};
 use symm::atom::Atom;
 use symm::Irrep;
 
@@ -107,26 +110,74 @@ pub fn setup() {
     }
 }
 
+/// a struct for taking down in the background. the directory names sent should
+/// have been moved to the trash directory but just the original names should be
+/// sent
+struct Takedown {
+    /// channel for sending filenames to be deleted
+    sender: Sender<String>,
+}
+
+impl Takedown {
+    fn new() -> Mutex<Takedown> {
+        let (sender, receiver) = mpsc::channel();
+        thread::spawn(move || {
+            for dir in receiver {
+                let root = Path::new("trash");
+                let d = root.join(&dir);
+                if let Err(e) = std::fs::remove_dir_all(&d) {
+                    eprintln!("failed to remove {:#?} with {e}", d);
+                }
+            }
+        });
+
+        Mutex::new(Takedown { sender })
+    }
+
+    pub(crate) fn send(&self, s: String) {
+        self.sender.send(s).unwrap();
+    }
+}
+
+lazy_static::lazy_static! {
+    static ref DUMPER: Mutex<Takedown> = Takedown::new();
+}
+
+/// on first call, create the "trash" directory and/or move the existing trash
+/// directory to it. on future calls, send DIRS to the global Takedown thread
 pub fn takedown() {
-    use rayon::prelude::*;
+    static INIT: Once = Once::new();
+    let path = Path::new("trash");
+    INIT.call_once(|| {
+        let exists = path.exists();
+        if exists {
+            if let Err(e) = std::fs::rename(path, "trash1") {
+                eprintln!("failed to rename trash with {e}");
+            }
+        }
+        std::fs::create_dir("trash").expect("failed to initialize trash dir");
+        if exists {
+            if let Err(e) = std::fs::rename("trash1", "trash/trash1") {
+                eprintln!("failed to relocate trash with {e}");
+            }
+            DUMPER.lock().unwrap().send("trash1".to_owned());
+        }
+    });
     let now = std::time::Instant::now();
     eprint!("starting takedown, ");
     for dir in DIRS {
         let path = Path::new(dir);
-        if path.is_dir() {
-            if let Ok(files) = path.read_dir() {
-                files.par_bridge().for_each(|f| {
-                    if let Ok(f) = f {
-                        let res = fs::remove_file(f.path());
-                        if let Err(e) = res {
-                            eprintln!("removing {f:?} failed with {e:?}");
-                        }
-                    } else {
-                        eprintln!("dir entry failed with {:?}", f);
-                    }
-                });
+        if path.exists() {
+            let to = format!(
+                "{dir}{}",
+                std::time::UNIX_EPOCH.elapsed().unwrap().as_nanos()
+            );
+            if let Err(e) = std::fs::rename(path, Path::new("trash").join(&to))
+            {
+                eprintln!("failed to move {dir} to {to} with {e}");
+            } else {
+                DUMPER.lock().unwrap().send(to);
             }
-            std::fs::remove_dir_all(path).unwrap();
         }
     }
     eprintln!(

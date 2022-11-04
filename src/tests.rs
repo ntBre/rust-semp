@@ -179,6 +179,8 @@ fn test_write_submit_script() {
 #SBATCH --no-requeue
 #SBATCH --mem=1gb
 export LD_LIBRARY_PATH=/home/qc/mopac2016/
+date
+hostname
 /home/qc/mopac2016/MOPAC2016.exe input1.mop
 /home/qc/mopac2016/MOPAC2016.exe input2.mop
 /home/qc/mopac2016/MOPAC2016.exe input3.mop
@@ -304,7 +306,7 @@ fn test_num_jac() {
             &config.molecules,
         );
         let tol = match hostname().as_str() {
-            "cactus" | "bonsai" | "keystone" => 3.6e-6,
+            "cactus" | "bonsai" | "keystone" => 4.2e-6,
             _ => 1e-8,
         };
         assert!(comp_mat(got, want, tol));
@@ -469,9 +471,9 @@ fn test_algo() {
             max: 3.298712857132514,
         },
         "keystone" => Stats {
-            norm: 8.965455654589451,
-            rmsd: 1.7930911309178905,
-            max: 4.355627903536737,
+            norm: 14.632849705639746,
+            rmsd: 2.926569941127949,
+            max: 8.166189476272047,
         },
         _ => Stats {
             norm: 7.1820,

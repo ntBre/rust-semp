@@ -53,7 +53,7 @@ pub struct Frequency {
     logger: Mutex<File>,
 }
 
-pub fn optimize_geometry<Q: Queue<Mopac>>(
+pub fn optimize_geometry<Q: Queue<Mopac> + std::marker::Sync>(
     geom: Geom,
     params: &Params,
     queue: &Q,
@@ -365,7 +365,7 @@ impl Frequency {
 
 impl Optimize for Frequency {
     /// compute the semi-empirical energies of `moles` for the given `params`
-    fn semi_empirical<Q: Queue<Mopac>>(
+    fn semi_empirical<Q: Queue<Mopac> + std::marker::Sync>(
         &self,
         params: &Params,
         submitter: &Q,
@@ -430,7 +430,7 @@ impl Optimize for Frequency {
     /// Compute the numerical Jacobian for the geomeries in `moles` and the
     /// parameters in `params`. For convenience of indexing, the transpose is
     /// actually computed and returned
-    fn num_jac<Q: Queue<Mopac>>(
+    fn num_jac<Q: Queue<Mopac> + std::marker::Sync>(
         &self,
         params: &Params,
         submitter: &Q,

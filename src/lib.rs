@@ -99,7 +99,7 @@ pub fn broyden_update(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn run_algo<O: Optimize, Q: Queue<Mopac>, W: Write>(
+pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
     param_log: &mut W,
     molecules: &[Molecule],
     params: Params,

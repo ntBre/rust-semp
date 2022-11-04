@@ -9,14 +9,14 @@ pub mod energy;
 pub mod frequency;
 
 pub trait Optimize {
-    fn semi_empirical<Q: Queue<Mopac>>(
+    fn semi_empirical<Q: Queue<Mopac> + Sync>(
         &self,
         params: &Params,
         submitter: &Q,
         molecules: &[Molecule],
     ) -> Option<na::DVector<f64>>;
 
-    fn num_jac<Q: Queue<Mopac>>(
+    fn num_jac<Q: Queue<Mopac> + Sync>(
         &self,
         params: &Params,
         submitter: &Q,

@@ -19,7 +19,7 @@ pub struct Energy {
 
 impl Optimize for Energy {
     /// compute the semi-empirical energies of `moles` for the given `params`
-    fn semi_empirical<Q: Queue<Mopac>>(
+    fn semi_empirical<Q: Queue<Mopac> + Sync>(
         &self,
         params: &Params,
         submitter: &Q,
@@ -48,7 +48,7 @@ impl Optimize for Energy {
     /// Compute the numerical Jacobian for the geomeries in `moles` and the
     /// parameters in `params`. For convenience of indexing, the transpose is
     /// actually computed and returned
-    fn num_jac<Q: Queue<Mopac>>(
+    fn num_jac<Q: Queue<Mopac> + std::marker::Sync>(
         &self,
         params: &Params,
         submitter: &Q,

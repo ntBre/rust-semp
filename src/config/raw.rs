@@ -46,6 +46,8 @@ pub(super) struct RawConfig {
 
     /// the queueing system to use
     pub queue: rust_pbqff::config::Queue,
+
+    pub mopac: Option<String>,
 }
 
 /// deserialize into this for the String geometry before converting to a real
@@ -139,13 +141,16 @@ HCC =               147.81488230
                     876.5, 772.7,
                 ],
                 irreps: vec![A1, B2, A1, A1, B2, A2, A1, B2, B1],
-                template: String::from("scfcrt=1.D-21 aux(precision=14) PM6 threads=1"),
+                template: String::from(
+                    "scfcrt=1.D-21 aux(precision=14) PM6 threads=1",
+                ),
             }],
             broyden: false,
             broyd_int: 10,
             optimize: Protocol::Energy,
             reset_lambda: false,
             queue: Queue::Slurm,
+            mopac: None,
         };
         assert_eq!(got, want);
     }

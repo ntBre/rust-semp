@@ -55,6 +55,9 @@ pub struct Config {
     pub molecules: Vec<Molecule>,
 
     pub queue: Queue,
+
+    /// the location of the mopac executable for a local queue
+    pub mopac: Option<String>,
 }
 
 pub struct Molecule {
@@ -116,6 +119,7 @@ impl Config {
             reset_lambda: raw.reset_lambda,
             molecules,
             queue: raw.queue,
+            mopac: raw.mopac,
         }
     }
 }

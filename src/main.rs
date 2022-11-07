@@ -5,6 +5,7 @@ use std::os::unix::io::AsRawFd;
 
 use nalgebra as na;
 
+use psqs::queue::local::LocalQueue;
 use psqs::queue::pbs::Pbs;
 use psqs::queue::slurm::Slurm;
 use rust_pbqff::config::Queue;
@@ -82,6 +83,7 @@ fn main() {
                         ),
                     },
                 ),
+                _ => panic!("unsupported queue `{:#?}`", conf.queue),
             };
         }
         // requirements for a Frequency calculation:
@@ -133,6 +135,24 @@ fn main() {
                         conf.sleep_int,
                         "inp",
                     ),
+                    conf.reset_lambda,
+                    Frequency::new(conf.molecules[0].dummies.clone()),
+                ),
+                Queue::Local => run_algo(
+                    &mut param_log,
+                    &conf.molecules,
+                    parse_params(&conf.params),
+                    na::DVector::from(ai),
+                    conf.max_iter,
+                    conf.broyden,
+                    conf.broyd_int,
+                    LocalQueue {
+                        dir: "inp".to_owned(),
+                        chunk_size: conf.chunk_size,
+                        mopac: conf.mopac.expect(
+                            "mopac field must be specified for local queue",
+                        ),
+                    },
                     conf.reset_lambda,
                     Frequency::new(conf.molecules[0].dummies.clone()),
                 ),

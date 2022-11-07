@@ -6,7 +6,7 @@ fn main() {
     let config = rust_semp::config::Config::load("test_files/test.toml");
     let freq = Frequency::new(vec![]);
     setup();
-    let queue = LocalQueue::new("inp", 128);
+    let queue = LocalQueue::new("inp", 128,  "/opt/mopac/mopac");
     freq.num_jac(
         &"USS            H    -11.246958000000
     ZS             H      1.268641000000

@@ -179,12 +179,14 @@ fn test_write_submit_script() {
 #SBATCH --no-requeue
 #SBATCH --mem=1gb
 export LD_LIBRARY_PATH=/home/qc/mopac2016/
+echo $SLURM_JOB_ID
 date
 hostname
 /home/qc/mopac2016/MOPAC2016.exe input1.mop
 /home/qc/mopac2016/MOPAC2016.exe input2.mop
 /home/qc/mopac2016/MOPAC2016.exe input3.mop
 ";
+
     assert_eq!(got, want);
     fs::remove_file("/tmp/submit.slurm").unwrap();
 }
@@ -205,6 +207,7 @@ fn test_one_iter() {
         &LocalQueue {
             chunk_size: 128,
             dir: "inp".to_string(),
+            ..Default::default()
         },
         &config.molecules,
     );
@@ -284,10 +287,7 @@ fn test_num_jac() {
         let want = load_mat("test_files/small.jac");
         let got = Energy { moles }.num_jac(
             &params,
-            &LocalQueue {
-                chunk_size: 128,
-                dir: "inp".to_string(),
-            },
+            &LocalQueue::new("inp", 128, "/opt/mopac/mopac"),
             &config.molecules,
         );
         assert!(comp_mat(got, want, 2e-5));
@@ -299,10 +299,7 @@ fn test_num_jac() {
         let want = load_mat("test_files/three.jac");
         let got = Energy { moles }.num_jac(
             &params,
-            &LocalQueue {
-                chunk_size: 128,
-                dir: "inp".to_string(),
-            },
+            &LocalQueue::new("inp", 128, "/opt/mopac/mopac"),
             &config.molecules,
         );
         let tol = match hostname().as_str() {
@@ -482,10 +479,7 @@ fn test_algo() {
         },
     };
     let config = Config::load("test_files/test.toml");
-    let queue = LocalQueue {
-        chunk_size: 128,
-        dir: "inp".to_string(),
-    };
+    let queue = LocalQueue::new("inp", 128, "/opt/mopac/mopac");
     let geom_file = "test_files/small07";
     let param_file = "test_files/small.params";
     let energy_file = "test_files/25.dat";
@@ -515,10 +509,7 @@ fn freq_semi_empirical() {
     let config = Config::load("test_files/test.toml");
     let freq = Frequency::new(vec![]);
     utils::setup();
-    let queue = LocalQueue {
-        chunk_size: 128,
-        dir: "inp".to_string(),
-    };
+    let queue = LocalQueue::new("inp", 128, "/opt/mopac/mopac");
     let mut got = freq
         .semi_empirical(
             &"USS            H    -11.246958000000
@@ -570,10 +561,7 @@ fn freq_num_jac() {
     let config = Config::load("test_files/test.toml");
     let freq = Frequency::new(vec![]);
     utils::setup();
-    let queue = LocalQueue {
-        chunk_size: 128,
-        dir: "inp".to_string(),
-    };
+    let queue = LocalQueue::new("inp", 128, "/opt/mopac/mopac");
     let got = freq.num_jac(
         &"USS            H    -11.246958000000
     ZS             H      1.268641000000

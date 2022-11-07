@@ -22,7 +22,7 @@ fn main() {
     );
     let mut energies = vec![0.; ml];
     setup();
-    LocalQueue::new("inp", 128)
+    LocalQueue::new("inp", 128,  "/opt/mopac/mopac")
         .drain("inp", &mut jobs, &mut energies)
         .unwrap();
     takedown();

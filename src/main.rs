@@ -119,7 +119,7 @@ fn main() {
                         "inp",
                     ),
                     conf.reset_lambda,
-                    Frequency::new(conf.molecules[0].dummies.clone()),
+                    Frequency::new(),
                 ),
                 Queue::Slurm => run_algo(
                     &mut param_log,
@@ -136,7 +136,7 @@ fn main() {
                         "inp",
                     ),
                     conf.reset_lambda,
-                    Frequency::new(conf.molecules[0].dummies.clone()),
+                    Frequency::new(),
                 ),
                 Queue::Local => run_algo(
                     &mut param_log,
@@ -154,7 +154,7 @@ fn main() {
                         ),
                     },
                     conf.reset_lambda,
-                    Frequency::new(conf.molecules[0].dummies.clone()),
+                    Frequency::new(),
                 ),
             };
         }

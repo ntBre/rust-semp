@@ -68,10 +68,6 @@ pub struct Molecule {
     /// so on
     pub charge: isize,
 
-    /// dummy atoms represented by the index of the atom they attach to. these
-    /// are assumed to correspond to LIN1 coordinates
-    pub dummies: Vec<usize>,
-
     pub geometry: psqs::geom::Geom,
 
     /* from here down only needed for frequencies */
@@ -96,7 +92,6 @@ impl Config {
             molecules.push(Molecule {
                 atom_names: molecule.atom_names,
                 charge: molecule.charge,
-                dummies: molecule.dummies,
                 geometry: molecule.geometry.parse().unwrap(),
                 intder: molecule
                     .intder_file

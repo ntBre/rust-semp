@@ -5,7 +5,7 @@ use psqs::program::{Job, ProgramResult, Template};
 use psqs::queue::Queue;
 use rust_pbqff::coord_type::cart::{make_fcs, BigHash};
 use rust_pbqff::coord_type::{sic, Cart};
-use symm::{Molecule, PointGroup};
+use symm::Molecule;
 
 use crate::utils::sort_irreps;
 use crate::{config, utils::setup, utils::takedown};
@@ -49,7 +49,6 @@ fn output_stream() -> Box<dyn Write> {
 }
 
 pub struct Frequency {
-    pub dummies: Vec<usize>,
     logger: Mutex<File>,
 }
 
@@ -132,15 +131,13 @@ impl FreqParts {
     }
 }
 
-type Dummies = Vec<usize>;
-
 impl Frequency {
-    pub fn new(dummies: Dummies) -> Self {
+    pub fn new() -> Self {
         let logger = Mutex::new(
             std::fs::File::create("freqs.log")
                 .expect("failed to create 'freqs.log'"),
         );
-        Self { dummies, logger }
+        Self { logger }
     }
 
     /// build jobs for a fixed set of Params. instead of passing the params as
@@ -180,24 +177,14 @@ impl Frequency {
                 let mut intder = intder.clone();
                 // NOTE: assuming that the intder coordinates max out at C2v,
                 // this was the case for ethylene
-                let pg = if let PointGroup::D2h { axes, planes } = pg {
-                    PointGroup::C2v {
-                        axis: axes[0],
-                        planes: [planes[1], planes[2]],
-                    }
+                let pg = if pg.is_d2h() {
+                    pg.subgroup(symm::Pg::C2v).unwrap()
                 } else {
                     pg
                 };
 
                 let (moles, taylor, taylor_disps, atomic_numbers) =
-                    sic::generate_pts(
-                        w,
-                        &mol,
-                        &pg,
-                        &mut intder,
-                        STEP_SIZE,
-                        &self.dummies,
-                    );
+                    sic::generate_pts(w, &mol, &pg, &mut intder, STEP_SIZE);
 
                 // dir created in generate_pts but unused here
                 let _ = std::fs::remove_dir_all("pts");
@@ -360,6 +347,12 @@ impl Frequency {
             }
         }
         (jobs, freqs, indices)
+    }
+}
+
+impl Default for Frequency {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

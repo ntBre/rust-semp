@@ -292,7 +292,12 @@ impl Frequency {
             writeln!(w, "dir={dir}").unwrap();
             writeln!(w, "{}", summary).unwrap();
         }
-        let freqs = sort_irreps(&summary.corrs, &summary.irreps);
+        let freqs: Vec<f64> = summary
+            .corrs
+            .into_iter()
+            .filter(|x| x.is_finite())
+            .collect();
+        let freqs = sort_irreps(&freqs, &summary.irreps);
         DVector::from(freqs)
     }
 

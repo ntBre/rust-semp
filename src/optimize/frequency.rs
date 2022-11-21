@@ -534,12 +534,14 @@ impl Optimize for Frequency {
             let jac_t: Vec<_> = freqs
                 .chunks(2)
                 .map(|pair| {
-                    // use 'let else' if that gets stabilized
-                    let (fwd, bwd) = if let [fwd, bwd] = pair {
-                        (fwd, bwd)
-                    } else {
-                        panic!("unmatched pair");
-                    };
+                    let mut fwd = pair[0].clone();
+                    let mut bwd = pair[1].clone();
+                    let (fl, bl) = (fwd.len(), bwd.len());
+                    if fl < bl {
+                        bwd = bwd.remove_rows(fl, bl - fl);
+                    } else if fl > bl {
+                        fwd = fwd.remove_rows(bl, fl - bl);
+                    }
                     (fwd - bwd) / (2. * DELTA)
                 })
                 .collect();

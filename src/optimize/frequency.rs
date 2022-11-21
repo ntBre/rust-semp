@@ -274,7 +274,8 @@ impl Frequency {
                 taylor_disps,
                 atomic_numbers,
                 STEP_SIZE,
-            ),
+            )
+            .unwrap_or_default(),
             FreqParts::Cart {
                 fcs,
                 target_map,

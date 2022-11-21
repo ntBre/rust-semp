@@ -245,7 +245,7 @@ pub(crate) fn log_params<W: Write>(w: &mut W, iter: usize, params: &Params) {
 /// frequencies.
 pub fn sort_irreps(freqs: &[f64], irreps: &[Irrep]) -> Vec<f64> {
     if freqs.len() != irreps.len() {
-	eprintln!("length mismatch {freqs:#?} vs {irreps:#?}");
+        eprintln!("length mismatch {freqs:#?} vs {irreps:#?}");
         let mut ret = Vec::from(freqs);
         ret.sort_by(|a, b| a.partial_cmp(b).unwrap());
         return ret;

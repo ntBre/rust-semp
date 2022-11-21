@@ -15,7 +15,7 @@ fn main() {
         10,
         true,
         5,
-        LocalQueue::new("inp", 128,  "/opt/mopac/mopac"),
+        LocalQueue::new("inp", 128, "/opt/mopac/mopac"),
         false,
         Energy {
             moles: load_geoms("test_files/small07", &names),

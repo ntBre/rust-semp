@@ -289,6 +289,7 @@ fn test_num_jac() {
             &params,
             &LocalQueue::new("inp", 128, "/opt/mopac/mopac"),
             &config.molecules,
+            9,
         );
         assert!(comp_mat(got, want, 2e-5));
     }
@@ -301,6 +302,7 @@ fn test_num_jac() {
             &params,
             &LocalQueue::new("inp", 128, "/opt/mopac/mopac"),
             &config.molecules,
+            9,
         );
         let tol = match hostname().as_str() {
             "cactus" | "bonsai" | "keystone" => 4.2e-6,
@@ -583,6 +585,7 @@ fn freq_num_jac() {
             .unwrap(),
         &queue,
         &config.molecules,
+        9,
     );
     let want = load_mat("test_files/freq.jac");
     // this should agree to 1e-12 depending on the computer I guess, I printed

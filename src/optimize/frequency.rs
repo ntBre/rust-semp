@@ -428,12 +428,15 @@ impl Optimize for Frequency {
 
     /// Compute the numerical Jacobian for the geomeries in `moles` and the
     /// parameters in `params`. For convenience of indexing, the transpose is
-    /// actually computed and returned
+    /// actually computed and returned. `ntrue` is the expected ("true") size of
+    /// the frequency vectors in case something goes wrong and a different
+    /// number of entries comes out of freqs
     fn num_jac<Q: Queue<Mopac> + std::marker::Sync>(
         &self,
         params: &Params,
         submitter: &Q,
         molecules: &[config::Molecule],
+        ntrue: usize,
     ) -> na::DMatrix<f64> {
         let start = std::time::Instant::now();
 
@@ -535,15 +538,23 @@ impl Optimize for Frequency {
             let jac_t: Vec<_> = freqs
                 .chunks(2)
                 .map(|pair| {
+                    // I hate these clones but I can't figure out how to borrow
+                    // them to avoid it. I think chunks is the root of the issue
+                    // because it gives me references to freqs when I really
+                    // just want to consume freqs
                     let mut fwd = pair[0].clone();
                     let mut bwd = pair[1].clone();
                     let (fl, bl) = (fwd.len(), bwd.len());
                     if fl < bl {
-                        bwd = bwd.remove_rows(fl, bl - fl);
+                        bwd.resize_vertically_mut(fl, 0.0);
                     } else if fl > bl {
-                        fwd = fwd.remove_rows(bl, fl - bl);
+                        fwd.resize_vertically_mut(bl, 0.0);
                     }
-                    (fwd - bwd) / (2. * DELTA)
+                    let mut ret = (fwd - bwd) / (2. * DELTA);
+                    if ret.len() != ntrue {
+                        ret.resize_vertically_mut(ntrue, 0.0);
+                    }
+                    ret
                 })
                 .collect();
             assert_eq!(jac_t.len(), params.len());

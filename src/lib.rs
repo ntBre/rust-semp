@@ -134,8 +134,9 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
     let mut del_max: f64 = 1.0;
     let mut in_broyden = false;
     let mut need_num_jac = false;
+    let ntrue = ai.len();
     start = std::time::Instant::now();
-    let mut jac = optimizer.num_jac(&params, &queue, molecules);
+    let mut jac = optimizer.num_jac(&params, &queue, molecules, ntrue);
 
     // have to "initialize" this to satisfy compiler, but any use should panic
     // since it has zero length
@@ -154,7 +155,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
             in_broyden = false;
             need_num_jac = false;
             start = std::time::Instant::now();
-            jac = optimizer.num_jac(&params, &queue, molecules);
+            jac = optimizer.num_jac(&params, &queue, molecules, ntrue);
         } // else (first iteration) use jac from outside loop
 
         if DEBUG {

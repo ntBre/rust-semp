@@ -21,6 +21,7 @@ pub trait Optimize {
         params: &Params,
         submitter: &Q,
         molecules: &[Molecule],
+	ntrue: usize,
     ) -> na::DMatrix<f64>;
 
     fn stat_multiplier(&self) -> f64;

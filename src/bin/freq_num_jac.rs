@@ -28,5 +28,6 @@ fn main() {
             .unwrap(),
         &queue,
         &config.molecules,
+        9,
     );
 }

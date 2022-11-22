@@ -15,5 +15,6 @@ fn main() {
         &params,
         &LocalQueue::new("inp", 128, "/opt/mopac/mopac"),
         &config.molecules,
+	9
     );
 }

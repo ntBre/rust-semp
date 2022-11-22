@@ -53,6 +53,7 @@ impl Optimize for Energy {
         params: &Params,
         submitter: &Q,
         molecules: &[Molecule],
+        _ntrue: usize,
     ) -> na::DMatrix<f64> {
         // NOTE: no loop over molecules here
         let rows = params.values.len();

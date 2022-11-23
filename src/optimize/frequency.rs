@@ -655,8 +655,20 @@ fn jac_opt(
     opts
 }
 
+/// return the mean absolute error (1/N ∑ᵢᴺ |aᵢ - bᵢ|) where N is the shorter of
+/// `a.len()` and `b.len()` to guard against panics
 fn mae(a: &DVector<f64>, b: &DVector<f64>) -> f64 {
-    (a - b).abs().sum() / a.len() as f64
+    let al = a.len();
+    let bl = b.len();
+    if al != bl {
+	eprintln!("len mismatch in mae: {al} vs {bl}");
+    }
+    let l = al.min(bl);
+    let mut sum = 0.0;
+    for i in 0..l {
+	sum += f64::abs(a[i] - b[i]);
+    }
+    sum / l as f64
 }
 
 #[cfg(test)]

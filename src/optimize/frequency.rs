@@ -4,6 +4,7 @@ use psqs::program::mopac::{Mopac, Params};
 use psqs::program::{Job, ProgramResult, Template};
 use psqs::queue::Queue;
 use rust_pbqff::coord_type::cart::{make_fcs, BigHash};
+use rust_pbqff::coord_type::sic::IntderError;
 use rust_pbqff::coord_type::{sic, Cart};
 use symm::Molecule;
 
@@ -151,7 +152,7 @@ impl Frequency {
         start_index: usize,
         job_num: usize,
         molecule: &config::Molecule,
-    ) -> (FreqParts, Vec<Job<Mopac>>)
+    ) -> Result<(FreqParts, Vec<Job<Mopac>>), IntderError>
     where
         W: Write,
     {
@@ -184,7 +185,7 @@ impl Frequency {
                 };
 
                 let (moles, taylor, taylor_disps, atomic_numbers) =
-                    sic::generate_pts(w, &mol, &pg, &mut intder, STEP_SIZE);
+                    sic::generate_pts(w, &mol, &pg, &mut intder, STEP_SIZE)?;
 
                 // dir created in generate_pts but unused here
                 let _ = std::fs::remove_dir_all("pts");
@@ -200,7 +201,7 @@ impl Frequency {
                     molecule.charge,
                     tmpl,
                 );
-                (
+                Ok((
                     FreqParts::sic(
                         intder,
                         taylor,
@@ -208,7 +209,7 @@ impl Frequency {
                         atomic_numbers,
                     ),
                     jobs,
-                )
+                ))
             }
             None => {
                 let n = 3 * mol.atoms.len();
@@ -245,7 +246,7 @@ impl Frequency {
                         mol.index + start_index,
                     ));
                 }
-                (FreqParts::cart(fcs, target_map, n, nfc2, nfc3, mol), jobs)
+                Ok((FreqParts::cart(fcs, target_map, n, nfc2, nfc3, mol), jobs))
             }
         }
     }
@@ -323,14 +324,18 @@ impl Frequency {
                 let mut pf = params.clone();
                 pf.values[row] += DELTA;
                 // idx = job_num so use it twice
-                let (freq, fwd_jobs) = self.build_jobs(
-                    &mut output_stream(),
-                    geoms[index].clone(),
-                    &pf,
-                    idx,
-                    idx,
-                    molecule,
-                );
+                let (freq, fwd_jobs) = self
+                    .build_jobs(
+                        &mut output_stream(),
+                        geoms[index].clone(),
+                        &pf,
+                        idx,
+                        idx,
+                        molecule,
+                    )
+                    .unwrap();
+                // we unwrap here because it's not entirely clear how to recover
+                // from one half of one column going off the rails.
                 idx += fwd_jobs.len();
                 indices[i].push(idx);
                 jobs.extend(fwd_jobs);
@@ -338,14 +343,16 @@ impl Frequency {
 
                 let mut pb = params.clone();
                 pb.values[row] -= DELTA;
-                let (freq, bwd_jobs) = self.build_jobs(
-                    &mut output_stream(),
-                    geoms[index + 1].clone(),
-                    &pb,
-                    idx,
-                    idx,
-                    molecule,
-                );
+                let (freq, bwd_jobs) = self
+                    .build_jobs(
+                        &mut output_stream(),
+                        geoms[index + 1].clone(),
+                        &pb,
+                        idx,
+                        idx,
+                        molecule,
+                    )
+                    .unwrap();
                 idx += bwd_jobs.len();
                 indices[i].push(idx);
                 jobs.extend(bwd_jobs);
@@ -398,8 +405,10 @@ impl Optimize for Frequency {
             // have to call this before build_jobs since it writes params now
             setup();
 
-            let (mut freq, mut jobs) =
-                self.build_jobs(&mut w, geom, params, 0, 0, molecule);
+            let Ok((mut freq, mut jobs)) =
+                self.build_jobs(&mut w, geom, params, 0, 0, molecule) else {
+		    return None
+		};
             writeln!(
                 w,
                 "\n{} atoms require {} jobs",
@@ -661,12 +670,12 @@ fn mae(a: &DVector<f64>, b: &DVector<f64>) -> f64 {
     let al = a.len();
     let bl = b.len();
     if al != bl {
-	eprintln!("len mismatch in mae: {al} vs {bl}");
+        eprintln!("len mismatch in mae: {al} vs {bl}");
     }
     let l = al.min(bl);
     let mut sum = 0.0;
     for i in 0..l {
-	sum += f64::abs(a[i] - b[i]);
+        sum += f64::abs(a[i] - b[i]);
     }
     sum / l as f64
 }

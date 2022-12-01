@@ -215,7 +215,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
         }
 
         // adjusting λ failed to decrease the norm. try decreasing the step size
-        // K until the norm improves or k ≈ 0 or Δnorm increases
+        // K until the norm improves or k ≈ 0
         let mut k = 1.0;
         let mut i = 2;
         while bad && stats.norm > last_stats.norm && k > 1e-14 {
@@ -226,7 +226,6 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
                 stats.norm - last_stats.norm
             );
             k = 1.0 / 10.0_f64.powf(i as f64);
-            let dnorm = stats.norm - last_stats.norm;
 
             step = lev_mar(&jac, &ai, &se, lambda);
             try_params = Params::new(
@@ -239,9 +238,6 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
                 .unwrap_or_else(|| na::DVector::zeros(ai.len()));
             stats = Stats::new(&ai, &new_se, conv);
 
-            if stats.norm - last_stats.norm > dnorm {
-                break;
-            }
             i += 1;
         }
 

@@ -224,8 +224,9 @@ impl Frequency {
                     Geom::Xyz(mol.atoms.clone()),
                     STEP_SIZE,
                     geom.energy,
-                    nfc2,
-                    nfc3,
+                    rust_pbqff::coord_type::Derivative::Quartic(
+                        nfc2, nfc3, nfc4,
+                    ),
                     &mut fcs,
                     &mut target_map,
                 );
@@ -584,9 +585,9 @@ impl Optimize for Frequency {
                 eprintln!("singular column in jacobian, fixing");
                 tmp[0] = 1.0;
             }
-	    if tmp.len() != ntrue {
-		tmp.resize(ntrue, 0.0);
-	    }
+            if tmp.len() != ntrue {
+                tmp.resize(ntrue, 0.0);
+            }
             cols.push(DVector::from(tmp));
         }
 

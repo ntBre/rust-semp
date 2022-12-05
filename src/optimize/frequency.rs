@@ -559,11 +559,7 @@ impl Optimize for Frequency {
                     } else if fl > bl {
                         fwd.resize_vertically_mut(bl, 0.0);
                     }
-                    let mut ret = (fwd - bwd) / (2. * DELTA);
-                    if ret.len() != ntrue {
-                        ret.resize_vertically_mut(ntrue, 0.0);
-                    }
-                    ret
+                    (fwd - bwd) / (2. * DELTA)
                 })
                 .collect();
             assert_eq!(jac_t.len(), params.len());
@@ -588,6 +584,9 @@ impl Optimize for Frequency {
                 eprintln!("singular column in jacobian, fixing");
                 tmp[0] = 1.0;
             }
+	    if tmp.len() != ntrue {
+		tmp.resize(ntrue, 0.0);
+	    }
             cols.push(DVector::from(tmp));
         }
 

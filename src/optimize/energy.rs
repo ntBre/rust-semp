@@ -26,7 +26,7 @@ impl Optimize for Energy {
         molecules: &[Molecule],
     ) -> Option<na::DVector<f64>> {
         // NOTE: still no loop over molecules here
-        let mut jobs = Mopac::build_jobs(
+        let jobs = Mopac::build_jobs(
             &self.moles,
             Some(params),
             "inp",
@@ -39,7 +39,7 @@ impl Optimize for Energy {
         let mut got = vec![0.0; jobs.len()];
         setup();
         submitter
-            .drain("inp", &mut jobs, &mut got)
+            .drain("inp", jobs, &mut got)
             .expect("energies failed");
         takedown();
         Some(relative(&na::DVector::from(got)))
@@ -100,7 +100,7 @@ impl Optimize for Energy {
         }
         setup();
         submitter
-            .drain("inp", &mut jobs, &mut jac_t)
+            .drain("inp", jobs, &mut jac_t)
             .expect("numjac energies failed");
         takedown();
         // nalgebra does from_vec in col-major order, so lead with cols and I get

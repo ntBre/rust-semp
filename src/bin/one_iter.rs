@@ -10,7 +10,7 @@ fn main() {
     let moles = load_geoms("test_files/quarter07", &names);
     let ml = moles.len();
     let params = load_params("test_files/params.dat");
-    let mut jobs = Mopac::build_jobs(
+    let jobs = Mopac::build_jobs(
         &moles,
         Some(&params),
         "inp",
@@ -23,7 +23,7 @@ fn main() {
     let mut energies = vec![0.; ml];
     setup();
     LocalQueue::new("inp", 128, "/opt/mopac/mopac")
-        .drain("inp", &mut jobs, &mut energies)
+        .drain("inp", jobs, &mut energies)
         .unwrap();
     takedown();
     for (i, e) in energies.iter().enumerate() {

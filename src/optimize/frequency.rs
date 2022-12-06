@@ -12,6 +12,7 @@ use symm::Molecule;
 use crate::utils::sort_irreps;
 use crate::{config, utils::setup, utils::takedown};
 use nalgebra as na;
+use std::cmp::Ordering;
 use std::fs::File;
 use std::io::Write;
 use std::rc::Rc;
@@ -554,10 +555,10 @@ impl Optimize for Frequency {
                     let mut fwd = pair[0].clone();
                     let mut bwd = pair[1].clone();
                     let (fl, bl) = (fwd.len(), bwd.len());
-                    if fl < bl {
-                        bwd.resize_vertically_mut(fl, 0.0);
-                    } else if fl > bl {
-                        fwd.resize_vertically_mut(bl, 0.0);
+                    match fl.cmp(&bl) {
+                        Ordering::Less => bwd.resize_vertically_mut(fl, 0.0),
+                        Ordering::Equal => {}
+                        Ordering::Greater => fwd.resize_vertically_mut(bl, 0.0),
                     }
                     (fwd - bwd) / (2. * DELTA)
                 })

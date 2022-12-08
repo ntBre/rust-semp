@@ -222,6 +222,7 @@ impl Frequency {
                 rust_pbqff::coord_type::Derivative::Quartic(nfc2, nfc3, nfc4),
                 &mut fcs,
                 &mut target_map,
+		n
             );
             let dir = "inp";
             let mut job_num = start_index;

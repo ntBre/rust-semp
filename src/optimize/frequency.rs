@@ -5,8 +5,9 @@ use psqs::program::{Job, ProgramResult, Template};
 use psqs::queue::Queue;
 use rust_pbqff::coord_type::findiff::bighash::BigHash;
 use rust_pbqff::coord_type::findiff::FiniteDifference;
+use rust_pbqff::coord_type::fitting::Fitted;
 use rust_pbqff::coord_type::sic::IntderError;
-use rust_pbqff::coord_type::{sic, Cart};
+use rust_pbqff::coord_type::{Cart, SIC};
 use symm::Molecule;
 
 use crate::utils::sort_irreps;
@@ -176,7 +177,7 @@ impl Frequency {
         write!(tmpl.header, " external={}", param_file).unwrap();
 
         if let Some(intder) = &molecule.intder {
-            let mut intder = intder.clone();
+            let intder = intder.clone();
             // NOTE: assuming that the intder coordinates max out at C2v,
             // this was the case for ethylene
             let pg = if pg.is_d2h() {
@@ -185,8 +186,9 @@ impl Frequency {
                 pg
             };
 
+            let mut sic = SIC::new(intder.clone());
             let (moles, taylor, taylor_disps, atomic_numbers) =
-                sic::generate_pts(w, &mol, &pg, &mut intder, STEP_SIZE)?;
+                sic.generate_pts(w, &mol, &pg, STEP_SIZE)?;
 
             // dir created in generate_pts but unused here
             let _ = std::fs::remove_dir_all("pts");
@@ -203,7 +205,12 @@ impl Frequency {
                 tmpl,
             );
             Ok((
-                FreqParts::sic(intder, taylor, taylor_disps, atomic_numbers),
+                FreqParts::sic(
+                    sic.intder,
+                    taylor,
+                    taylor_disps,
+                    atomic_numbers,
+                ),
                 jobs,
             ))
         } else {
@@ -222,7 +229,7 @@ impl Frequency {
                 rust_pbqff::coord_type::Derivative::Quartic(nfc2, nfc3, nfc4),
                 &mut fcs,
                 &mut target_map,
-		n
+                n,
             );
             let dir = "inp";
             let mut job_num = start_index;
@@ -260,17 +267,17 @@ impl Frequency {
                 taylor,
                 taylor_disps,
                 atomic_numbers,
-            } => rust_pbqff::coord_type::sic::freqs(
-                w,
-                dir,
-                energies,
-                &mut intder.clone(),
-                taylor,
-                taylor_disps,
-                atomic_numbers,
-                STEP_SIZE,
-            )
-            .unwrap_or_default(),
+            } => SIC::new(intder.clone())
+                .freqs(
+                    w,
+                    dir,
+                    energies,
+                    taylor,
+                    taylor_disps,
+                    atomic_numbers,
+                    STEP_SIZE,
+                )
+                .unwrap_or_default(),
             FreqParts::Cart {
                 fcs,
                 target_map,

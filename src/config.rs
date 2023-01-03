@@ -60,6 +60,13 @@ pub struct Config {
     pub mopac: Option<String>,
 }
 
+#[allow(clippy::large_enum_variant)]
+pub(crate) enum CoordType {
+    Sic(Intder),
+    Cart,
+    Normal,
+}
+
 pub struct Molecule {
     /// Array of string atomic symbols like ["C", "C", "C", "H", "H"]
     pub atom_names: Vec<String>,
@@ -71,7 +78,7 @@ pub struct Molecule {
     pub geometry: psqs::geom::Geom,
 
     /* from here down only needed for frequencies */
-    pub intder: Option<Intder>,
+    pub(crate) coord_type: CoordType,
 
     pub true_freqs: Vec<f64>,
 
@@ -89,14 +96,16 @@ impl Config {
 
         let mut molecules = Vec::new();
         for molecule in raw.molecule {
+            let coord_type = match molecule.coord_type {
+                raw::CoordType::Sic(f) => CoordType::Sic(Intder::load_file(&f)),
+                raw::CoordType::Cart => CoordType::Cart,
+                raw::CoordType::Norm => CoordType::Normal,
+            };
             molecules.push(Molecule {
                 atom_names: molecule.atom_names,
                 charge: molecule.charge,
                 geometry: molecule.geometry.parse().unwrap(),
-                intder: molecule
-                    .intder_file
-                    .as_ref()
-                    .map(|f| Intder::load_file(f)),
+                coord_type,
                 true_freqs: molecule.true_freqs,
                 irreps: molecule.irreps,
                 template: Template::from(&molecule.template),

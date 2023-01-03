@@ -10,6 +10,7 @@ use rust_pbqff::coord_type::sic::IntderError;
 use rust_pbqff::coord_type::{Cart, SIC};
 use symm::Molecule;
 
+use crate::config::CoordType;
 use crate::utils::sort_irreps;
 use crate::{config, utils::setup, utils::takedown};
 use nalgebra as na;
@@ -176,79 +177,85 @@ impl Frequency {
         use std::fmt::Write;
         write!(tmpl.header, " external={}", param_file).unwrap();
 
-        if let Some(intder) = &molecule.intder {
-            let intder = intder.clone();
-            // NOTE: assuming that the intder coordinates max out at C2v,
-            // this was the case for ethylene
-            let pg = if pg.is_d2h() {
-                pg.subgroup(symm::Pg::C2v).unwrap()
-            } else {
-                pg
-            };
+        match &molecule.coord_type {
+            CoordType::Sic(intder) => {
+                let intder = intder.clone();
+                // NOTE: assuming that the intder coordinates max out at C2v,
+                // this was the case for ethylene
+                let pg = if pg.is_d2h() {
+                    pg.subgroup(symm::Pg::C2v).unwrap()
+                } else {
+                    pg
+                };
 
-            let mut sic = SIC::new(intder.clone());
-            let (moles, taylor, taylor_disps, atomic_numbers) =
-                sic.generate_pts(w, &mol, &pg, STEP_SIZE)?;
+                let mut sic = SIC::new(intder);
+                let (moles, taylor, taylor_disps, atomic_numbers) =
+                    sic.generate_pts(w, &mol, &pg, STEP_SIZE)?;
 
-            // dir created in generate_pts but unused here
-            let _ = std::fs::remove_dir_all("pts");
+                // dir created in generate_pts but unused here
+                let _ = std::fs::remove_dir_all("pts");
 
-            // call build_jobs like before
-            let jobs = Mopac::build_jobs(
-                &moles,
-                None,
-                "inp",
-                start_index,
-                1.0,
-                job_num,
-                molecule.charge,
-                tmpl,
-            );
-            Ok((
-                FreqParts::sic(
-                    sic.intder,
-                    taylor,
-                    taylor_disps,
-                    atomic_numbers,
-                ),
-                jobs,
-            ))
-        } else {
-            let n = 3 * mol.atoms.len();
-            let nfc2 = n * n;
-            let nfc3 = n * (n + 1) * (n + 2) / 6;
-            let nfc4 = n * (n + 1) * (n + 2) * (n + 3) / 24;
-            let mut fcs = vec![0.0; nfc2 + nfc3 + nfc4];
-
-            let mut target_map = BigHash::new(mol.clone(), pg);
-
-            let geoms = Cart.build_points(
-                Geom::Xyz(mol.atoms.clone()),
-                STEP_SIZE,
-                geom.energy,
-                rust_pbqff::coord_type::Derivative::Quartic(nfc2, nfc3, nfc4),
-                &mut fcs,
-                &mut target_map,
-                n,
-            );
-            let dir = "inp";
-            let mut job_num = start_index;
-            let mut jobs = Vec::new();
-            for mol in geoms {
-                let filename = format!("{dir}/job.{:08}", job_num);
-                job_num += 1;
-                jobs.push(Job::new(
-                    Mopac::new_full(
-                        filename,
-                        None,
-                        mol.geom.clone(),
-                        molecule.charge,
-                        tmpl.clone(),
+                // call build_jobs like before
+                let jobs = Mopac::build_jobs(
+                    &moles,
+                    None,
+                    "inp",
+                    start_index,
+                    1.0,
+                    job_num,
+                    molecule.charge,
+                    tmpl,
+                );
+                Ok((
+                    FreqParts::sic(
+                        sic.intder,
+                        taylor,
+                        taylor_disps,
+                        atomic_numbers,
                     ),
-                    mol.index + start_index,
-                ));
+                    jobs,
+                ))
             }
-            Ok((FreqParts::cart(fcs, target_map, n, nfc2, nfc3, mol), jobs))
+            CoordType::Cart => {
+                let n = 3 * mol.atoms.len();
+                let nfc2 = n * n;
+                let nfc3 = n * (n + 1) * (n + 2) / 6;
+                let nfc4 = n * (n + 1) * (n + 2) * (n + 3) / 24;
+                let mut fcs = vec![0.0; nfc2 + nfc3 + nfc4];
+
+                let mut target_map = BigHash::new(mol.clone(), pg);
+
+                let geoms = Cart.build_points(
+                    Geom::Xyz(mol.atoms.clone()),
+                    STEP_SIZE,
+                    geom.energy,
+                    rust_pbqff::coord_type::Derivative::Quartic(
+                        nfc2, nfc3, nfc4,
+                    ),
+                    &mut fcs,
+                    &mut target_map,
+                    n,
+                );
+                let dir = "inp";
+                let mut job_num = start_index;
+                let mut jobs = Vec::new();
+                for mol in geoms {
+                    let filename = format!("{dir}/job.{:08}", job_num);
+                    job_num += 1;
+                    jobs.push(Job::new(
+                        Mopac::new_full(
+                            filename,
+                            None,
+                            mol.geom.clone(),
+                            molecule.charge,
+                            tmpl.clone(),
+                        ),
+                        mol.index + start_index,
+                    ));
+                }
+                Ok((FreqParts::cart(fcs, target_map, n, nfc2, nfc3, mol), jobs))
+            }
+            CoordType::Normal => todo!(),
         }
     }
 

@@ -50,6 +50,14 @@ pub(super) struct RawConfig {
     pub mopac: Option<String>,
 }
 
+#[derive(Clone, Deserialize, Debug, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum CoordType {
+    Sic(String),
+    Cart,
+    Norm,
+}
+
 /// deserialize into this for the String geometry before converting to a real
 /// Geom with FromStr
 #[derive(Clone, Deserialize, Debug, PartialEq)]
@@ -66,7 +74,7 @@ pub(super) struct RawMolecule {
 
     pub geometry: String,
 
-    pub intder_file: Option<String>,
+    pub coord_type: CoordType,
 
     pub true_freqs: Vec<f64>,
 
@@ -135,7 +143,7 @@ CH =                  1.07692776
 HCC =               147.81488230
 "
                 .to_string(),
-                intder_file: Some("test_files/intder.in".to_string()),
+                coord_type: CoordType::Sic("test_files/intder.in".to_string()),
                 true_freqs: vec![
                     3139.8, 3108.7, 1595.1, 1275.8, 1056.9, 1007.9, 876.8,
                     876.5, 772.7,

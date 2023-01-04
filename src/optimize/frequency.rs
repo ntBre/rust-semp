@@ -3,12 +3,18 @@ use psqs::geom::Geom;
 use psqs::program::mopac::{Mopac, Params};
 use psqs::program::{Job, ProgramResult, Template};
 use psqs::queue::Queue;
+use rust_pbqff::coord_type::cart::FirstPart;
 use rust_pbqff::coord_type::findiff::bighash::BigHash;
 use rust_pbqff::coord_type::findiff::FiniteDifference;
 use rust_pbqff::coord_type::fitting::Fitted;
+use rust_pbqff::coord_type::normal::{
+    fc3_index, fc4_index, to_qcm, F3qcm, F4qcm, Fc, Normal,
+};
 use rust_pbqff::coord_type::sic::IntderError;
 use rust_pbqff::coord_type::{Cart, SIC};
-use symm::Molecule;
+use rust_pbqff::{Output, Spectro};
+use symm::{Molecule, PointGroup};
+use taylor::{Disps, Taylor};
 
 use crate::config::CoordType;
 use crate::utils::sort_irreps;
@@ -16,7 +22,7 @@ use crate::{config, utils::setup, utils::takedown};
 use nalgebra as na;
 use std::cmp::Ordering;
 use std::fs::File;
-use std::io::Write;
+use std::io::{self, Write};
 use std::rc::Rc;
 use std::sync::Mutex;
 
@@ -84,12 +90,15 @@ pub fn optimize_geometry<Q: Queue<Mopac> + std::marker::Sync>(
     Some(res.pop().unwrap())
 }
 
+/// the state generated in build_jobs needed to finish running frequencies after
+/// the energies are run
 #[derive(Clone, Debug)]
+#[allow(clippy::large_enum_variant)]
 enum FreqParts {
     Sic {
         intder: rust_pbqff::Intder,
-        taylor: taylor::Taylor,
-        taylor_disps: taylor::Disps,
+        taylor: Taylor,
+        taylor_disps: Disps,
         atomic_numbers: Vec<usize>,
     },
     Cart {
@@ -100,13 +109,20 @@ enum FreqParts {
         nfc3: usize,
         mol: Molecule,
     },
+    Norm {
+        normal: Normal,
+        taylor: Taylor,
+        taylor_disps: Disps,
+        spectro: Spectro,
+        output: Output,
+    },
 }
 
 impl FreqParts {
     fn sic(
         intder: rust_pbqff::Intder,
-        taylor: taylor::Taylor,
-        taylor_disps: taylor::Disps,
+        taylor: Taylor,
+        taylor_disps: Disps,
         atomic_numbers: Vec<usize>,
     ) -> Self {
         Self::Sic {
@@ -134,6 +150,33 @@ impl FreqParts {
             mol,
         }
     }
+
+    fn norm(
+        normal: Normal,
+        taylor: Taylor,
+        taylor_disps: Disps,
+        spectro: Spectro,
+        output: Output,
+    ) -> Self {
+        Self::Norm {
+            normal,
+            taylor,
+            taylor_disps,
+            spectro,
+            output,
+        }
+    }
+}
+
+#[allow(clippy::large_enum_variant)]
+enum Builder {
+    None,
+    Norm {
+        norm: Normal,
+        s: Spectro,
+        o: Output,
+        pg: PointGroup,
+    },
 }
 
 impl Frequency {
@@ -147,7 +190,10 @@ impl Frequency {
 
     /// build jobs for a fixed set of Params. instead of passing the params as
     /// part of each separate Mopac, write the parameters once and update the
-    /// Template passed to Mopac::new
+    /// Template passed to Mopac::new. returns FreqParts, which contains
+    /// whatever this molecule's coordinate type requires to finish running
+    /// frequencies, and the list of jobs to run
+    #[allow(clippy::too_many_arguments)]
     fn build_jobs<W>(
         &self,
         w: &mut W,
@@ -156,6 +202,7 @@ impl Frequency {
         start_index: usize,
         job_num: usize,
         molecule: &config::Molecule,
+        builder: Builder,
     ) -> Result<(FreqParts, Vec<Job<Mopac>>), IntderError>
     where
         W: Write,
@@ -171,11 +218,7 @@ impl Frequency {
         writeln!(w, "Normalized Geometry:\n{:20.12}", mol).unwrap();
         writeln!(w, "Point Group = {}", pg).unwrap();
 
-        let param_file = Rc::new(format!("tmparam/{}.dat", job_num));
-        Mopac::write_params(params, &param_file);
-        let mut tmpl = molecule.template.clone();
-        use std::fmt::Write;
-        write!(tmpl.header, " external={}", param_file).unwrap();
+        let tmpl = write_params(job_num, params, molecule.template.clone());
 
         match &molecule.coord_type {
             CoordType::Sic(intder) => {
@@ -255,7 +298,32 @@ impl Frequency {
                 }
                 Ok((FreqParts::cart(fcs, target_map, n, nfc2, nfc3, mol), jobs))
             }
-            CoordType::Normal => todo!(),
+            CoordType::Normal => {
+                // there must be a way to tie these types together more smoothly
+                let Builder::Norm { mut norm, s, o, pg } = builder else {
+		    unreachable!()
+		};
+                assert!(
+                    !norm.findiff,
+                    "only fitted normal coordinates are currently supported"
+                );
+                // adapted from Normal::run_fitted in pbqff
+                norm.irreps = Some(o.irreps.clone());
+                let (geoms, taylor, taylor_disps, _atomic_numbers) =
+                    norm.generate_pts(w, &o.geom, &pg, STEP_SIZE).unwrap();
+                let dir = "inp";
+                let jobs = Mopac::build_jobs(
+                    &geoms,
+                    None,
+                    dir,
+                    0,
+                    1.0,
+                    0,
+                    molecule.charge,
+                    tmpl,
+                );
+                Ok((FreqParts::norm(norm, taylor, taylor_disps, s, o), jobs))
+            }
         }
     }
 
@@ -305,6 +373,56 @@ impl Frequency {
                 );
                 rust_pbqff::coord_type::cart::freqs(dir, mol, fc2, f3, f4)
             }
+            FreqParts::Norm {
+                normal,
+                taylor,
+                taylor_disps,
+                spectro,
+                output,
+            } => {
+                let (fcs, _) = normal
+                    .anpass(
+                        "freqs",
+                        energies,
+                        taylor,
+                        taylor_disps,
+                        STEP_SIZE,
+                        w,
+                    )
+                    .unwrap();
+                // needed in case taylor eliminated some of the higher derivatives
+                // by symmetry. this should give the maximum, full sizes without
+                // resizing
+                let n = normal.ncoords;
+                let mut f3qcm = vec![0.0; fc3_index(n, n, n) + 1];
+                let mut f4qcm = vec![0.0; fc4_index(n, n, n, n) + 1];
+                for Fc(i, j, k, l, val) in fcs {
+                    // adapted from Intder::add_fc
+                    match (k, l) {
+                        (0, 0) => {
+                            // harmonic, skip it
+                        }
+                        (_, 0) => {
+                            let idx = fc3_index(i, j, k);
+                            f3qcm[idx] = val;
+                        }
+                        (_, _) => {
+                            let idx = fc4_index(i, j, k, l);
+                            f4qcm[idx] = val;
+                        }
+                    }
+                }
+                let (f3, f4) =
+                    to_qcm(&output.harms, normal.ncoords, &f3qcm, &f4qcm, 1.0);
+                let (o, _) = spectro.finish(
+                    DVector::from(output.harms.clone()),
+                    F3qcm::new(f3),
+                    F4qcm::new(f4),
+                    output.irreps.clone(),
+                    normal.lxm.as_ref().unwrap().clone(),
+                );
+                (std::mem::take(spectro), o)
+            }
         };
         if is_debug() {
             writeln!(w, "dir={dir}").unwrap();
@@ -339,6 +457,11 @@ impl Frequency {
                 let index = 2 * i * rows + 2 * row;
                 let mut pf = params.clone();
                 pf.values[row] += DELTA;
+                let b = if molecule.coord_type.is_normal() {
+                    todo!()
+                } else {
+                    Builder::None
+                };
                 // idx = job_num so use it twice
                 let (freq, fwd_jobs) = self
                     .build_jobs(
@@ -348,6 +471,7 @@ impl Frequency {
                         idx,
                         idx,
                         molecule,
+                        b,
                     )
                     .unwrap();
                 // we unwrap here because it's not entirely clear how to recover
@@ -359,6 +483,11 @@ impl Frequency {
 
                 let mut pb = params.clone();
                 pb.values[row] -= DELTA;
+                let b = if molecule.coord_type.is_normal() {
+                    todo!()
+                } else {
+                    Builder::None
+                };
                 let (freq, bwd_jobs) = self
                     .build_jobs(
                         &mut output_stream(),
@@ -367,6 +496,7 @@ impl Frequency {
                         idx,
                         idx,
                         molecule,
+                        b,
                     )
                     .unwrap();
                 idx += bwd_jobs.len();
@@ -377,6 +507,21 @@ impl Frequency {
         }
         (jobs, freqs, indices)
     }
+}
+
+/// generate a parameter filename using `job_num`, write the parameters to that
+/// file, and return the template with the parameter filename added
+fn write_params(
+    job_num: usize,
+    params: &Params,
+    template: Template,
+) -> Template {
+    let param_file = Rc::new(format!("tmparam/{}.dat", job_num));
+    Mopac::write_params(params, &param_file);
+    let mut tmpl = template;
+    use std::fmt::Write;
+    write!(tmpl.header, " external={}", param_file).unwrap();
+    tmpl
 }
 
 impl Default for Frequency {
@@ -421,10 +566,37 @@ impl Optimize for Frequency {
             // have to call this before build_jobs since it writes params now
             setup();
 
+            let builder = if molecule.coord_type.is_normal() {
+                // NOTE using fitted normal coordinates
+                let norm = Normal::findiff(false);
+                // safe to use 0 as job_num because we have to reset directories
+                // after the harmonic part anyway
+                let tmpl = write_params(0, params, molecule.template.clone());
+                let (s, o, _ref_energy, pg) = norm.cart_part(
+                    &FirstPart {
+                        template: tmpl.header,
+                        optimize: false,
+                        geometry: Geom::Xyz(
+                            geom.cart_geom.as_ref().unwrap().clone(),
+                        ),
+                        charge: molecule.charge,
+                        step_size: STEP_SIZE,
+                    },
+                    submitter,
+                    &mut io::stdout(),
+                );
+                setup();
+                Builder::Norm { norm, s, o, pg }
+            } else {
+                Builder::None
+            };
+
             let Ok((mut freq, jobs)) =
-                self.build_jobs(&mut w, geom, params, 0, 0, molecule) else {
-		    return None
-		};
+		self.build_jobs(&mut w, geom, params, 0, 0, molecule, builder)
+	    else {
+		return None
+	    };
+
             writeln!(
                 w,
                 "\n{} atoms require {} jobs",

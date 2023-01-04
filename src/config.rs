@@ -67,6 +67,16 @@ pub(crate) enum CoordType {
     Normal,
 }
 
+impl CoordType {
+    /// Returns `true` if the coord type is [`Normal`].
+    ///
+    /// [`Normal`]: CoordType::Normal
+    #[must_use]
+    pub(crate) fn is_normal(&self) -> bool {
+        matches!(self, Self::Normal)
+    }
+}
+
 pub struct Molecule {
     /// Array of string atomic symbols like ["C", "C", "C", "H", "H"]
     pub atom_names: Vec<String>,

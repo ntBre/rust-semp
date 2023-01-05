@@ -169,6 +169,7 @@ impl FreqParts {
 }
 
 #[allow(clippy::large_enum_variant)]
+#[derive(Clone)]
 enum Builder {
     None,
     Norm {
@@ -437,7 +438,9 @@ impl Frequency {
         DVector::from(freqs)
     }
 
-    /// helper method for computing the single-point energies for the jacobian
+    /// helper method for building the single-point energy jobs for the
+    /// jacobian. `builders` should be of length 2 * molecules.len() *
+    /// params.len()
     #[allow(clippy::type_complexity)]
     fn jac_energies(
         &self,
@@ -445,23 +448,21 @@ impl Frequency {
         params: &Params,
         geoms: &[ProgramResult],
         molecules: &[config::Molecule],
+        mut builders: Vec<Builder>,
     ) -> (Vec<Job<Mopac>>, Vec<Vec<FreqParts>>, Vec<Vec<usize>>) {
         let mut idx = 0;
         let mut jobs = Vec::new();
         let mut freqs = vec![vec![]; molecules.len()];
         // boundaries of each chunk for each molecule
         let mut indices = vec![];
+        // reverse for popping
+        builders.reverse();
         for (i, molecule) in molecules.iter().enumerate() {
             indices.push(vec![idx]);
             for row in 0..rows {
                 let index = 2 * i * rows + 2 * row;
                 let mut pf = params.clone();
                 pf.values[row] += DELTA;
-                let b = if molecule.coord_type.is_normal() {
-                    todo!()
-                } else {
-                    Builder::None
-                };
                 // idx = job_num so use it twice
                 let (freq, fwd_jobs) = self
                     .build_jobs(
@@ -471,7 +472,7 @@ impl Frequency {
                         idx,
                         idx,
                         molecule,
-                        b,
+                        builders.pop().unwrap(),
                     )
                     .unwrap();
                 // we unwrap here because it's not entirely clear how to recover
@@ -483,11 +484,6 @@ impl Frequency {
 
                 let mut pb = params.clone();
                 pb.values[row] -= DELTA;
-                let b = if molecule.coord_type.is_normal() {
-                    todo!()
-                } else {
-                    Builder::None
-                };
                 let (freq, bwd_jobs) = self
                     .build_jobs(
                         &mut output_stream(),
@@ -496,7 +492,7 @@ impl Frequency {
                         idx,
                         idx,
                         molecule,
-                        b,
+                        builders.pop().unwrap(),
                     )
                     .unwrap();
                 idx += bwd_jobs.len();
@@ -656,9 +652,24 @@ impl Optimize for Frequency {
         // jac_energies writes to tmparam so have to setup first
         setup();
 
+        let builders = if molecules.iter().any(|m| m.coord_type.is_normal()) {
+            // I think jac_energies needs to take something like a Vec<Builder>,
+            // and before calling it, I should generate each of the Normal
+            // coordinate builders in parallel. ie build and run all of the HFFs
+            // at once like jac_energies builds all of the QFFs to be run at
+            // once. basically I need a jac_energies (plus the following
+            // energies/drain part) analog that does all of the cart_parts. an
+            // alternative is to run the HFFs as needed inside of num_jac, but
+            // that seems very inefficient for the same reasons I've structured
+            // num_jac like this in the first place
+            todo!()
+        } else {
+            vec![Builder::None; 2 * molecules.len() * params.len()]
+        };
+
         // build all the single-point energies
         let (jobs, mut freqs, indices) =
-            self.jac_energies(rows, params, &geoms, molecules);
+            self.jac_energies(rows, params, &geoms, molecules, builders);
 
         eprintln!(
             "finished building {} energies after {:.1} sec",

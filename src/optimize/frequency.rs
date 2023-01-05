@@ -11,7 +11,7 @@ use rust_pbqff::coord_type::normal::{
     fc3_index, fc4_index, to_qcm, F3qcm, F4qcm, Fc, Normal,
 };
 use rust_pbqff::coord_type::sic::IntderError;
-use rust_pbqff::coord_type::{Cart, SIC};
+use rust_pbqff::coord_type::{Cart, Derivative, SIC};
 use rust_pbqff::{Output, Spectro};
 use symm::{Molecule, PointGroup};
 use taylor::{Disps, Taylor};
@@ -23,6 +23,7 @@ use nalgebra as na;
 use std::cmp::Ordering;
 use std::fs::File;
 use std::io::{self, Write};
+use std::marker::Sync;
 use std::rc::Rc;
 use std::sync::Mutex;
 
@@ -63,7 +64,7 @@ pub struct Frequency {
     logger: Mutex<File>,
 }
 
-pub fn optimize_geometry<Q: Queue<Mopac> + std::marker::Sync>(
+pub fn optimize_geometry<Q: Queue<Mopac> + Sync>(
     geom: Geom,
     params: &Params,
     queue: &Q,
@@ -115,6 +116,15 @@ enum FreqParts {
         taylor_disps: Disps,
         spectro: Spectro,
         output: Output,
+    },
+    NormHarm {
+        fcs: Vec<f64>,
+        target_map: BigHash,
+        n: usize,
+        nfc2: usize,
+        nfc3: usize,
+        mol: Molecule,
+        pg: PointGroup,
     },
 }
 
@@ -203,6 +213,7 @@ impl Frequency {
         start_index: usize,
         job_num: usize,
         molecule: &config::Molecule,
+        coord_type: &CoordType,
         builder: Builder,
     ) -> Result<(FreqParts, Vec<Job<Mopac>>), IntderError>
     where
@@ -221,7 +232,7 @@ impl Frequency {
 
         let tmpl = write_params(job_num, params, molecule.template.clone());
 
-        match &molecule.coord_type {
+        match &coord_type {
             CoordType::Sic(intder) => {
                 let intder = intder.clone();
                 // NOTE: assuming that the intder coordinates max out at C2v,
@@ -273,9 +284,7 @@ impl Frequency {
                     Geom::Xyz(mol.atoms.clone()),
                     STEP_SIZE,
                     geom.energy,
-                    rust_pbqff::coord_type::Derivative::Quartic(
-                        nfc2, nfc3, nfc4,
-                    ),
+                    Derivative::Quartic(nfc2, nfc3, nfc4),
                     &mut fcs,
                     &mut target_map,
                     n,
@@ -324,6 +333,56 @@ impl Frequency {
                     tmpl,
                 );
                 Ok((FreqParts::norm(norm, taylor, taylor_disps, s, o), jobs))
+            }
+            CoordType::NormalHarm => {
+                // kinda sloppy but copied from Cart case with just Derivative
+                // changed
+                let n = 3 * mol.atoms.len();
+                let nfc2 = n * n;
+                let nfc3 = n * (n + 1) * (n + 2) / 6;
+                let nfc4 = n * (n + 1) * (n + 2) * (n + 3) / 24;
+                let mut fcs = vec![0.0; nfc2 + nfc3 + nfc4];
+
+                let mut target_map = BigHash::new(mol.clone(), pg);
+
+                let geoms = Cart.build_points(
+                    Geom::Xyz(mol.atoms.clone()),
+                    STEP_SIZE,
+                    geom.energy,
+                    Derivative::Harmonic(nfc2),
+                    &mut fcs,
+                    &mut target_map,
+                    n,
+                );
+                let dir = "inp";
+                let mut job_num = start_index;
+                let mut jobs = Vec::new();
+                for mol in geoms {
+                    let filename = format!("{dir}/job.{:08}", job_num);
+                    job_num += 1;
+                    jobs.push(Job::new(
+                        Mopac::new_full(
+                            filename,
+                            None,
+                            mol.geom.clone(),
+                            molecule.charge,
+                            tmpl.clone(),
+                        ),
+                        mol.index + start_index,
+                    ));
+                }
+                Ok((
+                    FreqParts::NormHarm {
+                        fcs,
+                        target_map,
+                        n,
+                        nfc2,
+                        nfc3,
+                        mol,
+                        pg,
+                    },
+                    jobs,
+                ))
             }
         }
     }
@@ -424,6 +483,7 @@ impl Frequency {
                 );
                 (std::mem::take(spectro), o)
             }
+            FreqParts::NormHarm { .. } => unimplemented!(),
         };
         if is_debug() {
             writeln!(w, "dir={dir}").unwrap();
@@ -436,6 +496,137 @@ impl Frequency {
             .collect();
         let freqs = sort_irreps(&freqs, &summary.irreps);
         DVector::from(freqs)
+    }
+
+    /// generate all of the HFF energies for finding normal coordinates
+    fn harm_jac_energies<Q: Queue<Mopac> + Sync>(
+        &self,
+        rows: usize,
+        params: &Params,
+        geoms: &[ProgramResult],
+        molecules: &[config::Molecule],
+        submitter: &Q,
+    ) -> Vec<Builder> {
+        let mut idx = 0;
+        let mut jobs = Vec::new();
+        let mut freqs = vec![vec![]; molecules.len()];
+        // boundaries of each chunk for each molecule
+        let mut indices = vec![];
+        for (i, molecule) in molecules.iter().enumerate() {
+            // push some junk in for non-normals. it'll be skipped later
+            indices.push(vec![idx]);
+            if !molecule.coord_type.is_normal() {
+                continue;
+            }
+            // at this point we know the coord_type is normal
+            for row in 0..rows {
+                let index = 2 * i * rows + 2 * row;
+                let mut pf = params.clone();
+                pf.values[row] += DELTA;
+                // idx = job_num so use it twice
+                let (freq, fwd_jobs) = self
+                    .build_jobs(
+                        &mut output_stream(),
+                        geoms[index].clone(),
+                        &pf,
+                        idx,
+                        idx,
+                        molecule,
+                        &CoordType::NormalHarm,
+                        Builder::None,
+                    )
+                    .unwrap();
+                // we unwrap here because it's not entirely clear how to recover
+                // from one half of one column going off the rails.
+                idx += fwd_jobs.len();
+                indices[i].push(idx);
+                jobs.extend(fwd_jobs);
+                freqs[i].push(freq);
+
+                let mut pb = params.clone();
+                pb.values[row] -= DELTA;
+                let (freq, bwd_jobs) = self
+                    .build_jobs(
+                        &mut output_stream(),
+                        geoms[index + 1].clone(),
+                        &pb,
+                        idx,
+                        idx,
+                        molecule,
+                        &CoordType::NormalHarm,
+                        Builder::None,
+                    )
+                    .unwrap();
+                idx += bwd_jobs.len();
+                indices[i].push(idx);
+                jobs.extend(bwd_jobs);
+                freqs[i].push(freq);
+            }
+        }
+        // at this point, all of the jobs are built for running all of the HFFs,
+        // but only the builders for non-normal molecules are built.
+        let mut energies = vec![0.0; jobs.len()];
+        submitter
+            .drain("inp", jobs, &mut energies)
+            .expect("numjac optimizations failed");
+        // reset for rest of num_jac
+        setup();
+
+        use rayon::prelude::*;
+        freqs.reverse(); // for popping
+        let mut builders = Vec::new();
+        for m in 0..molecules.len() {
+            if !molecules[m].coord_type.is_normal() {
+                builders.extend(vec![Builder::None; 2 * params.len()]);
+                continue;
+            }
+            let mut energy_chunks = Vec::new();
+            assert_eq!(indices[m].len(), 2 * params.len() + 1);
+            // -1 because I'm going to refer to idx+1 in the loop
+            for idx in 0..indices[m].len() - 1 {
+                energy_chunks.push(
+                    energies[indices[m][idx]..indices[m][idx + 1]].to_vec(),
+                );
+            }
+            // zip it with the FreqParts
+            let pairs: Vec<_> = energy_chunks
+                .iter()
+                .cloned()
+                .zip(freqs.pop().unwrap())
+                .collect();
+            // iterate over the energy/freqparts pairs in parallel
+            let bs: Vec<_> = pairs
+                .par_iter()
+                .enumerate()
+                .map(|(i, (energy, freq))| {
+                    let freq = freq.clone();
+                    let dir = format!("freqs{}_{}", i, m);
+                    let _ = std::fs::create_dir(&dir);
+                    let norm = Normal::findiff(false);
+                    let FreqParts::NormHarm {
+                        mut fcs,
+                        mut target_map,
+                        n,
+                        nfc2,
+                        nfc3,
+                        mol,
+                        pg,
+                    } = freq else { unimplemented!() } ;
+                    let (fc2, _, _) = norm.make_fcs(
+                        &mut target_map,
+                        energy,
+                        &mut fcs,
+                        n,
+                        Derivative::Quartic(nfc2, nfc3, 0),
+                        &dir,
+                    );
+                    let (s, o) = norm.harm_freqs(&dir, &mol, fc2);
+                    Builder::Norm { norm, s, o, pg }
+                })
+                .collect();
+            builders.extend(bs)
+        }
+        builders
     }
 
     /// helper method for building the single-point energy jobs for the
@@ -472,6 +663,7 @@ impl Frequency {
                         idx,
                         idx,
                         molecule,
+                        &molecule.coord_type,
                         builders.pop().unwrap(),
                     )
                     .unwrap();
@@ -492,6 +684,7 @@ impl Frequency {
                         idx,
                         idx,
                         molecule,
+                        &molecule.coord_type,
                         builders.pop().unwrap(),
                     )
                     .unwrap();
@@ -528,7 +721,7 @@ impl Default for Frequency {
 
 impl Optimize for Frequency {
     /// compute the semi-empirical energies of `moles` for the given `params`
-    fn semi_empirical<Q: Queue<Mopac> + std::marker::Sync>(
+    fn semi_empirical<Q: Queue<Mopac> + Sync>(
         &self,
         params: &Params,
         submitter: &Q,
@@ -588,7 +781,7 @@ impl Optimize for Frequency {
             };
 
             let Ok((mut freq, jobs)) =
-		self.build_jobs(&mut w, geom, params, 0, 0, molecule, builder)
+		self.build_jobs(&mut w, geom, params, 0, 0, molecule, &molecule.coord_type, builder)
 	    else {
 		return None
 	    };
@@ -624,7 +817,7 @@ impl Optimize for Frequency {
     /// actually computed and returned. `ntrue` is the expected ("true") size of
     /// the frequency vectors in case something goes wrong and a different
     /// number of entries comes out of freqs
-    fn num_jac<Q: Queue<Mopac> + std::marker::Sync>(
+    fn num_jac<Q: Queue<Mopac> + Sync>(
         &self,
         params: &Params,
         submitter: &Q,
@@ -653,16 +846,7 @@ impl Optimize for Frequency {
         setup();
 
         let builders = if molecules.iter().any(|m| m.coord_type.is_normal()) {
-            // I think jac_energies needs to take something like a Vec<Builder>,
-            // and before calling it, I should generate each of the Normal
-            // coordinate builders in parallel. ie build and run all of the HFFs
-            // at once like jac_energies builds all of the QFFs to be run at
-            // once. basically I need a jac_energies (plus the following
-            // energies/drain part) analog that does all of the cart_parts. an
-            // alternative is to run the HFFs as needed inside of num_jac, but
-            // that seems very inefficient for the same reasons I've structured
-            // num_jac like this in the first place
-            todo!()
+            self.harm_jac_energies(rows, params, &geoms, molecules, submitter)
         } else {
             vec![Builder::None; 2 * molecules.len() * params.len()]
         };

@@ -65,6 +65,7 @@ pub(crate) enum CoordType {
     Sic(Intder),
     Cart,
     Normal,
+    NormalHarm,
 }
 
 impl CoordType {

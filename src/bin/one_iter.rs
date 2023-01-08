@@ -1,6 +1,6 @@
 use psqs::program::mopac::Mopac;
 use psqs::program::Template;
-use psqs::queue::local::LocalQueue;
+use psqs::queue::local::Local;
 use psqs::queue::Queue;
 use rust_semp::utils::*;
 use rust_semp::*;
@@ -22,8 +22,8 @@ fn main() {
     );
     let mut energies = vec![0.; ml];
     setup();
-    LocalQueue::new("inp", 128, "/opt/mopac/mopac")
-        .drain("inp", jobs, &mut energies)
+    Local::new("inp", 128, "/opt/mopac/mopac")
+        .drain("inp", jobs, &mut energies, 0)
         .unwrap();
     takedown();
     for (i, e) in energies.iter().enumerate() {

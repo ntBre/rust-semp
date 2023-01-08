@@ -39,7 +39,7 @@ impl Optimize for Energy {
         let mut got = vec![0.0; jobs.len()];
         setup();
         submitter
-            .drain("inp", jobs, &mut got)
+            .drain("inp", jobs, &mut got, 0)
             .expect("energies failed");
         takedown();
         Some(relative(&na::DVector::from(got)))
@@ -100,7 +100,7 @@ impl Optimize for Energy {
         }
         setup();
         submitter
-            .drain("inp", jobs, &mut jac_t)
+            .drain("inp", jobs, &mut jac_t, 0)
             .expect("numjac energies failed");
         takedown();
         // nalgebra does from_vec in col-major order, so lead with cols and I get

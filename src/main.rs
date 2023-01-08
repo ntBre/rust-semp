@@ -5,7 +5,7 @@ use std::os::unix::io::AsRawFd;
 
 use nalgebra as na;
 
-use psqs::queue::local::LocalQueue;
+use psqs::queue::local::Local;
 use psqs::queue::pbs::Pbs;
 use psqs::queue::slurm::Slurm;
 use rust_pbqff::config::Queue;
@@ -146,7 +146,7 @@ fn main() {
                     conf.max_iter,
                     conf.broyden,
                     conf.broyd_int,
-                    LocalQueue {
+                    Local {
                         dir: "inp".to_owned(),
                         chunk_size: conf.chunk_size,
                         mopac: conf.mopac.expect(

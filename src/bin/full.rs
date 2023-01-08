@@ -1,4 +1,4 @@
-use psqs::queue::local::LocalQueue;
+use psqs::queue::local::Local;
 use rust_semp::config::Config;
 use rust_semp::optimize::energy::Energy;
 use rust_semp::utils::*;
@@ -15,7 +15,7 @@ fn main() {
         10,
         true,
         5,
-        LocalQueue::new("inp", 128, "/opt/mopac/mopac"),
+        Local::new("inp", 128, "/opt/mopac/mopac"),
         false,
         Energy {
             moles: load_geoms("test_files/small07", &names),

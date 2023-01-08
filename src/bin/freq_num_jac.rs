@@ -1,4 +1,4 @@
-use psqs::queue::local::LocalQueue;
+use psqs::queue::local::Local;
 use rust_semp::optimize::{frequency::Frequency, Optimize};
 use rust_semp::utils::setup;
 
@@ -6,7 +6,7 @@ fn main() {
     let config = rust_semp::config::Config::load("test_files/test.toml");
     let freq = Frequency::new();
     setup();
-    let queue = LocalQueue::new("inp", 128, "/opt/mopac/mopac");
+    let queue = Local::new("inp", 128, "/opt/mopac/mopac");
     freq.num_jac(
         &"USS            H    -11.246958000000
     ZS             H      1.268641000000

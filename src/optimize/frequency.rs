@@ -11,7 +11,7 @@ use rust_pbqff::coord_type::normal::{
     fc3_index, fc4_index, to_qcm, F3qcm, F4qcm, Fc, Normal,
 };
 use rust_pbqff::coord_type::sic::IntderError;
-use rust_pbqff::coord_type::{Cart, Derivative, SIC};
+use rust_pbqff::coord_type::{Cart, Derivative, Sic};
 use rust_pbqff::{Output, Spectro};
 use symm::{Molecule, PointGroup};
 use taylor::{Disps, Taylor};
@@ -243,7 +243,7 @@ impl Frequency {
                     pg
                 };
 
-                let mut sic = SIC::new(intder);
+                let mut sic = Sic::new(intder);
                 let (moles, taylor, taylor_disps, atomic_numbers) =
                     sic.generate_pts(w, &mol, &pg, STEP_SIZE)?;
 
@@ -402,7 +402,7 @@ impl Frequency {
                 taylor,
                 taylor_disps,
                 atomic_numbers,
-            } => SIC::new(intder.clone())
+            } => Sic::new(intder.clone())
                 .freqs(
                     w,
                     dir,
@@ -567,7 +567,7 @@ impl Frequency {
         // but only the builders for non-normal molecules are built.
         let mut energies = vec![0.0; jobs.len()];
         submitter
-            .drain("inp", jobs, &mut energies)
+            .drain("inp", jobs, &mut energies, 0)
             .expect("numjac optimizations failed");
         // reset for rest of num_jac
         setup();
@@ -796,7 +796,7 @@ impl Optimize for Frequency {
 
             let mut energies = vec![0.0; jobs.len()];
             // drain to get energies
-            let status = submitter.drain("inp", jobs, &mut energies);
+            let status = submitter.drain("inp", jobs, &mut energies, 0);
 
             if status.is_err() {
                 return None;
@@ -869,7 +869,7 @@ impl Optimize for Frequency {
         // run all of the energies
         let mut energies = vec![0.0; jobs.len()];
         submitter
-            .drain("inp", jobs, &mut energies)
+            .drain("inp", jobs, &mut energies, 0)
             .expect("numjac optimizations failed");
         takedown();
 

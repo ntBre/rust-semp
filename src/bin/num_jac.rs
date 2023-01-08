@@ -1,4 +1,4 @@
-use psqs::queue::local::LocalQueue;
+use psqs::queue::local::Local;
 use rust_semp::{
     config::Config,
     optimize::{energy::Energy, Optimize},
@@ -13,7 +13,7 @@ fn main() {
     let params = load_params("test_files/small.params");
     Energy { moles }.num_jac(
         &params,
-        &LocalQueue::new("inp", 128, "/opt/mopac/mopac"),
+        &Local::new("inp", 128, "/opt/mopac/mopac"),
         &config.molecules,
 	9
     );

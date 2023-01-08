@@ -14,7 +14,7 @@ use crate::{
 
 use psqs::{
     geom::Geom,
-    queue::{local::LocalQueue, slurm::Slurm},
+    queue::{local::Local, slurm::Slurm},
 };
 use symm::Molecule;
 
@@ -204,7 +204,7 @@ fn test_one_iter() {
     ]);
     let got = Energy { moles }.semi_empirical(
         &params,
-        &LocalQueue {
+        &Local {
             chunk_size: 128,
             dir: "inp".to_string(),
             ..Default::default()
@@ -287,7 +287,7 @@ fn test_num_jac() {
         let want = load_mat("test_files/small.jac");
         let got = Energy { moles }.num_jac(
             &params,
-            &LocalQueue::new("inp", 128, "/opt/mopac/mopac"),
+            &Local::new("inp", 128, "/opt/mopac/mopac"),
             &config.molecules,
             9,
         );
@@ -300,7 +300,7 @@ fn test_num_jac() {
         let want = load_mat("test_files/three.jac");
         let got = Energy { moles }.num_jac(
             &params,
-            &LocalQueue::new("inp", 128, "/opt/mopac/mopac"),
+            &Local::new("inp", 128, "/opt/mopac/mopac"),
             &config.molecules,
             9,
         );
@@ -481,7 +481,7 @@ fn test_algo() {
         },
     };
     let config = Config::load("test_files/test.toml");
-    let queue = LocalQueue::new("inp", 128, "/opt/mopac/mopac");
+    let queue = Local::new("inp", 128, "/opt/mopac/mopac");
     let geom_file = "test_files/small07";
     let param_file = "test_files/small.params";
     let energy_file = "test_files/25.dat";
@@ -511,7 +511,7 @@ fn freq_semi_empirical() {
     let config = Config::load("test_files/test.toml");
     let freq = Frequency::new();
     utils::setup();
-    let queue = LocalQueue::new("inp", 128, "/opt/mopac/mopac");
+    let queue = Local::new("inp", 128, "/opt/mopac/mopac");
     let mut got = freq
         .semi_empirical(
             &"USS            H    -11.246958000000
@@ -563,7 +563,7 @@ fn freq_num_jac() {
     let config = Config::load("test_files/test.toml");
     let freq = Frequency::new();
     utils::setup();
-    let queue = LocalQueue::new("inp", 128, "/opt/mopac/mopac");
+    let queue = Local::new("inp", 128, "/opt/mopac/mopac");
     let got = freq.num_jac(
         &"USS            H    -11.246958000000
     ZS             H      1.268641000000

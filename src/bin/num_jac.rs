@@ -15,6 +15,6 @@ fn main() {
         &params,
         &Local::new("inp", 128, "/opt/mopac/mopac"),
         &config.molecules,
-	9
+        9,
     );
 }

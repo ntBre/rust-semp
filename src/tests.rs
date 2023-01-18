@@ -225,7 +225,7 @@ fn load_mat(filename: &str) -> na::DMatrix<f64> {
     let f = match File::open(filename) {
         Ok(f) => f,
         Err(e) => {
-            eprintln!("failed to open {} with {}", filename, e);
+            eprintln!("failed to open {filename} with {e}");
             std::process::exit(1);
         }
     };
@@ -263,7 +263,7 @@ fn comp_dvec(got: na::DVector<f64>, want: na::DVector<f64>, eps: f64) -> bool {
     if norm < eps {
         return true;
     }
-    eprintln!("comp_vec: norm = {:e}", norm);
+    eprintln!("comp_vec: norm = {norm:e}");
     false
 }
 
@@ -272,7 +272,7 @@ fn comp_mat(got: na::DMatrix<f64>, want: na::DMatrix<f64>, eps: f64) -> bool {
     if norm < eps {
         return true;
     }
-    eprintln!("comp_mat: norm = {}", norm);
+    eprintln!("comp_mat: norm = {norm}");
     false
 }
 

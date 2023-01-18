@@ -75,7 +75,7 @@ pub fn optimize_geometry<Q: Queue<Mopac> + Sync>(
 ) -> Option<ProgramResult> {
     let opt = Job::new(
         Mopac::new_full(
-            format!("{}/{}", dir, name),
+            format!("{dir}/{name}"),
             Some(params.clone()),
             geom,
             charge,
@@ -227,8 +227,8 @@ impl Frequency {
         const SYMM_EPS: f64 = 1e-6;
         let pg = mol.point_group_approx(SYMM_EPS);
 
-        writeln!(w, "Normalized Geometry:\n{:20.12}", mol).unwrap();
-        writeln!(w, "Point Group = {}", pg).unwrap();
+        writeln!(w, "Normalized Geometry:\n{mol:20.12}").unwrap();
+        writeln!(w, "Point Group = {pg}").unwrap();
 
         let tmpl = write_params(job_num, params, molecule.template.clone());
 
@@ -293,7 +293,7 @@ impl Frequency {
                 let mut job_num = start_index;
                 let mut jobs = Vec::new();
                 for mol in geoms {
-                    let filename = format!("{dir}/job.{:08}", job_num);
+                    let filename = format!("{dir}/job.{job_num:08}");
                     job_num += 1;
                     jobs.push(Job::new(
                         Mopac::new_full(
@@ -358,7 +358,7 @@ impl Frequency {
                 let mut job_num = start_index;
                 let mut jobs = Vec::new();
                 for mol in geoms {
-                    let filename = format!("{dir}/job.{:08}", job_num);
+                    let filename = format!("{dir}/job.{job_num:08}");
                     job_num += 1;
                     jobs.push(Job::new(
                         Mopac::new_full(
@@ -487,7 +487,7 @@ impl Frequency {
         };
         if is_debug() {
             writeln!(w, "dir={dir}").unwrap();
-            writeln!(w, "{}", summary).unwrap();
+            writeln!(w, "{summary}").unwrap();
         }
         let freqs: Vec<f64> = summary
             .corrs
@@ -600,7 +600,7 @@ impl Frequency {
                 .enumerate()
                 .map(|(i, (energy, freq))| {
                     let freq = freq.clone();
-                    let dir = format!("freqs{}_{}", i, m);
+                    let dir = format!("freqs{i}_{m}");
                     let _ = std::fs::create_dir(&dir);
                     let norm = Normal::findiff(false);
                     let FreqParts::NormHarm {
@@ -705,11 +705,11 @@ fn write_params(
     params: &Params,
     template: Template,
 ) -> Template {
-    let param_file = Rc::new(format!("tmparam/{}.dat", job_num));
+    let param_file = Rc::new(format!("tmparam/{job_num}.dat"));
     Mopac::write_params(params, &param_file);
     let mut tmpl = template;
     use std::fmt::Write;
-    write!(tmpl.header, " external={}", param_file).unwrap();
+    write!(tmpl.header, " external={param_file}").unwrap();
     tmpl
 }
 
@@ -729,7 +729,7 @@ impl Optimize for Frequency {
     ) -> Option<DVector<f64>> {
         let mut w = output_stream();
 
-        writeln!(w, "Params:\n{}", params).unwrap();
+        writeln!(w, "Params:\n{params}").unwrap();
 
         let mut ret = Vec::new();
 
@@ -909,7 +909,7 @@ impl Optimize for Frequency {
                 .map(|(i, (energy, freq))| {
                     let mut energy = energy.clone();
                     let mut freq = freq.clone();
-                    let dir = format!("freqs{}_{}", i, m);
+                    let dir = format!("freqs{i}_{m}");
                     let _ = std::fs::create_dir(&dir);
                     self.freqs(
                         &mut output_stream(),
@@ -924,7 +924,7 @@ impl Optimize for Frequency {
             assert_eq!(freqs.len(), 2 * params.len());
 
             for i in 0..pairs.len() {
-                let dir = format!("freqs{}_{}", i, m);
+                let dir = format!("freqs{i}_{m}");
                 let _ = std::fs::remove_dir_all(&dir);
             }
             let jac_t: Vec<_> = freqs
@@ -987,9 +987,9 @@ impl Optimize for Frequency {
 
     fn log(&self, iter: usize, got: &DVector<f64>, want: &DVector<f64>) {
         let mut logger = self.logger.lock().unwrap();
-        write!(logger, "{:5}", iter).unwrap();
+        write!(logger, "{iter:5}").unwrap();
         for g in got {
-            write!(logger, "{:8.1}", g).unwrap();
+            write!(logger, "{g:8.1}").unwrap();
         }
         writeln!(logger, "{:8.1}", mae(got, want)).unwrap();
     }

@@ -64,10 +64,10 @@ pub fn lev_mar(
         }
         None => {
             eprintln!("cholesky decomposition failed");
-            eprintln!("jac\n{:.8}", jac);
-            eprintln!("a\n{:.8}", a);
-            eprintln!("a*\n{:.8}", a_star);
-            eprintln!("lhs\n{:.8}", lhs);
+            eprintln!("jac\n{jac:.8}");
+            eprintln!("a\n{a:.8}");
+            eprintln!("a*\n{a_star:.8}");
+            eprintln!("lhs\n{lhs:.8}");
             let lhs = na::linalg::LU::new(lhs);
             lhs.solve(&g_star).expect("LU decomposition also failed")
         }
@@ -147,7 +147,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
             || del_max.abs() > DCONV_THRSH)
     {
         if broyden && !need_num_jac && iter > 1 && iter % broyd_int != 1 {
-            eprintln!("broyden on iter {}", iter);
+            eprintln!("broyden on iter {iter}");
             in_broyden = true;
             start = std::time::Instant::now();
             jac = broyden_update(&jac, &old_se, &se, &step);
@@ -159,7 +159,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
         } // else (first iteration) use jac from outside loop
 
         if DEBUG {
-            eprintln!("{:8.3e}", jac);
+            eprintln!("{jac:8.3e}");
         }
 
         let lambda_init = lambda;

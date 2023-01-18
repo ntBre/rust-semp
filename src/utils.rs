@@ -104,7 +104,7 @@ pub fn setup() {
         match fs::create_dir(dir) {
             Ok(_) => (),
             Err(e) => {
-                panic!("can't create '{}' for '{}'", dir, e);
+                panic!("can't create '{dir}' for '{e}'");
             }
         }
     }
@@ -126,7 +126,7 @@ impl Takedown {
                 let root = Path::new("trash");
                 let d = root.join(&dir);
                 if let Err(e) = std::fs::remove_dir_all(&d) {
-                    eprintln!("failed to remove {:#?} with {e}", d);
+                    eprintln!("failed to remove {d:#?} with {e}");
                 }
             }
         });
@@ -211,7 +211,7 @@ pub fn parse_params(params: &str) -> Params {
 
 pub fn dump_vec<W: Write>(w: &mut W, vec: &na::DVector<f64>) {
     for (i, v) in vec.iter().enumerate() {
-        writeln!(w, "{:>5}{:>20.12}", i, v).unwrap();
+        writeln!(w, "{i:>5}{v:>20.12}").unwrap();
     }
 }
 
@@ -219,7 +219,7 @@ pub fn dump_mat<W: Write>(w: &mut W, mat: &na::DMatrix<f64>) {
     let (rows, cols) = mat.shape();
     writeln!(w).unwrap();
     for i in 0..rows {
-        write!(w, "{:>5}", i).unwrap();
+        write!(w, "{i:>5}").unwrap();
         for j in 0..cols {
             write!(w, "{:>12.8}", mat[(i, j)]).unwrap();
         }
@@ -236,8 +236,8 @@ pub fn relative(energies: &na::DVector<f64>) -> na::DVector<f64> {
 }
 
 pub(crate) fn log_params<W: Write>(w: &mut W, iter: usize, params: &Params) {
-    let _ = writeln!(w, "Iter {}", iter);
-    let _ = writeln!(w, "{}", params);
+    let _ = writeln!(w, "Iter {iter}");
+    let _ = writeln!(w, "{params}");
 }
 
 /// sort freqs by the irrep in the same position and then by frequency. if

@@ -102,7 +102,7 @@ impl Config {
     pub fn load(filename: &str) -> Self {
         let raw = match RawConfig::load(filename) {
             Ok(r) => r,
-            Err(e) => panic!("failed to deserialize {} with {}", filename, e),
+            Err(e) => panic!("failed to deserialize {filename} with {e}"),
         };
 
         let mut molecules = Vec::new();

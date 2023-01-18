@@ -172,7 +172,7 @@ fn write_true(tru: &[f64]) {
         std::fs::File::create("true.dat").expect("failed to make true.dat");
     write!(f, "{:5}", "true").unwrap();
     for t in tru {
-        write!(f, "{:8.1}", t).unwrap();
+        write!(f, "{t:8.1}").unwrap();
     }
     writeln!(f).unwrap();
 }

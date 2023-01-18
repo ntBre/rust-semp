@@ -318,7 +318,7 @@ impl Frequency {
                     "only fitted normal coordinates are currently supported"
                 );
                 // adapted from Normal::run_fitted in pbqff
-                norm.irreps = Some(o.irreps.clone());
+                norm.prep_qff(w, &o, &s);
                 let (geoms, taylor, taylor_disps, _atomic_numbers) =
                     norm.generate_pts(w, &o.geom, &pg, STEP_SIZE).unwrap();
                 let dir = "inp";
@@ -773,6 +773,7 @@ impl Optimize for Frequency {
                     },
                     submitter,
                     &mut io::stdout(),
+                    "inp",
                 );
                 setup();
                 Builder::Norm { norm, s, o, pg }

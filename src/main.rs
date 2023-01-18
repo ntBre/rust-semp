@@ -52,6 +52,7 @@ fn main() {
                         conf.job_limit,
                         conf.sleep_int,
                         "inp",
+                        false,
                     ),
                     conf.reset_lambda,
                     Energy {
@@ -74,6 +75,7 @@ fn main() {
                         conf.job_limit,
                         conf.sleep_int,
                         "inp",
+                        false,
                     ),
                     conf.reset_lambda,
                     Energy {
@@ -117,6 +119,7 @@ fn main() {
                         conf.job_limit,
                         conf.sleep_int,
                         "inp",
+                        false,
                     ),
                     conf.reset_lambda,
                     Frequency::new(),
@@ -134,6 +137,7 @@ fn main() {
                         conf.job_limit,
                         conf.sleep_int,
                         "inp",
+                        false,
                     ),
                     conf.reset_lambda,
                     Frequency::new(),

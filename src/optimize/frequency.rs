@@ -22,7 +22,7 @@ use crate::{config, utils::setup, utils::takedown};
 use nalgebra as na;
 use std::cmp::Ordering;
 use std::fs::File;
-use std::io::{self, Write};
+use std::io::Write;
 use std::marker::Sync;
 use std::rc::Rc;
 use std::sync::Mutex;
@@ -772,7 +772,7 @@ impl Optimize for Frequency {
                         step_size: STEP_SIZE,
                     },
                     submitter,
-                    &mut io::stdout(),
+                    &mut w,
                     "inp",
                 );
                 setup();

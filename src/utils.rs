@@ -118,6 +118,10 @@ struct Takedown {
     sender: Sender<String>,
 }
 
+lazy_static::lazy_static! {
+    static ref DUMP_DEBUG: bool = std::env::var("DUMP_DEBUG").is_ok();
+}
+
 impl Takedown {
     fn new() -> Mutex<Takedown> {
         let (sender, receiver) = mpsc::channel();
@@ -126,7 +130,9 @@ impl Takedown {
                 let root = Path::new("trash");
                 let d = root.join(&dir);
                 if let Err(e) = std::fs::remove_dir_all(&d) {
-                    eprintln!("failed to remove {d:#?} with {e}");
+                    if *DUMP_DEBUG {
+                        eprintln!("failed to remove {d:#?} with {e}");
+                    }
                 }
             }
         });

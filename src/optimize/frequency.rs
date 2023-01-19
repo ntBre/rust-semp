@@ -563,6 +563,7 @@ impl Frequency {
                 freqs[i].push(freq);
             }
         }
+
         // at this point, all of the jobs are built for running all of the HFFs,
         // but only the builders for non-normal molecules are built.
         let mut energies = vec![0.0; jobs.len()];
@@ -861,6 +862,7 @@ impl Optimize for Frequency {
             jobs.len(),
             start.elapsed().as_millis() as f64 / 1000.
         );
+
         let start = std::time::Instant::now();
 
         // freqs is nmolecules long, so check that set of freqs is equal to

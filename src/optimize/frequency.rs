@@ -326,9 +326,9 @@ impl Frequency {
                     &geoms,
                     None,
                     dir,
-                    0,
+                    start_index,
                     1.0,
-                    0,
+                    job_num,
                     molecule.charge,
                     tmpl,
                 );

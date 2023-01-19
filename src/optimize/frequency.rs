@@ -441,14 +441,7 @@ impl Frequency {
                 output,
             } => {
                 let (fcs, _) = normal
-                    .anpass(
-			None,
-                        energies,
-                        taylor,
-                        taylor_disps,
-                        STEP_SIZE,
-                        w,
-                    )
+                    .anpass(None, energies, taylor, taylor_disps, STEP_SIZE, w)
                     .unwrap();
                 // needed in case taylor eliminated some of the higher derivatives
                 // by symmetry. this should give the maximum, full sizes without

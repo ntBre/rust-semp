@@ -482,11 +482,16 @@ impl Frequency {
             writeln!(w, "dir={dir}").unwrap();
             writeln!(w, "{summary}").unwrap();
         }
+        let s = summary.corrs.len();
         let freqs: Vec<f64> = summary
             .corrs
             .into_iter()
             .filter(|x| x.is_finite())
             .collect();
+        let e = freqs.len();
+        if s != e {
+            eprintln!("filtered out {} non-finite corrs from", s - e);
+        }
         let freqs = sort_irreps(&freqs, &summary.irreps);
         DVector::from(freqs)
     }

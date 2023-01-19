@@ -443,9 +443,9 @@ impl Frequency {
                 let (fcs, _) = normal
                     .anpass(None, energies, taylor, taylor_disps, STEP_SIZE, w)
                     .unwrap();
-                // needed in case taylor eliminated some of the higher derivatives
-                // by symmetry. this should give the maximum, full sizes without
-                // resizing
+                // needed in case taylor eliminated some of the higher
+                // derivatives by symmetry. this should give the maximum, full
+                // sizes without resizing
                 let n = normal.ncoords;
                 let mut f3qcm = vec![0.0; fc3_index(n, n, n) + 1];
                 let mut f4qcm = vec![0.0; fc4_index(n, n, n, n) + 1];

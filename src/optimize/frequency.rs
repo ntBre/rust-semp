@@ -442,7 +442,7 @@ impl Frequency {
             } => {
                 let (fcs, _) = normal
                     .anpass(
-                        "freqs",
+			None,
                         energies,
                         taylor,
                         taylor_disps,

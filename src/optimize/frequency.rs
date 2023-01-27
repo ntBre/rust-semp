@@ -318,7 +318,7 @@ impl Frequency {
                     "only fitted normal coordinates are currently supported"
                 );
                 // adapted from Normal::run_fitted in pbqff
-                norm.prep_qff(w, &o, &s);
+                norm.prep_qff(w, &o);
                 let (geoms, taylor, taylor_disps, _atomic_numbers) =
                     norm.generate_pts(w, &o.geom, &pg, STEP_SIZE).unwrap();
                 let dir = "inp";
@@ -473,6 +473,7 @@ impl Frequency {
                     F4qcm::new(f4),
                     output.irreps.clone(),
                     normal.lxm.as_ref().unwrap().clone(),
+                    normal.lx.as_ref().unwrap().clone(),
                 );
                 (std::mem::take(spectro), o)
             }

@@ -14,7 +14,9 @@ pub mod stats;
 mod tests;
 pub mod utils;
 
-static DEBUG: bool = false;
+lazy_static::lazy_static! {
+    static ref DEBUG: String = std::env::var("SEMP_DEBUG").unwrap_or_default();
+}
 /// convergence threshold for the change in the norm, rmsd, and max
 const DCONV_THRSH: f64 = 1e-5;
 
@@ -158,7 +160,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
             jac = optimizer.num_jac(&params, &queue, molecules, ntrue);
         } // else (first iteration) use jac from outside loop
 
-        if DEBUG {
+        if *DEBUG == "jac" {
             eprintln!("{jac:8.3e}");
         }
 

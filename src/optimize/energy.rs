@@ -95,7 +95,7 @@ impl Optimize for Energy {
             job_num += bwd_jobs.len();
             jobs.append(&mut bwd_jobs);
         }
-        if DEBUG {
+        if *DEBUG == "jobs" {
             eprintln!("num_jac: running {} jobs", jobs.len());
         }
         setup();

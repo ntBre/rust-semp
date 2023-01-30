@@ -1,29 +1,27 @@
-use std::rc::Rc;
-
 use nalgebra as na;
 
-use psqs::geom::Geom;
 use psqs::program::mopac::{Mopac, Params};
 use psqs::queue::Queue;
+
+use crate::config::Molecule;
 
 pub mod energy;
 pub mod frequency;
 
 pub trait Optimize {
-    fn semi_empirical<Q: Queue<Mopac>>(
+    fn semi_empirical<Q: Queue<Mopac> + Sync>(
         &self,
-        moles: &Vec<Rc<Geom>>,
         params: &Params,
         submitter: &Q,
-        charge: isize,
-    ) -> na::DVector<f64>;
+        molecules: &[Molecule],
+    ) -> Option<na::DVector<f64>>;
 
-    fn num_jac<Q: Queue<Mopac>>(
+    fn num_jac<Q: Queue<Mopac> + Sync>(
         &self,
-        moles: &Vec<Rc<Geom>>,
         params: &Params,
         submitter: &Q,
-        charge: isize,
+        molecules: &[Molecule],
+        ntrue: usize,
     ) -> na::DMatrix<f64>;
 
     fn stat_multiplier(&self) -> f64;

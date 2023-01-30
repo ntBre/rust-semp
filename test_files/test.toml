@@ -1,8 +1,8 @@
+# global config
 job_limit = 10000
 chunk_size = 128
 sleep_int = 5
 max_iter = 5
-atom_names = ["C", "C", "C", "H", "H"]
 params = """
 USS        H    -11.246958000000
 ZS         H      1.268641000000
@@ -21,10 +21,30 @@ GP2        C      9.486212000000
 HSP        C      0.717322000000
 FN11       C      0.046302000000
 """
+optimize = "energy"
 broyden = false
 broyd_int = 10
-charge = 0
-optimize = "energy"
-dummies = []
-reorder = false
 reset_lambda = false
+queue = "slurm"
+delta = 1e-4
+
+[[molecule]]
+atom_names = ["C", "C", "C", "H", "H"]
+charge = 0
+dummies = []
+geometry = """
+C
+C 1 CC
+C 1 CC 2 CCC
+H 2 CH 1 HCC 3 180.0
+H 3 CH 1 HCC 2 180.0
+
+CC =                  1.42101898
+CCC =                55.60133141
+CH =                  1.07692776
+HCC =               147.81488230
+"""
+coord_type = { sic = "test_files/intder.in" }
+true_freqs = [3139.8, 3108.7, 1595.1, 1275.8, 1056.9, 1007.9, 876.8, 876.5, 772.7]
+irreps     = [  "A1",   "B2",   "A1",   "A1",   "B2",   "A2",  "A1",  "B2",  "B1"]
+template = "scfcrt=1.D-21 aux(precision=14) PM6 threads=1"

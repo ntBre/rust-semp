@@ -1,22 +1,13 @@
-use psqs::queue::local::LocalQueue;
-use rust_semp::{
-    optimize::{frequency::Frequency, Optimize},
-    *,
-};
+use psqs::queue::local::Local;
+use rust_semp::optimize::{frequency::Frequency, Optimize};
+use rust_semp::utils::setup;
 
 fn main() {
-    let freq = Frequency::new(
-        rust_pbqff::config::Config::load("test_files/pbqff.toml"),
-        rust_pbqff::Intder::load_file("test_files/intder.in"),
-        rust_pbqff::Spectro::load("test_files/spectro.in"),
-        vec![],
-        false,
-        Frequency::load_irreps("test_files/c3h2.symm"),
-    );
+    let config = rust_semp::config::Config::load("test_files/test.toml");
+    let freq = Frequency::default();
     setup();
-    let queue = LocalQueue::new("inp", 128);
+    let queue = Local::new("inp", 128, "/opt/mopac/mopac");
     freq.num_jac(
-        &Vec::new(),
         &"USS            H    -11.246958000000
     ZS             H      1.268641000000
     BETAS          H     -8.352984000000
@@ -36,6 +27,7 @@ fn main() {
             .parse()
             .unwrap(),
         &queue,
-        0,
+        &config.molecules,
+        9,
     );
 }

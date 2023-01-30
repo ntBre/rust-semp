@@ -1,12 +1,18 @@
 use std::fs::File;
+use std::io::Write;
+use std::iter::zip;
 use std::os::unix::io::AsRawFd;
 
 use nalgebra as na;
 
+use psqs::queue::local::Local;
+use psqs::queue::pbs::Pbs;
 use psqs::queue::slurm::Slurm;
+use rust_pbqff::config::Queue;
 use rust_semp::config::Config;
 use rust_semp::optimize::energy::Energy;
 use rust_semp::optimize::frequency::Frequency;
+use rust_semp::utils::{load_energies, load_geoms, parse_params, sort_irreps};
 use rust_semp::*;
 
 fn main() {
@@ -27,65 +33,146 @@ fn main() {
         libc::dup2(log_fd, 2);
     }
     let conf = Config::load(&conf_name);
-    let queue =
-        Slurm::new(conf.chunk_size, conf.job_limit, conf.sleep_int, "inp");
     let mut param_log = File::create("params.log")
         .expect("failed to create parameter log file");
     match conf.optimize {
         config::Protocol::Energy => {
             let ai = load_energies("rel.dat");
-            run_algo(
-                &mut param_log,
-                conf.atom_names,
-                "file07",
-                parse_params(&conf.params),
-                ai,
-                conf.max_iter,
-                conf.broyden,
-                conf.broyd_int,
-                queue,
-                conf.charge,
-                conf.reset_lambda,
-                Energy,
-            );
+            match conf.queue {
+                Queue::Pbs => run_algo(
+                    &mut param_log,
+                    &conf.molecules,
+                    parse_params(&conf.params),
+                    ai,
+                    conf.max_iter,
+                    conf.broyden,
+                    conf.broyd_int,
+                    Pbs::new(
+                        conf.chunk_size,
+                        conf.job_limit,
+                        conf.sleep_int,
+                        "inp",
+                        false,
+                    ),
+                    conf.reset_lambda,
+                    Energy {
+                        moles: load_geoms(
+                            "file07",
+                            &conf.molecules[0].atom_names,
+                        ),
+                    },
+                ),
+                Queue::Slurm => run_algo(
+                    &mut param_log,
+                    &conf.molecules,
+                    parse_params(&conf.params),
+                    ai,
+                    conf.max_iter,
+                    conf.broyden,
+                    conf.broyd_int,
+                    Slurm::new(
+                        conf.chunk_size,
+                        conf.job_limit,
+                        conf.sleep_int,
+                        "inp",
+                        false,
+                    ),
+                    conf.reset_lambda,
+                    Energy {
+                        moles: load_geoms(
+                            "file07",
+                            &conf.molecules[0].atom_names,
+                        ),
+                    },
+                ),
+                _ => panic!("unsupported queue `{:#?}`", conf.queue),
+            };
         }
         // requirements for a Frequency calculation:
-        // 1. pbqff input file called `pbqff.toml`
-        // 2. intder template called `intder.in`
-        // 3. spectro template called `spectro.in`
-        // 4. optimize = "frequency" in `semp.toml`
-        // 5. "true" frequencies in rel.dat
-        // 6. an empty `file07`
-        // 7. irreps for each of the frequencies in rel.dat in `symm`
+        // 1. intder template called `intder.in` (for SICs)
+        // 2. optimize = "frequency" in `semp.toml`
         config::Protocol::Frequency => {
-            let ai = Vec::from(load_energies("rel.dat").as_slice());
-            let irreps = Frequency::load_irreps("symm");
-            let ai = sort_irreps(&ai, &irreps);
+            let mut ai = Vec::new();
             eprintln!("symmetry-sorted true frequencies:");
-            for a in &ai {
-                eprintln!("{a:8.1}");
+            for (i, mol) in conf.molecules.iter().enumerate() {
+                eprintln!("Molecule {i}");
+                let a = mol.true_freqs.clone();
+                let irreps = mol.irreps.clone();
+                let a = sort_irreps(&a, &irreps);
+                for (i, a) in zip(irreps, a.clone()) {
+                    eprintln!("{i} {a:8.1}");
+                }
+                ai.extend(a);
             }
-            run_algo(
-                &mut param_log,
-                conf.atom_names,
-                "file07",
-                parse_params(&conf.params),
-                na::DVector::from(ai),
-                conf.max_iter,
-                conf.broyden,
-                conf.broyd_int,
-                queue,
-                conf.charge,
-                conf.reset_lambda,
-                Frequency::new(
-                    rust_pbqff::config::Config::load("pbqff.toml"),
-                    rust_pbqff::Intder::load_file("intder.in"),
-                    rust_pbqff::Spectro::load("spectro.in"),
-                    conf.dummies,
-                    conf.reorder,
-                    irreps,
+            write_true(&ai);
+            match conf.queue {
+                Queue::Pbs => run_algo(
+                    &mut param_log,
+                    &conf.molecules,
+                    parse_params(&conf.params),
+                    na::DVector::from(ai),
+                    conf.max_iter,
+                    conf.broyden,
+                    conf.broyd_int,
+                    Pbs::new(
+                        conf.chunk_size,
+                        conf.job_limit,
+                        conf.sleep_int,
+                        "inp",
+                        false,
+                    ),
+                    conf.reset_lambda,
+                    Frequency::new(conf.delta),
                 ),
-            );
+                Queue::Slurm => run_algo(
+                    &mut param_log,
+                    &conf.molecules,
+                    parse_params(&conf.params),
+                    na::DVector::from(ai),
+                    conf.max_iter,
+                    conf.broyden,
+                    conf.broyd_int,
+                    Slurm::new(
+                        conf.chunk_size,
+                        conf.job_limit,
+                        conf.sleep_int,
+                        "inp",
+                        false,
+                    ),
+                    conf.reset_lambda,
+                    Frequency::new(conf.delta),
+                ),
+                Queue::Local => run_algo(
+                    &mut param_log,
+                    &conf.molecules,
+                    parse_params(&conf.params),
+                    na::DVector::from(ai),
+                    conf.max_iter,
+                    conf.broyden,
+                    conf.broyd_int,
+                    Local {
+                        dir: "inp".to_owned(),
+                        chunk_size: conf.chunk_size,
+                        mopac: conf.mopac.expect(
+                            "mopac field must be specified for local queue",
+                        ),
+                    },
+                    conf.reset_lambda,
+                    Frequency::new(conf.delta),
+                ),
+            };
         }
     }
+}
+
+/// write the `true` frequencies to `true.dat` in the same format used in the
+/// log
+fn write_true(tru: &[f64]) {
+    let mut f =
+        std::fs::File::create("true.dat").expect("failed to make true.dat");
+    write!(f, "{:5}", "true").unwrap();
+    for t in tru {
+        write!(f, "{t:8.1}").unwrap();
+    }
+    writeln!(f).unwrap();
 }

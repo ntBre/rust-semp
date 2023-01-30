@@ -9,14 +9,23 @@ pub struct Stats {
 
 impl Stats {
     /// compute the Stats between `v` and `w` in cm-1 under the assumption they
-    /// started out in Ht
-    pub fn new(v: &na::DVector<f64>, w: &na::DVector<f64>, conv: f64) -> Self {
-        let count = v.len();
-        assert_eq!(count, w.len());
+    /// started out in Ht. `tru` is taken to be the "true" value, so length
+    /// mismatches are resolved in its favor.
+    pub fn new(
+        tru: &na::DVector<f64>,
+        w: &na::DVector<f64>,
+        conv: f64,
+    ) -> Self {
+        let count = tru.len();
+        let mut w = w.clone();
+        if w.len() < count {
+            w.extend(vec![0.0; count - w.len()]);
+        }
         let mut sq_diffs = 0.0;
-        let mut max = v[0] - w[0];
+        let mut max = tru[0] - w[0];
         for i in 0..count {
-            let diff = v[i] - w[i];
+            let wi = w.get(i).unwrap_or(&0.0);
+            let diff = tru[i] - wi;
             sq_diffs += diff * diff;
             if diff.abs() > max {
                 max = diff.abs();
@@ -30,24 +39,31 @@ impl Stats {
     }
     pub fn print_header() {
         println!(
-            "{:>17}{:>12}{:>12}{:>12}{:>12}{:>12}",
-            "cm-1", "cm-1", "cm-1", "cm-1", "cm-1", "s"
+            "{:>17}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+            "cm-1", "cm-1", "cm-1", "cm-1", "cm-1", "arb", "s"
         );
         println!(
-            "{:>5}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
-            "Iter", "Norm", "ΔNorm", "RMSD", "ΔRMSD", "Max", "Time"
+            "{:>5}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}{:>12}",
+            "Iter", "Norm", "ΔNorm", "RMSD", "ΔRMSD", "Max", "λ", "Time"
         );
     }
 
-    pub fn print_step(&self, iter: usize, last: &Self, time_milli: u128) {
-        print!(
-            "{:5}{:12.4}{:12.4}{:12.4}{:12.4}{:12.4}{:12.1}\n",
+    pub fn print_step(
+        &self,
+        iter: usize,
+        last: &Self,
+        time_milli: u128,
+        lambda: f64,
+    ) {
+        println!(
+            "{:5}{:12.4}{:12.4}{:12.4}{:12.4}{:12.4}{:12.3e}{:12.1}",
             iter,
             self.norm,
             self.norm - last.norm,
             self.rmsd,
             self.rmsd - last.rmsd,
             self.max,
+            lambda,
             time_milli as f64 / 1000.,
         );
     }

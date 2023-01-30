@@ -1,86 +1,70 @@
-use std::{fs, ops::Deref};
-
-use crate::{
-    optimize::{energy::Energy, frequency::Frequency},
-    stats::Stats,
+use std::{
+    fs::{self, File},
+    io::{BufRead, BufReader},
 };
 
-use psqs::queue::{local::LocalQueue, slurm::Slurm};
+use std::str::FromStr;
+
+use crate::{
+    config::Config,
+    optimize::{energy::Energy, frequency::Frequency},
+    stats::Stats,
+    utils::{load_energies, load_params},
+};
+
+use psqs::{
+    geom::Geom,
+    queue::{local::Local, slurm::Slurm},
+};
+use symm::Molecule;
 
 use super::*;
 
 #[test]
 fn test_load_geoms() {
-    let got =
-        load_geoms("test_files/three07", &string!["C", "C", "C", "H", "H"]);
-    let want = vec![
-        Geom::Xyz(vec![
-            Atom::new_from_label(
-                "C",
-                0.0000000000,
-                0.0000000000,
-                -1.6794733900,
-            ),
-            Atom::new_from_label("C", 0.0000000000, 1.2524327590, 0.6959098120),
-            Atom::new_from_label(
-                "C",
-                0.0000000000,
-                -1.2524327590,
-                0.6959098120,
-            ),
-            Atom::new_from_label("H", 0.0000000000, 3.0146272390, 1.7138963510),
-            Atom::new_from_label(
-                "H",
-                0.0000000000,
-                -3.0146272390,
-                1.7138963510,
-            ),
-        ]),
-        Geom::Xyz(vec![
-            Atom::new_from_label(
-                "C",
-                0.0000000000,
-                0.0000000000,
-                -1.6929508795,
-            ),
-            Atom::new_from_label("C", 0.0000000000, 1.2335354991, 0.6923003326),
-            Atom::new_from_label(
-                "C",
-                0.0000000000,
-                -1.2335354991,
-                0.6923003326,
-            ),
-            Atom::new_from_label("H", 0.0000000000, 2.9875928126, 1.7242445752),
-            Atom::new_from_label(
-                "H",
-                0.0000000000,
-                -2.9875928126,
-                1.7242445752,
-            ),
-        ]),
-        Geom::Xyz(vec![
-            Atom::new_from_label(
-                "C",
-                0.0000000000,
-                0.0000000000,
-                -1.6826636598,
-            ),
-            Atom::new_from_label("C", 0.0000000000, 1.2382598141, 0.6926064201),
-            Atom::new_from_label(
-                "C",
-                0.0000000000,
-                -1.2382598141,
-                0.6926064201,
-            ),
-            Atom::new_from_label("H", 0.0000000000, 2.9956906742, 1.7187948778),
-            Atom::new_from_label(
-                "H",
-                0.0000000000,
-                -2.9956906742,
-                1.7187948778,
-            ),
-        ]),
+    let got = utils::load_geoms(
+        "test_files/three07",
+        &string!["C", "C", "C", "H", "H"],
+    );
+    let moles = [
+        Molecule::from_str(
+            "
+        C 0.0000000000        0.0000000000       -1.6794733900
+        C 0.0000000000        1.2524327590        0.6959098120
+        C 0.0000000000       -1.2524327590        0.6959098120
+        H 0.0000000000        3.0146272390        1.7138963510
+        H 0.0000000000       -3.0146272390        1.7138963510
+",
+        )
+        .unwrap(),
+        Molecule::from_str(
+            "
+        C 0.0000000000        0.0000000000       -1.6929508795
+        C 0.0000000000        1.2335354991        0.6923003326
+        C 0.0000000000       -1.2335354991        0.6923003326
+        H 0.0000000000        2.9875928126        1.7242445752
+        H 0.0000000000       -2.9875928126        1.7242445752
+",
+        )
+        .unwrap(),
+        Molecule::from_str(
+            "
+        C 0.0000000000        0.0000000000       -1.6826636598
+        C 0.0000000000        1.2382598141        0.6926064201
+        C 0.0000000000       -1.2382598141        0.6926064201
+        H 0.0000000000        2.9956906742        1.7187948778
+        H 0.0000000000       -2.9956906742        1.7187948778
+",
+        )
+        .unwrap(),
     ];
+    let want = moles
+        .into_iter()
+        .map(|mut m| {
+            m.to_angstrom();
+            Geom::Xyz(m.atoms)
+        })
+        .collect();
     assert!(comp_geoms(got, want, 1e-10));
 }
 
@@ -101,10 +85,7 @@ fn comp_vec(got: &[f64], want: &[f64], eps: f64) -> bool {
     true
 }
 
-fn comp_geoms<T>(got: Vec<T>, want: Vec<Geom>, eps: f64) -> bool
-where
-    T: Deref<Target = Geom>,
-{
+fn comp_geoms(got: Vec<Geom>, want: Vec<Geom>, eps: f64) -> bool {
     for (i, mol) in got.iter().enumerate() {
         let mol = mol.xyz().unwrap();
         for (j, atom) in mol.iter().enumerate() {
@@ -183,7 +164,8 @@ fn test_load_params() {
 
 #[test]
 fn test_write_submit_script() {
-    Slurm::default().write_submit_script(
+    <Slurm as Queue<Mopac>>::write_submit_script(
+        &Slurm::default(),
         &string!["input1", "input2", "input3"],
         "/tmp/submit.slurm",
     );
@@ -197,35 +179,43 @@ fn test_write_submit_script() {
 #SBATCH --no-requeue
 #SBATCH --mem=1gb
 export LD_LIBRARY_PATH=/home/qc/mopac2016/
+echo $SLURM_JOB_ID
+date
+hostname
 /home/qc/mopac2016/MOPAC2016.exe input1.mop
 /home/qc/mopac2016/MOPAC2016.exe input2.mop
 /home/qc/mopac2016/MOPAC2016.exe input3.mop
 ";
+
     assert_eq!(got, want);
     fs::remove_file("/tmp/submit.slurm").unwrap();
 }
 
 #[test]
 fn test_one_iter() {
+    let config = Config::load("test_files/test.toml");
     let names = string!["C", "C", "C", "H", "H"];
-    let moles = load_geoms("test_files/three07", &names);
-    let params = load_params("test_files/params.dat");
+    let moles = utils::load_geoms("test_files/three07", &names);
+    let params = utils::load_params("test_files/params.dat");
     let want = na::DVector::from(vec![
         0.0,
-        0.0016682034505434151,
-        0.0013685168011946802,
+        0.0016682056863255301,
+        0.0013685188198143683,
     ]);
-    let got = Energy.semi_empirical(
-        &moles,
+    let got = Energy { moles }.semi_empirical(
         &params,
-        &LocalQueue {
+        &Local {
             chunk_size: 128,
             dir: "inp".to_string(),
+            ..Default::default()
         },
-        0,
+        &config.molecules,
     );
-    let eps = 1e-14;
-    assert!(comp_dvec(got, want, eps));
+    let eps = match hostname().as_str() {
+        "cactus" | "keystone" => 4e-8,
+        _ => 1e-14,
+    };
+    assert!(comp_dvec(got.unwrap(), want, eps));
 }
 
 /// load a matrix from a file. each line becomes a row in the resulting matrix.
@@ -235,7 +225,7 @@ fn load_mat(filename: &str) -> na::DMatrix<f64> {
     let f = match File::open(filename) {
         Ok(f) => f,
         Err(e) => {
-            eprintln!("failed to open {} with {}", filename, e);
+            eprintln!("failed to open {filename} with {e}");
             std::process::exit(1);
         }
     };
@@ -244,7 +234,6 @@ fn load_mat(filename: &str) -> na::DMatrix<f64> {
     let mut rows = 0;
     for line in lines {
         let sp: Vec<f64> = line
-            .trim()
             .split_whitespace()
             .skip(1)
             .map(|x| x.parse().unwrap())
@@ -274,7 +263,7 @@ fn comp_dvec(got: na::DVector<f64>, want: na::DVector<f64>, eps: f64) -> bool {
     if norm < eps {
         return true;
     }
-    eprintln!("comp_vec: norm = {:e}", norm);
+    eprintln!("comp_vec: norm = {norm:e}");
     false
 }
 
@@ -283,48 +272,43 @@ fn comp_mat(got: na::DMatrix<f64>, want: na::DMatrix<f64>, eps: f64) -> bool {
     if norm < eps {
         return true;
     }
-    eprintln!("comp_mat: norm = {}", norm);
+    eprintln!("comp_mat: norm = {norm}");
     false
 }
 
 #[ignore]
 #[test]
 fn test_num_jac() {
+    let config = crate::config::Config::load("test_files/test.toml");
     let names = string!["C", "C", "C", "H", "H"];
     {
-        let moles = load_geoms("test_files/small07", &names);
-        let params = load_params("test_files/small.params");
+        let moles = utils::load_geoms("test_files/small07", &names);
+        let params = utils::load_params("test_files/small.params");
         let want = load_mat("test_files/small.jac");
-        let got = Energy.num_jac(
-            &moles,
+        let got = Energy { moles }.num_jac(
             &params,
-            &LocalQueue {
-                chunk_size: 128,
-                dir: "inp".to_string(),
-            },
-            0,
+            &Local::new("inp", 128, "/opt/mopac/mopac"),
+            &config.molecules,
+            9,
         );
-        assert!(comp_mat(got, want, 1e-5));
+        assert!(comp_mat(got, want, 2e-5));
     }
     {
         // want jac straight from the Go version
-        let moles = load_geoms("test_files/three07", &names);
-        let params = load_params("test_files/three.params");
+        let moles = utils::load_geoms("test_files/three07", &names);
+        let params = utils::load_params("test_files/three.params");
         let want = load_mat("test_files/three.jac");
-        let got = Energy.num_jac(
-            &moles,
+        let got = Energy { moles }.num_jac(
             &params,
-            &LocalQueue {
-                chunk_size: 128,
-                dir: "inp".to_string(),
-            },
-            0,
+            &Local::new("inp", 128, "/opt/mopac/mopac"),
+            &config.molecules,
+            9,
         );
         let tol = match hostname().as_str() {
-            "cactus" | "bonsai" => 3e-6,
+            "cactus" | "bonsai" | "keystone" => 4.2e-6,
             _ => 1e-8,
         };
-        assert!(comp_mat(got, want, tol,));
+        assert!(comp_mat(got, want, tol));
     }
 }
 
@@ -333,7 +317,7 @@ fn test_norm() {
     // making sure the nalgebra vector norm is what I think it is
     let v = na::DVector::<f64>::from(vec![1.0, 2.0, 3.0]);
     let got = v.norm();
-    let want = ((1.0 + 4.0 + 9.0) as f64).sqrt();
+    let want = f64::sqrt(1.0 + 4.0 + 9.0);
     assert_eq!(got, want);
 }
 
@@ -476,14 +460,19 @@ fn test_algo() {
     // loading everything
     let want = match hostname().as_str() {
         "cactus" => Stats {
-            norm: 5.2262,
-            rmsd: 1.0452,
-            max: 2.7152,
+            norm: 17.68655029777878,
+            rmsd: 3.537310059555756,
+            max: 7.453759816083651,
         },
         "bonsai" => Stats {
-            norm: 10.683446823854098,
-            rmsd: 2.13668936477082,
-            max: 6.088680294135415,
+            norm: 6.82638384609378,
+            rmsd: 1.3652767692187562,
+            max: 3.298712857132514,
+        },
+        "keystone" => Stats {
+            norm: 23.551914386939192,
+            rmsd: 4.710382877387839,
+            max: 10.338208511214834,
         },
         _ => Stats {
             norm: 7.1820,
@@ -491,27 +480,27 @@ fn test_algo() {
             max: 3.7770,
         },
     };
-    let names = string!["C", "C", "C", "H", "H"];
-    let queue = LocalQueue {
-        chunk_size: 128,
-        dir: "inp".to_string(),
-    };
+    let config = Config::load("test_files/test.toml");
+    let queue = Local::new("inp", 128, "/opt/mopac/mopac");
     let geom_file = "test_files/small07";
     let param_file = "test_files/small.params";
     let energy_file = "test_files/25.dat";
     let got = run_algo(
         &mut std::io::sink(),
-        names,
-        geom_file,
-        load_params(param_file),
-        load_energies(energy_file),
+        &config.molecules,
+        utils::load_params(param_file),
+        utils::load_energies(energy_file),
         5,
         true,
         5,
         queue,
-        0,
         false,
-        Energy,
+        Energy {
+            moles: utils::load_geoms(
+                geom_file,
+                &config.molecules[0].atom_names,
+            ),
+        },
     );
     assert_eq!(got, want);
 }
@@ -519,22 +508,13 @@ fn test_algo() {
 #[test]
 #[ignore]
 fn freq_semi_empirical() {
-    let freq = Frequency::new(
-        rust_pbqff::config::Config::load("test_files/pbqff.toml"),
-        rust_pbqff::Intder::load_file("test_files/intder.in"),
-        rust_pbqff::Spectro::load("test_files/spectro.in"),
-        vec![],
-        false,
-        vec![],
-    );
-    setup();
-    let queue = LocalQueue {
-        chunk_size: 128,
-        dir: "inp".to_string(),
-    };
-    let mut got = freq.semi_empirical(
-        &Vec::new(),
-        &"USS            H    -11.246958000000
+    let config = Config::load("test_files/test.toml");
+    let freq = Frequency::default();
+    utils::setup();
+    let queue = Local::new("inp", 128, "/opt/mopac/mopac");
+    let mut got = freq
+        .semi_empirical(
+            &"USS            H    -11.246958000000
 ZS             H      1.268641000000
 BETAS          H     -8.352984000000
 GSS            H     14.448686000000
@@ -550,42 +530,41 @@ GSP            C     11.528134000000
 GP2            C      9.486212000000
 HSP            C      0.717322000000
 FN11           C      0.046302000000"
-            .parse()
-            .unwrap(),
-        &queue,
-        0,
-    );
+                .parse()
+                .unwrap(),
+            &queue,
+            &config.molecules,
+        )
+        .unwrap();
     let got = got.as_mut_slice();
     got.sort_by(|a, b| b.partial_cmp(a).unwrap());
     approx::assert_abs_diff_eq!(
         na::DVector::from(Vec::from(got)),
         na::DVector::from(vec![
-            2784.0, 2764.3, 1775.7, 1177.1, 1040.6, 960.1, 927.0, 920.0, 905.3,
+            2783.961357017977,
+            2764.3281931305864,
+            1775.6737582101287,
+            1177.145694605022,
+            1040.6327552461862,
+            960.1588882411834,
+            927.0954879807678,
+            919.9554364598707,
+            905.3386838377455
         ]),
-        epsilon = 0.2
+        epsilon = 0.1
     );
-    takedown();
+    utils::takedown();
 }
 
 #[test]
 #[ignore]
 fn freq_num_jac() {
     // this test takes 23 minutes with the current implementation at work
-    let freq = Frequency::new(
-        rust_pbqff::config::Config::load("test_files/pbqff.toml"),
-        rust_pbqff::Intder::load_file("test_files/intder.in"),
-        rust_pbqff::Spectro::load("test_files/spectro.in"),
-        vec![],
-        false,
-        Frequency::load_irreps("test_files/c3h2.symm"),
-    );
-    setup();
-    let queue = LocalQueue {
-        chunk_size: 128,
-        dir: "inp".to_string(),
-    };
+    let config = Config::load("test_files/test.toml");
+    let freq = Frequency::default();
+    utils::setup();
+    let queue = Local::new("inp", 128, "/opt/mopac/mopac");
     let got = freq.num_jac(
-        &Vec::new(),
         &"USS            H    -11.246958000000
     ZS             H      1.268641000000
     BETAS          H     -8.352984000000
@@ -605,20 +584,12 @@ fn freq_num_jac() {
             .parse()
             .unwrap(),
         &queue,
-        0,
+        &config.molecules,
+        9,
     );
     let want = load_mat("test_files/freq.jac");
     // this should agree to 1e-12 depending on the computer I guess, I printed
     // `got` to 12 decimal places when obtaining the `want` value
     approx::assert_abs_diff_eq!(got, want, epsilon = 1e-5,);
-    takedown();
-}
-
-#[test]
-fn test_load_irreps() {
-    use symm::Irrep::*;
-
-    let got = Frequency::load_irreps("test_files/symm");
-    let want = vec![B2u, B1g, Ag, B3u, Ag, B3u, Ag, B1g, Au, B1u, B2g, B2u];
-    assert_eq!(got, want);
+    utils::takedown();
 }

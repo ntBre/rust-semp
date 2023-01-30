@@ -161,7 +161,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
         } // else (first iteration) use jac from outside loop
 
         if *DEBUG == "jac" {
-            eprintln!("{jac:8.3e}");
+            eprintln!("jac_t = {:8.3e}", jac.transpose());
         }
 
         let lambda_init = lambda;

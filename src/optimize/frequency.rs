@@ -29,8 +29,6 @@ use std::sync::Mutex;
 
 use super::Optimize;
 
-static DELTA: f64 = 1e-4;
-
 use std::sync::Once;
 static mut DEBUG: bool = false;
 static INIT: Once = Once::new();
@@ -61,6 +59,7 @@ fn output_stream() -> Box<dyn Write> {
 }
 
 pub struct Frequency {
+    delta: f64,
     logger: Mutex<File>,
 }
 
@@ -191,12 +190,12 @@ enum Builder {
 }
 
 impl Frequency {
-    pub fn new() -> Self {
+    pub fn new(delta: f64) -> Self {
         let logger = Mutex::new(
             std::fs::File::create("freqs.log")
                 .expect("failed to create 'freqs.log'"),
         );
-        Self { logger }
+        Self { delta, logger }
     }
 
     /// build jobs for a fixed set of Params. instead of passing the params as
@@ -521,7 +520,7 @@ impl Frequency {
             for row in 0..rows {
                 let index = 2 * i * rows + 2 * row;
                 let mut pf = params.clone();
-                pf.values[row] += DELTA;
+                pf.values[row] += self.delta;
                 // idx = job_num so use it twice
                 let (freq, fwd_jobs) = self
                     .build_jobs(
@@ -543,7 +542,7 @@ impl Frequency {
                 freqs[i].push(freq);
 
                 let mut pb = params.clone();
-                pb.values[row] -= DELTA;
+                pb.values[row] -= self.delta;
                 let (freq, bwd_jobs) = self
                     .build_jobs(
                         &mut output_stream(),
@@ -653,7 +652,7 @@ impl Frequency {
             for row in 0..rows {
                 let index = 2 * i * rows + 2 * row;
                 let mut pf = params.clone();
-                pf.values[row] += DELTA;
+                pf.values[row] += self.delta;
                 // idx = job_num so use it twice
                 let (freq, fwd_jobs) = self
                     .build_jobs(
@@ -675,7 +674,7 @@ impl Frequency {
                 freqs[i].push(freq);
 
                 let mut pb = params.clone();
-                pb.values[row] -= DELTA;
+                pb.values[row] -= self.delta;
                 let (freq, bwd_jobs) = self
                     .build_jobs(
                         &mut output_stream(),
@@ -715,7 +714,7 @@ fn write_params(
 
 impl Default for Frequency {
     fn default() -> Self {
-        Self::new()
+        Self::new(1e-4)
     }
 }
 
@@ -829,7 +828,7 @@ impl Optimize for Frequency {
 
         let rows = params.len();
         // build all the optimizations
-        let opts = jac_opt(rows, params, molecules);
+        let opts = self.jac_opt(rows, params, molecules);
 
         setup();
         let mut geoms = vec![Default::default(); opts.len()];
@@ -944,7 +943,7 @@ impl Optimize for Frequency {
                         Ordering::Equal => {}
                         Ordering::Greater => fwd.resize_vertically_mut(bl, 0.0),
                     }
-                    (fwd - bwd) / (2. * DELTA)
+                    (fwd - bwd) / (2. * self.delta)
                 })
                 .collect();
             assert_eq!(jac_t.len(), params.len());
@@ -997,55 +996,58 @@ impl Optimize for Frequency {
     }
 }
 
-/// helper function for generating the optimizations for the jacobian. returns a
-/// vec of Jobs and also a vec of indices separating each molecule
-fn jac_opt(
-    rows: usize,
-    params: &Params,
-    molecules: &[config::Molecule],
-) -> Vec<Job<Mopac>> {
-    let mut opts = Vec::new();
-    // each row corresponds to one parameter
-    for (i, molecule) in molecules.iter().enumerate() {
-        for row in 0..rows {
-            let index = 2 * i * rows + 2 * row;
-            // forward
-            {
-                let mut pf = params.clone();
-                pf.values[row] += DELTA;
-                opts.push(Job::new(
-                    Mopac::new_full(
-                        format!("inp/opt{row}_fwd{i}"),
-                        Some(pf),
-                        molecule.geometry.clone(),
-                        molecule.charge,
-                        molecule.template.clone(),
-                    ),
-                    // this is the index because I have rows entries for each
-                    // molecule. for the first molecule i = 0 and this reduces
-                    // to the original formula of 2*row
-                    index,
-                ));
-            }
+impl Frequency {
+    /// helper function for generating the optimizations for the jacobian. returns a
+    /// vec of Jobs and also a vec of indices separating each molecule
+    fn jac_opt(
+        &self,
+        rows: usize,
+        params: &Params,
+        molecules: &[config::Molecule],
+    ) -> Vec<Job<Mopac>> {
+        let mut opts = Vec::new();
+        // each row corresponds to one parameter
+        for (i, molecule) in molecules.iter().enumerate() {
+            for row in 0..rows {
+                let index = 2 * i * rows + 2 * row;
+                // forward
+                {
+                    let mut pf = params.clone();
+                    pf.values[row] += self.delta;
+                    opts.push(Job::new(
+                        Mopac::new_full(
+                            format!("inp/opt{row}_fwd{i}"),
+                            Some(pf),
+                            molecule.geometry.clone(),
+                            molecule.charge,
+                            molecule.template.clone(),
+                        ),
+                        // this is the index because I have rows entries for each
+                        // molecule. for the first molecule i = 0 and this reduces
+                        // to the original formula of 2*row
+                        index,
+                    ));
+                }
 
-            // backward
-            {
-                let mut pb = params.clone();
-                pb.values[row] -= DELTA;
-                opts.push(Job::new(
-                    Mopac::new_full(
-                        format!("inp/opt{row}_bwd{i}"),
-                        Some(pb),
-                        molecule.geometry.clone(),
-                        molecule.charge,
-                        molecule.template.clone(),
-                    ),
-                    index + 1,
-                ));
+                // backward
+                {
+                    let mut pb = params.clone();
+                    pb.values[row] -= self.delta;
+                    opts.push(Job::new(
+                        Mopac::new_full(
+                            format!("inp/opt{row}_bwd{i}"),
+                            Some(pb),
+                            molecule.geometry.clone(),
+                            molecule.charge,
+                            molecule.template.clone(),
+                        ),
+                        index + 1,
+                    ));
+                }
             }
         }
+        opts
     }
-    opts
 }
 
 /// return the mean absolute error (1/N ∑ᵢᴺ |aᵢ - bᵢ|) where N is the shorter of

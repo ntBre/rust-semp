@@ -4,7 +4,7 @@ use rust_semp::utils::setup;
 
 fn main() {
     let config = rust_semp::config::Config::load("test_files/test.toml");
-    let freq = Frequency::new();
+    let freq = Frequency::default();
     setup();
     let queue = Local::new("inp", 128, "/opt/mopac/mopac");
     freq.num_jac(

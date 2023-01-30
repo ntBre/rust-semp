@@ -48,6 +48,8 @@ pub(super) struct RawConfig {
     pub queue: rust_pbqff::config::Queue,
 
     pub mopac: Option<String>,
+
+    pub delta: f64,
 }
 
 #[derive(Clone, Deserialize, Debug, PartialEq)]
@@ -159,6 +161,7 @@ HCC =               147.81488230
             reset_lambda: false,
             queue: Queue::Slurm,
             mopac: None,
+            delta: 1e-4,
         };
         assert_eq!(got, want);
     }

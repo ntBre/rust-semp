@@ -26,6 +26,7 @@ broyden = false
 broyd_int = 10
 reset_lambda = false
 queue = "slurm"
+delta = 1e-4
 
 [[molecule]]
 atom_names = ["C", "C", "C", "H", "H"]

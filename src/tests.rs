@@ -509,7 +509,7 @@ fn test_algo() {
 #[ignore]
 fn freq_semi_empirical() {
     let config = Config::load("test_files/test.toml");
-    let freq = Frequency::new();
+    let freq = Frequency::default();
     utils::setup();
     let queue = Local::new("inp", 128, "/opt/mopac/mopac");
     let mut got = freq
@@ -561,7 +561,7 @@ FN11           C      0.046302000000"
 fn freq_num_jac() {
     // this test takes 23 minutes with the current implementation at work
     let config = Config::load("test_files/test.toml");
-    let freq = Frequency::new();
+    let freq = Frequency::default();
     utils::setup();
     let queue = Local::new("inp", 128, "/opt/mopac/mopac");
     let got = freq.num_jac(

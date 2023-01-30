@@ -58,6 +58,9 @@ pub struct Config {
 
     /// the location of the mopac executable for a local queue
     pub mopac: Option<String>,
+
+    /// the step size in the parameters
+    pub delta: f64,
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -135,6 +138,7 @@ impl Config {
             molecules,
             queue: raw.queue,
             mopac: raw.mopac,
+            delta: raw.delta,
         }
     }
 }

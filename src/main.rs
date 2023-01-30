@@ -122,7 +122,7 @@ fn main() {
                         false,
                     ),
                     conf.reset_lambda,
-                    Frequency::new(),
+                    Frequency::new(conf.delta),
                 ),
                 Queue::Slurm => run_algo(
                     &mut param_log,
@@ -140,7 +140,7 @@ fn main() {
                         false,
                     ),
                     conf.reset_lambda,
-                    Frequency::new(),
+                    Frequency::new(conf.delta),
                 ),
                 Queue::Local => run_algo(
                     &mut param_log,
@@ -158,7 +158,7 @@ fn main() {
                         ),
                     },
                     conf.reset_lambda,
-                    Frequency::new(),
+                    Frequency::new(conf.delta),
                 ),
             };
         }

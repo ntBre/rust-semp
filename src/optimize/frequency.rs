@@ -480,7 +480,7 @@ impl Frequency {
         };
         if is_debug() {
             writeln!(w, "dir={dir}").unwrap();
-            writeln!(w, "{summary}").unwrap();
+            writeln!(w, "{:?}", summary.corrs).unwrap();
         }
         let s = summary.corrs.len();
         let freqs: Vec<f64> = summary
@@ -938,6 +938,9 @@ impl Optimize for Frequency {
                     let mut fwd = pair[0].clone();
                     let mut bwd = pair[1].clone();
                     let (fl, bl) = (fwd.len(), bwd.len());
+                    if fl != bl {
+                        eprintln!("fl ({fl}) != bl ({bl}), resizing");
+                    }
                     match fl.cmp(&bl) {
                         Ordering::Less => bwd.resize_vertically_mut(fl, 0.0),
                         Ordering::Equal => {}

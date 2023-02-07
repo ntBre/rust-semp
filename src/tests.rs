@@ -509,10 +509,16 @@ fn test_algo() {
 #[ignore]
 fn freq_semi_empirical() {
     let config = Config::load("test_files/test.toml");
-    let freq = Frequency::default();
+    let mut ai = Vec::new();
+    for mol in &config.molecules {
+        let a = mol.true_freqs.clone();
+        let irreps = mol.irreps.clone();
+        let a = utils::sort_irreps(&a, &irreps);
+        ai.extend(a);
+    }
     utils::setup();
     let queue = Local::new("inp", 128, "/opt/mopac/mopac");
-    let mut got = freq
+    let mut got = Frequency::new(ai.into(), config.delta)
         .semi_empirical(
             &"USS            H    -11.246958000000
 ZS             H      1.268641000000

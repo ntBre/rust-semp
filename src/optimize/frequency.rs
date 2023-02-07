@@ -33,6 +33,8 @@ use std::sync::Once;
 static mut DEBUG: bool = false;
 static INIT: Once = Once::new();
 
+type Dvec = DVector<f64>;
+
 /// check the `SEMP_DUMP_DEBUG` environment variable on first call and from then
 /// on report whether or not it was set to `1`
 fn is_debug() -> bool {
@@ -59,6 +61,7 @@ fn output_stream() -> Box<dyn Write> {
 }
 
 pub struct Frequency {
+    train: DVector<f64>,
     delta: f64,
     logger: Mutex<File>,
 }
@@ -190,12 +193,16 @@ enum Builder {
 }
 
 impl Frequency {
-    pub fn new(delta: f64) -> Self {
+    pub fn new(train: DVector<f64>, delta: f64) -> Self {
         let logger = Mutex::new(
             std::fs::File::create("freqs.log")
                 .expect("failed to create 'freqs.log'"),
         );
-        Self { delta, logger }
+        Self {
+            train,
+            delta,
+            logger,
+        }
     }
 
     /// build jobs for a fixed set of Params. instead of passing the params as
@@ -695,6 +702,15 @@ impl Frequency {
         }
         (jobs, freqs, indices)
     }
+
+    fn rel_diff(&self, mut v: Dvec) -> Dvec {
+        assert_eq!(self.train.len(), v.len());
+        for (i, f) in v.iter_mut().enumerate() {
+            let t = self.train[i];
+            *f = (*f - t) / t;
+        }
+        v
+    }
 }
 
 /// generate a parameter filename using `job_num`, write the parameters to that
@@ -714,7 +730,7 @@ fn write_params(
 
 impl Default for Frequency {
     fn default() -> Self {
-        Self::new(1e-4)
+        Self::new(DVector::zeros(0), 1e-4)
     }
 }
 
@@ -809,7 +825,7 @@ impl Optimize for Frequency {
             let _ = std::fs::remove_dir_all("freqs");
             ret.extend(res.iter());
         }
-        Some(DVector::from(ret))
+        Some(self.rel_diff(DVector::from(ret)))
     }
 
     /// Compute the numerical Jacobian for the geomeries in `moles` and the
@@ -946,6 +962,8 @@ impl Optimize for Frequency {
                         Ordering::Equal => {}
                         Ordering::Greater => fwd.resize_vertically_mut(bl, 0.0),
                     }
+                    let fwd = self.rel_diff(fwd);
+                    let bwd = self.rel_diff(bwd);
                     (fwd - bwd) / (2. * self.delta)
                 })
                 .collect();

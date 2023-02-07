@@ -760,7 +760,7 @@ impl Optimize for Frequency {
                 // safe to use 0 as job_num because we have to reset directories
                 // after the harmonic part anyway
                 let tmpl = write_params(0, params, molecule.template.clone());
-                let (s, o, _ref_energy, pg) = norm.cart_part(
+                let (s, o, _ref_energy, pg, _) = norm.cart_part(
                     &FirstPart {
                         template: tmpl.header,
                         optimize: false,

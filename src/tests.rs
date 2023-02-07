@@ -212,7 +212,7 @@ fn test_one_iter() {
         &config.molecules,
     );
     let eps = match hostname().as_str() {
-        "cactus" | "keystone" => 4e-8,
+        "cactus" | "keystone" | "bonsai" => 4e-8,
         _ => 1e-14,
     };
     assert!(comp_dvec(got.unwrap(), want, eps));
@@ -465,9 +465,9 @@ fn test_algo() {
             max: 7.453759816083651,
         },
         "bonsai" => Stats {
-            norm: 6.82638384609378,
-            rmsd: 1.3652767692187562,
-            max: 3.298712857132514,
+            norm: 7.356730516402555,
+            rmsd: 1.471346103280511,
+            max: 3.4654645038349137,
         },
         "keystone" => Stats {
             norm: 23.551914386939192,

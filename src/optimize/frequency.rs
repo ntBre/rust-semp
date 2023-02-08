@@ -707,7 +707,7 @@ impl Frequency {
         assert_eq!(self.train.len(), v.len());
         for (i, f) in v.iter_mut().enumerate() {
             let t = self.train[i];
-            *f = (*f - t) / t;
+            *f = 100.0 * (*f - t) / t;
         }
         v
     }

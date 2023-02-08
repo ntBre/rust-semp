@@ -62,6 +62,7 @@ fn output_stream() -> Box<dyn Write> {
 
 pub struct Frequency {
     train: DVector<f64>,
+    cur: Option<DVector<f64>>,
     delta: f64,
     logger: Mutex<File>,
 }
@@ -202,6 +203,7 @@ impl Frequency {
             train,
             delta,
             logger,
+            cur: None,
         }
     }
 
@@ -737,7 +739,7 @@ impl Default for Frequency {
 impl Optimize for Frequency {
     /// compute the semi-empirical energies of `moles` for the given `params`
     fn semi_empirical<Q: Queue<Mopac> + Sync>(
-        &self,
+        &mut self,
         params: &Params,
         submitter: &Q,
         molecules: &[config::Molecule],
@@ -825,7 +827,9 @@ impl Optimize for Frequency {
             let _ = std::fs::remove_dir_all("freqs");
             ret.extend(res.iter());
         }
-        Some(self.rel_diff(DVector::from(ret)))
+        let ret = Some(self.rel_diff(DVector::from(ret)));
+        self.cur = ret.clone();
+        ret
     }
 
     /// Compute the numerical Jacobian for the geomeries in `moles` and the
@@ -1007,9 +1011,10 @@ impl Optimize for Frequency {
         1.0
     }
 
-    fn log(&self, iter: usize, got: &DVector<f64>, want: &DVector<f64>) {
+    fn log(&self, iter: usize, _got: &DVector<f64>, want: &DVector<f64>) {
         let mut logger = self.logger.lock().unwrap();
         write!(logger, "{iter:5}").unwrap();
+        let got = self.cur.as_ref().unwrap();
         for g in got {
             write!(logger, "{g:8.1}").unwrap();
         }

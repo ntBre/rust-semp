@@ -111,7 +111,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
     broyd_int: usize,
     queue: Q,
     reset_lambda: bool,
-    optimizer: O,
+    mut optimizer: O,
 ) -> Stats {
     let conv = optimizer.stat_multiplier();
     let mut params = params;

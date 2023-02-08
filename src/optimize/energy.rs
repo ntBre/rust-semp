@@ -20,7 +20,7 @@ pub struct Energy {
 impl Optimize for Energy {
     /// compute the semi-empirical energies of `moles` for the given `params`
     fn semi_empirical<Q: Queue<Mopac> + Sync>(
-        &self,
+        &mut self,
         params: &Params,
         submitter: &Q,
         molecules: &[Molecule],

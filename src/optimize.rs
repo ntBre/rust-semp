@@ -10,7 +10,7 @@ pub mod frequency;
 
 pub trait Optimize {
     fn semi_empirical<Q: Queue<Mopac> + Sync>(
-        &self,
+        &mut self,
         params: &Params,
         submitter: &Q,
         molecules: &[Molecule],

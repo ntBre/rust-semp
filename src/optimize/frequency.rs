@@ -827,9 +827,9 @@ impl Optimize for Frequency {
             let _ = std::fs::remove_dir_all("freqs");
             ret.extend(res.iter());
         }
-        let ret = Some(self.rel_diff(DVector::from(ret)));
-        self.cur = ret.clone();
-        ret
+        let ret = DVector::from(ret);
+        self.cur = Some(ret.clone());
+        Some(self.rel_diff(ret))
     }
 
     /// Compute the numerical Jacobian for the geomeries in `moles` and the

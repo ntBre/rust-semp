@@ -1011,14 +1011,14 @@ impl Optimize for Frequency {
         1.0
     }
 
-    fn log(&self, iter: usize, _got: &DVector<f64>, want: &DVector<f64>) {
+    fn log(&self, iter: usize, _got: &DVector<f64>, _want: &DVector<f64>) {
         let mut logger = self.logger.lock().unwrap();
         write!(logger, "{iter:5}").unwrap();
         let got = self.cur.as_ref().unwrap();
         for g in got {
             write!(logger, "{g:8.1}").unwrap();
         }
-        writeln!(logger, "{:8.1}", mae(got, want)).unwrap();
+        writeln!(logger, "{:8.1}", mae(got, &self.train)).unwrap();
     }
 }
 

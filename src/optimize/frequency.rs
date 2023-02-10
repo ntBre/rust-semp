@@ -486,7 +486,7 @@ impl Frequency {
             }
             FreqParts::NormHarm { .. } => unimplemented!(),
         };
-        if is_debug() {
+        if *DEBUG {
             writeln!(w, "dir={dir}").unwrap();
             writeln!(w, "{:?}", summary.corrs).unwrap();
         }

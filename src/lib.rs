@@ -116,11 +116,15 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
     let conv = optimizer.stat_multiplier();
     let mut params = params;
     log_params(param_log, 0, &params);
+    let semi_empirical_failure = || {
+        eprintln!("semi_empirical failed, replacing");
+        na::DVector::zeros(ai.len())
+    };
     let mut start = std::time::Instant::now();
     // initial semi-empirical energies and stats
     let mut se = optimizer
         .semi_empirical(&params, &queue, molecules)
-        .unwrap_or_else(|| na::DVector::zeros(ai.len()));
+        .unwrap_or_else(semi_empirical_failure);
     optimizer.log(0, &se, &ai);
     let mut old_se = se.clone();
     let mut stats = Stats::new(&ai, &se, conv);
@@ -176,7 +180,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
         );
         let mut new_se = optimizer
             .semi_empirical(&try_params, &queue, molecules)
-            .unwrap_or_else(|| na::DVector::zeros(ai.len()));
+            .unwrap_or_else(semi_empirical_failure);
         stats = Stats::new(&ai, &new_se, conv);
 
         // cases ii. and iii. from Marquardt63; first iteration is case ii.
@@ -202,7 +206,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
             );
             new_se = optimizer
                 .semi_empirical(&try_params, &queue, molecules)
-                .unwrap_or_else(|| na::DVector::zeros(ai.len()));
+                .unwrap_or_else(semi_empirical_failure);
             stats = Stats::new(&ai, &new_se, conv);
 
             i += 1;
@@ -237,7 +241,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
             );
             new_se = optimizer
                 .semi_empirical(&try_params, &queue, molecules)
-                .unwrap_or_else(|| na::DVector::zeros(ai.len()));
+                .unwrap_or_else(semi_empirical_failure);
             stats = Stats::new(&ai, &new_se, conv);
 
             i += 1;

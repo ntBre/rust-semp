@@ -24,7 +24,13 @@ impl Stats {
         let mut sq_diffs = 0.0;
         let mut max = tru[0] - w[0];
         for i in 0..count {
-            let wi = w.get(i).unwrap_or(&0.0);
+            let wi = match w.get(i) {
+                Some(i) => *i,
+                None => {
+                    eprintln!("failed to get w[{i}], replacing with 0.0");
+                    0.0
+                }
+            };
             let diff = tru[i] - wi;
             sq_diffs += diff * diff;
             if diff.abs() > max {

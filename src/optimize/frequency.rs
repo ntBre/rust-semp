@@ -990,7 +990,7 @@ impl Optimize for Frequency {
             // if the whole column is zeros, make the first element 1 to avoid
             // linear algebra issues
             if tmp.iter().all(|s| *s == 0.0) {
-                eprintln!("singular column in jacobian, fixing");
+                eprintln!("singular column {i} in jacobian, fixing");
                 tmp[0] = 1.0;
             }
             if tmp.len() != ntrue {

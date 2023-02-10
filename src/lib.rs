@@ -118,7 +118,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
     log_params(param_log, 0, &params);
     let semi_empirical_failure = || {
         eprintln!("semi_empirical failed, replacing");
-        na::DVector::zeros(ai.len())
+        na::DVector::repeat(ai.len(), 10000.0)
     };
     let mut start = std::time::Instant::now();
     // initial semi-empirical energies and stats

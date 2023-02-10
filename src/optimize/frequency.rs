@@ -29,31 +29,17 @@ use std::sync::Mutex;
 
 use super::Optimize;
 
-use std::sync::Once;
-static mut DEBUG: bool = false;
-static INIT: Once = Once::new();
+lazy_static::lazy_static! {
+    static ref DEBUG: bool = std::env::var("SEMP_FREQ_DEBUG").is_ok();
+}
 
 type Dvec = DVector<f64>;
-
-/// check the `SEMP_DUMP_DEBUG` environment variable on first call and from then
-/// on report whether or not it was set to `1`
-fn is_debug() -> bool {
-    unsafe {
-        INIT.call_once(|| {
-            let v = std::env::var("SEMP_FREQ_DEBUG").unwrap_or_default();
-            if v == "1" {
-                DEBUG = true;
-            }
-        });
-        DEBUG
-    }
-}
 
 /// pbqff step size
 const STEP_SIZE: f64 = 0.005;
 
 fn output_stream() -> Box<dyn Write> {
-    if is_debug() {
+    if *DEBUG {
         Box::new(std::io::stderr())
     } else {
         Box::new(std::io::sink())
@@ -487,7 +473,7 @@ impl Frequency {
             }
             FreqParts::NormHarm { .. } => unimplemented!(),
         };
-        if is_debug() {
+        if *DEBUG {
             writeln!(w, "dir={dir}").unwrap();
             writeln!(w, "{:?}", summary.corrs).unwrap();
         }

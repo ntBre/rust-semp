@@ -406,7 +406,10 @@ impl Frequency {
                     atomic_numbers,
                     STEP_SIZE,
                 )
-                .unwrap_or_default(),
+                .unwrap_or_else(|_| {
+                    eprintln!("SIC freqs failed");
+                    Default::default()
+                }),
             FreqParts::Cart {
                 fcs,
                 target_map,

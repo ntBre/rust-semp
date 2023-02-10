@@ -36,6 +36,7 @@ fn main() {
             panic!("failed to dup stderr");
         }
     }
+    eprintln!("PID {}", std::process::id());
     let conf = Config::load(&conf_name);
     let mut param_log = File::create("params.log")
         .expect("failed to create parameter log file");

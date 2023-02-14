@@ -212,7 +212,7 @@ fn test_one_iter() {
         &config.molecules,
     );
     let eps = match hostname().as_str() {
-        "cactus" | "keystone" | "bonsai" => 4e-8,
+        "cactus" | "keystone" | "bonsai" | "lintel" => 4e-8,
         _ => 1e-14,
     };
     assert!(comp_dvec(got.unwrap(), want, eps));
@@ -305,7 +305,7 @@ fn test_num_jac() {
             9,
         );
         let tol = match hostname().as_str() {
-            "cactus" | "bonsai" | "keystone" => 4.2e-6,
+            "cactus" | "bonsai" | "keystone" | "lintel" => 4.2e-6,
             _ => 1e-8,
         };
         assert!(comp_mat(got, want, tol));
@@ -473,6 +473,11 @@ fn test_algo() {
             norm: 23.551914386939192,
             rmsd: 4.710382877387839,
             max: 10.338208511214834,
+        },
+        "lintel" => Stats {
+            norm: 7.356730516402555,
+            rmsd: 1.471346103280511,
+            max: 3.4654645038349137,
         },
         _ => Stats {
             norm: 7.1820,

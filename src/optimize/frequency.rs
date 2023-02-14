@@ -18,6 +18,7 @@ use taylor::{Disps, Taylor};
 
 use crate::config::CoordType;
 use crate::utils::sort_irreps;
+use crate::BAD_FLOAT;
 
 use crate::{config, utils::setup, utils::takedown};
 use nalgebra as na;
@@ -702,6 +703,9 @@ impl Frequency {
         for (i, f) in v.iter_mut().enumerate() {
             let t = self.train.get(i).unwrap_or(&1.0);
             *f = 100.0 * (*f - t) / t;
+        }
+        if v.len() != self.train.len() {
+            v = v.resize_vertically(self.train.len(), BAD_FLOAT);
         }
         v
     }

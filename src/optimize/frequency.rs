@@ -18,6 +18,7 @@ use taylor::{Disps, Taylor};
 
 use crate::config::CoordType;
 use crate::utils::sort_irreps;
+
 use crate::{config, utils::setup, utils::takedown};
 use nalgebra as na;
 use std::cmp::Ordering;
@@ -695,9 +696,8 @@ impl Frequency {
     }
 
     fn rel_diff(&self, mut v: Dvec) -> Dvec {
-        assert_eq!(self.train.len(), v.len());
         for (i, f) in v.iter_mut().enumerate() {
-            let t = self.train[i];
+            let t = self.train.get(i).unwrap_or(&0.0);
             *f = 100.0 * (*f - t) / t;
         }
         v

@@ -100,6 +100,11 @@ pub fn broyden_update(
     jac + update
 }
 
+/// value to replace failed semi_empiricals with. 0.0 works well for absolute
+/// frequencies, and energies I guess, but something large is needed for
+/// relative frequencies
+const BAD_FLOAT: f64 = 10000.0;
+
 #[allow(clippy::too_many_arguments)]
 pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
     param_log: &mut W,
@@ -118,7 +123,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
     log_params(param_log, 0, &params);
     let semi_empirical_failure = || {
         eprintln!("semi_empirical failed, replacing");
-        na::DVector::repeat(ai.len(), 10000.0)
+        na::DVector::repeat(ai.len(), BAD_FLOAT)
     };
     let mut start = std::time::Instant::now();
     // initial semi-empirical energies and stats

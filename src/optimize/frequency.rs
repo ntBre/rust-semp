@@ -697,7 +697,7 @@ impl Frequency {
 
     fn rel_diff(&self, mut v: Dvec) -> Dvec {
         for (i, f) in v.iter_mut().enumerate() {
-            let t = self.train.get(i).unwrap_or(&0.0);
+            let t = self.train.get(i).unwrap_or(&1.0);
             *f = 100.0 * (*f - t) / t;
         }
         v

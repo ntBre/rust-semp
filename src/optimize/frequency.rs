@@ -537,20 +537,28 @@ impl Frequency {
                 let mut pf = params.clone();
                 pf.values[row] += self.delta;
                 // idx = job_num so use it twice
-                let (freq, fwd_jobs) = self
-                    .build_jobs(
-                        &mut output_stream(),
-                        geoms[index].clone(),
-                        &pf,
-                        idx,
-                        idx,
-                        molecule,
-                        &CoordType::NormalHarm,
-                        Builder::None,
-                    )
-                    .unwrap();
-                // we unwrap here because it's not entirely clear how to recover
-                // from one half of one column going off the rails.
+                let (freq, fwd_jobs) = match self.build_jobs(
+                    &mut output_stream(),
+                    geoms[index].clone(),
+                    &pf,
+                    idx,
+                    idx,
+                    molecule,
+                    &CoordType::NormalHarm,
+                    Builder::None,
+                ) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        // we exit here because it's not entirely clear how to
+                        // recover from one half of one column going off the
+                        // rails.
+                        eprintln!(
+                            "failed to build jobs with {e} at index {index}"
+                        );
+                        eprintln!("params:\n{pf}");
+                        std::process::exit(1);
+                    }
+                };
                 idx += fwd_jobs.len();
                 indices[i].push(idx);
                 jobs.extend(fwd_jobs);

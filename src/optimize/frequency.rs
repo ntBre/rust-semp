@@ -320,6 +320,11 @@ impl Frequency {
                     "only fitted normal coordinates are currently supported"
                 );
                 // adapted from Normal::run_fitted in pbqff
+                let pg = if pg.is_d2h() {
+                    pg.subgroup(symm::Pg::C2v).unwrap()
+                } else {
+                    pg
+                };
                 norm.prep_qff(w, &o, pg);
                 let (geoms, taylor, taylor_disps, _atomic_numbers) =
                     norm.generate_pts(w, &o.geom, &pg, STEP_SIZE).unwrap();

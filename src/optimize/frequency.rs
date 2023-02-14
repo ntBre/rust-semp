@@ -320,7 +320,7 @@ impl Frequency {
                     "only fitted normal coordinates are currently supported"
                 );
                 // adapted from Normal::run_fitted in pbqff
-                norm.prep_qff(w, &o);
+                norm.prep_qff(w, &o, pg);
                 let (geoms, taylor, taylor_disps, _atomic_numbers) =
                     norm.generate_pts(w, &o.geom, &pg, STEP_SIZE).unwrap();
                 let dir = "inp";

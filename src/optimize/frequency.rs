@@ -10,7 +10,7 @@ use rust_pbqff::coord_type::fitting::Fitted;
 use rust_pbqff::coord_type::normal::{
     fc3_index, fc4_index, to_qcm, F3qcm, F4qcm, Fc, Normal,
 };
-use rust_pbqff::coord_type::sic::IntderError;
+
 use rust_pbqff::coord_type::{Cart, Derivative, Sic};
 use rust_pbqff::{Output, Spectro};
 use symm::{Molecule, PointGroup};
@@ -21,6 +21,8 @@ use crate::utils::sort_irreps;
 use crate::{config, utils::setup, utils::takedown};
 use nalgebra as na;
 use std::cmp::Ordering;
+use std::error::Error;
+use std::fmt::Display;
 use std::fs::File;
 use std::io::Write;
 use std::marker::Sync;
@@ -127,6 +129,17 @@ enum FreqParts {
     },
 }
 
+#[derive(Debug)]
+struct GeomError;
+
+impl Display for GeomError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+
+impl Error for GeomError {}
+
 impl FreqParts {
     fn sic(
         intder: rust_pbqff::Intder,
@@ -203,7 +216,7 @@ impl Frequency {
     /// Template passed to Mopac::new. returns FreqParts, which contains
     /// whatever this molecule's coordinate type requires to finish running
     /// frequencies, and the list of jobs to run
-    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments, clippy::type_complexity)]
     fn build_jobs<W>(
         &self,
         w: &mut W,
@@ -214,12 +227,16 @@ impl Frequency {
         molecule: &config::Molecule,
         coord_type: &CoordType,
         builder: Builder,
-    ) -> Result<(FreqParts, Vec<Job<Mopac>>), IntderError>
+    ) -> Result<(FreqParts, Vec<Job<Mopac>>), Box<dyn Error>>
     where
         W: Write,
     {
+        let Some(g) = geom.cart_geom else {
+	    return Err(GeomError.into());
+	};
+
         let mol = {
-            let mut mol = Molecule::new(geom.cart_geom.unwrap());
+            let mut mol = Molecule::new(g);
             mol.normalize();
             mol
         };

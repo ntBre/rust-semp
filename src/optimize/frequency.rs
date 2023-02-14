@@ -215,7 +215,10 @@ impl Frequency {
         W: Write,
     {
         let mol = {
-            let mut mol = Molecule::new(geom.cart_geom.unwrap());
+            let mut mol =
+                Molecule::new(geom.cart_geom.expect(
+                    "no geom found, try adding GEO-OK to input template",
+                ));
             mol.normalize();
             mol
         };

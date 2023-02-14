@@ -1,59 +1,45 @@
-use na::DVector;
-use psqs::geom::Geom;
-use psqs::program::mopac::{Mopac, Params};
-use psqs::program::{Job, ProgramResult, Template};
-use psqs::queue::Queue;
-use rust_pbqff::coord_type::cart::FirstPart;
-use rust_pbqff::coord_type::findiff::bighash::BigHash;
-use rust_pbqff::coord_type::findiff::FiniteDifference;
-use rust_pbqff::coord_type::fitting::Fitted;
-use rust_pbqff::coord_type::normal::{
-    fc3_index, fc4_index, to_qcm, F3qcm, F4qcm, Fc, Normal,
+use super::Optimize;
+use crate::{
+    config::{self, CoordType},
+    utils::{setup, sort_irreps, takedown},
+    BAD_FLOAT,
 };
-
-use rust_pbqff::coord_type::{Cart, Derivative, Sic};
-use rust_pbqff::{Output, Spectro};
+use na::DVector;
+use nalgebra as na;
+use psqs::{
+    geom::Geom,
+    program::{
+        mopac::{Mopac, Params},
+        Job, ProgramResult, Template,
+    },
+    queue::Queue,
+};
+use rust_pbqff::{
+    coord_type::{
+        cart::FirstPart,
+        findiff::{bighash::BigHash, FiniteDifference},
+        fitting::Fitted,
+        normal::{fc3_index, fc4_index, to_qcm, F3qcm, F4qcm, Fc, Normal},
+        Cart, Derivative, Sic,
+    },
+    Output, Spectro,
+};
+use std::{
+    cmp::Ordering, error::Error, fmt::Display, fs::File, io::Write,
+    marker::Sync, rc::Rc, sync::Mutex,
+};
 use symm::{Molecule, PointGroup};
 use taylor::{Disps, Taylor};
 
-use crate::config::CoordType;
-use crate::utils::sort_irreps;
-use crate::{config, utils::setup, utils::takedown};
-use nalgebra as na;
-use std::cmp::Ordering;
-use std::error::Error;
-use std::fmt::Display;
-use std::fs::File;
-use std::io::Write;
-use std::marker::Sync;
-use std::rc::Rc;
-use std::sync::Mutex;
-
-use super::Optimize;
-
-use std::sync::Once;
-static mut DEBUG: bool = false;
-static INIT: Once = Once::new();
-
-/// check the `SEMP_DUMP_DEBUG` environment variable on first call and from then
-/// on report whether or not it was set to `1`
-fn is_debug() -> bool {
-    unsafe {
-        INIT.call_once(|| {
-            let v = std::env::var("SEMP_FREQ_DEBUG").unwrap_or_default();
-            if v == "1" {
-                DEBUG = true;
-            }
-        });
-        DEBUG
-    }
+lazy_static::lazy_static! {
+    static ref DEBUG: bool = std::env::var("SEMP_FREQ_DEBUG").is_ok();
 }
 
 /// pbqff step size
 const STEP_SIZE: f64 = 0.005;
 
 fn output_stream() -> Box<dyn Write> {
-    if is_debug() {
+    if *DEBUG {
         Box::new(std::io::stderr())
     } else {
         Box::new(std::io::sink())

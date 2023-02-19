@@ -4,6 +4,7 @@ use symm::Irrep;
 use super::Protocol;
 
 #[derive(Deserialize, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub(super) struct RawConfig {
     /// The maximum number of jobs that should be written/submitted to the Queue
     /// at one time.

@@ -2,7 +2,6 @@ use super::Optimize;
 use crate::{
     config::{self, CoordType},
     utils::{setup, sort_irreps, takedown},
-    BAD_FLOAT,
 };
 use na::DVector;
 use nalgebra as na;

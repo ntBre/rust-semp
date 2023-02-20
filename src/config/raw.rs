@@ -58,6 +58,7 @@ pub(super) struct RawConfig {
 pub(crate) enum CoordType {
     Sic(String),
     Cart,
+    #[serde(alias = "normal")]
     Norm,
 }
 

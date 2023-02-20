@@ -29,8 +29,12 @@ fn main() {
     let log_fd = logfile.as_raw_fd();
     // redirect stdout to outfile and stderr to logfile
     unsafe {
-        libc::dup2(out_fd, 1);
-        libc::dup2(log_fd, 2);
+        if libc::dup2(out_fd, 1) == -1 {
+            panic!("failed to dup stdout");
+        }
+        if libc::dup2(log_fd, 2) == -1 {
+            panic!("failed to dup stderr");
+        }
     }
     eprintln!("PID {}", std::process::id());
     let conf = Config::load(&conf_name);

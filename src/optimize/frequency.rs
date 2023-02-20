@@ -329,7 +329,12 @@ impl Frequency {
                     "only fitted normal coordinates are currently supported"
                 );
                 // adapted from Normal::run_fitted in pbqff
-                norm.prep_qff(w, &o);
+                let pg = if pg.is_d2h() {
+                    pg.subgroup(symm::Pg::C2v).unwrap()
+                } else {
+                    pg
+                };
+                norm.prep_qff(w, &o, pg);
                 let (geoms, taylor, taylor_disps, _atomic_numbers) =
                     norm.generate_pts(w, &o.geom, &pg, STEP_SIZE).unwrap();
                 let dir = "inp";
@@ -1006,7 +1011,7 @@ impl Optimize for Frequency {
             // if the whole column is zeros, make the first element 1 to avoid
             // linear algebra issues
             if tmp.iter().all(|s| *s == 0.0) {
-                eprintln!("singular column in jacobian, fixing");
+                eprintln!("singular column {i} in jacobian, fixing");
                 tmp[0] = 1.0;
             }
             if tmp.len() != ntrue {

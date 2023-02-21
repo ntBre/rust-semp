@@ -62,6 +62,9 @@ memprofile.full:
 memprofile.freq_num_jac:
 	$(call memprofile,freq_num_jac)
 
+memprofile.norm_num_jac:
+	$(call memprofile,norm_num_jac)
+
 time:
 	RUSTFLAGS='-g' cargo build --release --bin full
 	sh -c "time ${BASE}/target/release/full"

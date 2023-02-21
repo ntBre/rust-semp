@@ -28,7 +28,7 @@ use std::{
     marker::Sync, rc::Rc, sync::Mutex,
 };
 use symm::{Molecule, PointGroup};
-use taylor::{Disps, Taylor};
+use taylor::Taylor;
 
 lazy_static::lazy_static! {
     static ref DEBUG: bool = std::env::var("SEMP_FREQ_DEBUG").is_ok();
@@ -85,7 +85,6 @@ enum FreqParts {
     Sic {
         intder: rust_pbqff::Intder,
         taylor: Taylor,
-        taylor_disps: Disps,
         atomic_numbers: Vec<usize>,
     },
     Cart {
@@ -99,7 +98,6 @@ enum FreqParts {
     Norm {
         normal: Normal,
         taylor: Taylor,
-        taylor_disps: Disps,
         spectro: Spectro,
         output: Output,
     },
@@ -129,13 +127,11 @@ impl FreqParts {
     fn sic(
         intder: rust_pbqff::Intder,
         taylor: Taylor,
-        taylor_disps: Disps,
         atomic_numbers: Vec<usize>,
     ) -> Self {
         Self::Sic {
             intder,
             taylor,
-            taylor_disps,
             atomic_numbers,
         }
     }
@@ -161,14 +157,12 @@ impl FreqParts {
     fn norm(
         normal: Normal,
         taylor: Taylor,
-        taylor_disps: Disps,
         spectro: Spectro,
         output: Output,
     ) -> Self {
         Self::Norm {
             normal,
             taylor,
-            taylor_disps,
             spectro,
             output,
         }
@@ -245,7 +239,7 @@ impl Frequency {
                 };
 
                 let mut sic = Sic::new(intder);
-                let (moles, taylor, taylor_disps, atomic_numbers) =
+                let (moles, taylor, atomic_numbers) =
                     sic.generate_pts(w, &mol, &pg, STEP_SIZE)?;
 
                 // dir created in generate_pts but unused here
@@ -262,15 +256,7 @@ impl Frequency {
                     molecule.charge,
                     tmpl,
                 );
-                Ok((
-                    FreqParts::sic(
-                        sic.intder,
-                        taylor,
-                        taylor_disps,
-                        atomic_numbers,
-                    ),
-                    jobs,
-                ))
+                Ok((FreqParts::sic(sic.intder, taylor, atomic_numbers), jobs))
             }
             CoordType::Cart => {
                 let n = 3 * mol.atoms.len();
@@ -325,7 +311,7 @@ impl Frequency {
                     pg
                 };
                 norm.prep_qff(w, &o, pg);
-                let (geoms, taylor, taylor_disps, _atomic_numbers) =
+                let (geoms, taylor, _atomic_numbers) =
                     norm.generate_pts(w, &o.geom, &pg, STEP_SIZE).unwrap();
                 let dir = "inp";
                 let jobs = Mopac::build_jobs(
@@ -338,7 +324,7 @@ impl Frequency {
                     molecule.charge,
                     tmpl,
                 );
-                Ok((FreqParts::norm(norm, taylor, taylor_disps, s, o), jobs))
+                Ok((FreqParts::norm(norm, taylor, s, o), jobs))
             }
             CoordType::NormalHarm => {
                 // kinda sloppy but copied from Cart case with just Derivative
@@ -406,18 +392,9 @@ impl Frequency {
             FreqParts::Sic {
                 intder,
                 taylor,
-                taylor_disps,
                 atomic_numbers,
             } => Sic::new(intder.clone())
-                .freqs(
-                    w,
-                    dir,
-                    energies,
-                    taylor,
-                    taylor_disps,
-                    atomic_numbers,
-                    STEP_SIZE,
-                )
+                .freqs(w, dir, energies, taylor, atomic_numbers, STEP_SIZE)
                 .unwrap_or_else(|_| {
                     eprintln!("SIC freqs failed");
                     Default::default()
@@ -445,12 +422,11 @@ impl Frequency {
             FreqParts::Norm {
                 normal,
                 taylor,
-                taylor_disps,
                 spectro,
                 output,
             } => {
                 let (fcs, _) = normal
-                    .anpass(None, energies, taylor, taylor_disps, STEP_SIZE, w)
+                    .anpass(None, energies, taylor, STEP_SIZE, w)
                     .unwrap();
                 // needed in case taylor eliminated some of the higher
                 // derivatives by symmetry. this should give the maximum, full

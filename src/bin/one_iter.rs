@@ -11,7 +11,7 @@ fn main() {
     let ml = moles.len();
     let params = load_params("test_files/params.dat");
     let jobs = Mopac::build_jobs(
-        &moles,
+        moles,
         Some(&params),
         "inp",
         0,

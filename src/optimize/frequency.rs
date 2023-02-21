@@ -253,7 +253,7 @@ impl Frequency {
 
                 // call build_jobs like before
                 let jobs = Mopac::build_jobs(
-                    &moles,
+                    moles,
                     None,
                     "inp",
                     start_index,
@@ -329,7 +329,7 @@ impl Frequency {
                     norm.generate_pts(w, &o.geom, &pg, STEP_SIZE).unwrap();
                 let dir = "inp";
                 let jobs = Mopac::build_jobs(
-                    &geoms,
+                    geoms,
                     None,
                     dir,
                     start_index,

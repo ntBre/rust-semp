@@ -27,7 +27,7 @@ impl Optimize for Energy {
     ) -> Option<na::DVector<f64>> {
         // NOTE: still no loop over molecules here
         let jobs = Mopac::build_jobs(
-            &self.moles,
+            self.moles.clone(),
             Some(params),
             "inp",
             0,
@@ -69,7 +69,7 @@ impl Optimize for Energy {
             let idx = row * cols;
             pf.values[row] += DELTA;
             let mut fwd_jobs = Mopac::build_jobs(
-                &self.moles,
+                self.moles.clone(),
                 Some(&pf),
                 "inp",
                 idx,
@@ -83,7 +83,7 @@ impl Optimize for Energy {
 
             pb.values[row] -= DELTA;
             let mut bwd_jobs = Mopac::build_jobs(
-                &self.moles,
+                self.moles.clone(),
                 Some(&pb),
                 "inp",
                 idx,

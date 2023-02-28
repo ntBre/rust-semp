@@ -13,7 +13,7 @@ psqs = { path = "/home/brent/Projects/psqs" }
 rayon = "1.5.3"
 rust-pbqff = { path = "/home/brent/Projects/rust-pbqff" }
 serde = { version = "1.0", features = ["derive"] }
-symm = { path = "/home/brent/Projects/symm" }
+symm = { git = "https://github.com/ntBre/symm" }
 taylor = { path = "/home/brent/Projects/taylor" }
 toml = "0.5.8"
 

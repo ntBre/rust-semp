@@ -22,7 +22,7 @@ fn main() {
     );
     let mut energies = vec![0.; ml];
     setup();
-    Local::new("inp", 128, "/opt/mopac/mopac")
+    Local::new(128, 128, 2, "inp", true, None)
         .drain("inp", jobs, &mut energies, 0)
         .unwrap();
     takedown();

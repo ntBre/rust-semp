@@ -165,7 +165,7 @@ fn test_load_params() {
 #[test]
 fn test_write_submit_script() {
     <Slurm as Queue<Mopac>>::write_submit_script(
-        &Slurm::default(),
+        &Slurm::new(3, 3, 2, ".", false, None),
         &string!["input1", "input2", "input3"],
         "/tmp/submit.slurm",
     );
@@ -287,7 +287,11 @@ fn test_num_jac() {
         let want = load_mat("test_files/small.jac");
         let got = Energy { moles }.num_jac(
             &params,
-            &Local::new("inp", 128, "/opt/mopac/mopac"),
+            &Local {
+                dir: "inp".to_owned(),
+                chunk_size: 128,
+                mopac: "/opt/mopac/mopac".to_owned(),
+            },
             &config.molecules,
             9,
         );
@@ -300,7 +304,11 @@ fn test_num_jac() {
         let want = load_mat("test_files/three.jac");
         let got = Energy { moles }.num_jac(
             &params,
-            &Local::new("inp", 128, "/opt/mopac/mopac"),
+            &Local {
+                dir: "inp".to_owned(),
+                chunk_size: 128,
+                mopac: "/opt/mopac/mopac".to_owned(),
+            },
             &config.molecules,
             9,
         );
@@ -481,7 +489,11 @@ fn test_algo() {
         },
     };
     let config = Config::load("test_files/test.toml");
-    let queue = Local::new("inp", 128, "/opt/mopac/mopac");
+    let queue = Local {
+        dir: "inp".to_owned(),
+        chunk_size: 128,
+        mopac: "/opt/mopac/mopac".to_owned(),
+    };
     let geom_file = "test_files/small07";
     let param_file = "test_files/small.params";
     let energy_file = "test_files/25.dat";
@@ -511,7 +523,11 @@ fn freq_semi_empirical() {
     let config = Config::load("test_files/test.toml");
     let freq = Frequency::default();
     utils::setup();
-    let queue = Local::new("inp", 128, "/opt/mopac/mopac");
+    let queue = Local {
+        dir: "inp".to_owned(),
+        chunk_size: 128,
+        mopac: "/opt/mopac/mopac".to_owned(),
+    };
     let mut got = freq
         .semi_empirical(
             &"USS            H    -11.246958000000
@@ -563,7 +579,11 @@ fn freq_num_jac() {
     let config = Config::load("test_files/test.toml");
     let freq = Frequency::default();
     utils::setup();
-    let queue = Local::new("inp", 128, "/opt/mopac/mopac");
+    let queue = Local {
+        dir: "inp".to_owned(),
+        chunk_size: 128,
+        mopac: "/opt/mopac/mopac".to_owned(),
+    };
     let got = freq.num_jac(
         &"USS            H    -11.246958000000
     ZS             H      1.268641000000

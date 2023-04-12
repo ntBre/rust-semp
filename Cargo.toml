@@ -8,13 +8,13 @@ edition = "2021"
 [dependencies]
 lazy_static = "1.4.0"
 libc = "0.2.126"
-nalgebra = "0.31.1"
-psqs = { path = "/home/brent/Projects/psqs" }
+nalgebra = "0.32.2"
+psqs = { git = "https://github.com/ntBre/psqs" }
 rayon = "1.5.3"
-rust-pbqff = { path = "/home/brent/Projects/rust-pbqff" }
+rust-pbqff = { git = "https://github.com/ntBre/rust-pbqff" }
 serde = { version = "1.0", features = ["derive"] }
 symm = { git = "https://github.com/ntBre/symm" }
-taylor = { path = "/home/brent/Projects/taylor" }
+taylor = { git = "https://github.com/ntBre/taylor" }
 toml = "0.5.8"
 
 [dev-dependencies]

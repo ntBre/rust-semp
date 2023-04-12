@@ -13,7 +13,7 @@ fn main() {
     let params = load_params("test_files/small.params");
     Energy { moles }.num_jac(
         &params,
-        &Local::new("inp", 128, "/opt/mopac/mopac"),
+        &Local::new(128, 128, 2, "inp", true, None),
         &config.molecules,
         9,
     );

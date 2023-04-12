@@ -57,6 +57,7 @@ fn main() {
                         conf.sleep_int,
                         "inp",
                         false,
+                        None,
                     ),
                     conf.reset_lambda,
                     Energy {
@@ -80,6 +81,7 @@ fn main() {
                         conf.sleep_int,
                         "inp",
                         false,
+                        None,
                     ),
                     conf.reset_lambda,
                     Energy {
@@ -124,6 +126,7 @@ fn main() {
                         conf.sleep_int,
                         "inp",
                         false,
+                        None,
                     ),
                     conf.reset_lambda,
                     Frequency::new(conf.delta),
@@ -142,6 +145,7 @@ fn main() {
                         conf.sleep_int,
                         "inp",
                         false,
+                        None,
                     ),
                     conf.reset_lambda,
                     Frequency::new(conf.delta),

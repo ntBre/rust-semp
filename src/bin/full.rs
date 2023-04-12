@@ -15,7 +15,7 @@ fn main() {
         10,
         true,
         5,
-        Local::new("inp", 128, "/opt/mopac/mopac"),
+        Local::new(128, 128, 2, "inp", true, None),
         false,
         Energy {
             moles: load_geoms("test_files/small07", &names),

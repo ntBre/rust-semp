@@ -569,10 +569,11 @@ impl Frequency {
         freqs.reverse(); // for popping
         let mut builders = Vec::new();
         for m in 0..molecules.len() {
-            if !molecules[m].coord_type.is_normal() {
+            let CoordType::Normal(b) = molecules[m].coord_type else {
                 builders.extend(vec![Builder::None; 2 * params.len()]);
-                continue;
-            }
+		continue;
+	    };
+
             let mut energy_chunks = Vec::new();
             assert_eq!(indices[m].len(), 2 * params.len() + 1);
             // -1 because I'm going to refer to idx+1 in the loop
@@ -595,7 +596,7 @@ impl Frequency {
                     let freq = freq.clone();
                     let dir = format!("freqs{i}_{m}");
                     let _ = std::fs::create_dir(&dir);
-                    let norm = Normal::findiff(false);
+                    let norm = Normal::findiff(b.unwrap_or(false));
                     let FreqParts::NormHarm {
                         mut fcs,
                         mut target_map,
@@ -748,9 +749,9 @@ impl Optimize for Frequency {
             // have to call this before build_jobs since it writes params now
             setup();
 
-            let builder = if molecule.coord_type.is_normal() {
+            let builder = if let CoordType::Normal(b) = molecule.coord_type {
                 // NOTE using fitted normal coordinates
-                let norm = Normal::findiff(false);
+                let norm = Normal::findiff(b.unwrap_or(false));
                 // safe to use 0 as job_num because we have to reset directories
                 // after the harmonic part anyway
                 let tmpl = write_params(0, params, molecule.template.clone());

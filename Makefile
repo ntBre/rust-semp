@@ -12,7 +12,7 @@ ELAND_DEST = 'eland:programs/semp/.'
 WOODS_DEST = 'woods:Programs/semp/.'
 
 clippy:
-	cargo clippy --tests
+	cargo clippy --all
 
 build:
 # see https://msfjarvis.dev/posts/building-static-rust-binaries-for-linux

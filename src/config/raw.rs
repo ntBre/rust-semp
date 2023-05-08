@@ -51,6 +51,9 @@ pub(super) struct RawConfig {
     pub mopac: Option<String>,
 
     pub delta: f64,
+
+    /// optional template for the queue
+    pub queue_template: Option<String>,
 }
 
 #[derive(Clone, Deserialize, Debug, PartialEq)]
@@ -58,8 +61,8 @@ pub(super) struct RawConfig {
 pub(crate) enum CoordType {
     Sic(String),
     Cart,
-    #[serde(alias = "normal")]
-    Norm,
+    #[serde(alias = "normal", alias = "norm")]
+    Norm(Option<bool>),
 }
 
 /// deserialize into this for the String geometry before converting to a real
@@ -164,7 +167,14 @@ HCC =               147.81488230
             queue: Queue::Slurm,
             mopac: None,
             delta: 1e-4,
+            queue_template: None,
         };
         assert_eq!(got, want);
+    }
+
+    #[test]
+    fn load_norm() {
+        let got = RawConfig::load("test_files/norm.toml").unwrap();
+        assert_eq!(got.molecule[0].coord_type, CoordType::Norm(Some(true)));
     }
 }

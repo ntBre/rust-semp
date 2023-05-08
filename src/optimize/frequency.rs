@@ -295,7 +295,7 @@ impl Frequency {
                 }
                 Ok((FreqParts::cart(fcs, target_map, n, nfc2, nfc3, mol), jobs))
             }
-            CoordType::Normal => {
+            CoordType::Normal(..) => {
                 // there must be a way to tie these types together more smoothly
                 let Builder::Norm { mut norm, s, o, pg } = builder else {
 		    unreachable!()

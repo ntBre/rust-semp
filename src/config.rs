@@ -61,13 +61,15 @@ pub struct Config {
 
     /// the step size in the parameters
     pub delta: f64,
+
+    pub queue_template: Option<String>,
 }
 
 #[allow(clippy::large_enum_variant)]
 pub(crate) enum CoordType {
     Sic(Intder),
     Cart,
-    Normal,
+    Normal(Option<bool>),
     NormalHarm,
 }
 
@@ -77,7 +79,7 @@ impl CoordType {
     /// [`Normal`]: CoordType::Normal
     #[must_use]
     pub(crate) fn is_normal(&self) -> bool {
-        matches!(self, Self::Normal)
+        matches!(self, Self::Normal(..))
     }
 }
 
@@ -113,7 +115,7 @@ impl Config {
             let coord_type = match molecule.coord_type {
                 raw::CoordType::Sic(f) => CoordType::Sic(Intder::load_file(&f)),
                 raw::CoordType::Cart => CoordType::Cart,
-                raw::CoordType::Norm => CoordType::Normal,
+                raw::CoordType::Norm(b) => CoordType::Normal(b),
             };
             molecules.push(Molecule {
                 atom_names: molecule.atom_names,
@@ -139,6 +141,7 @@ impl Config {
             queue: raw.queue,
             mopac: raw.mopac,
             delta: raw.delta,
+            queue_template: raw.queue_template,
         }
     }
 }

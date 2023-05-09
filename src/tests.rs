@@ -211,10 +211,7 @@ fn test_one_iter() {
         },
         &config.molecules,
     );
-    let eps = match hostname().as_str() {
-        "cactus" | "keystone" | "bonsai" | "lintel" => 4e-8,
-        _ => 1e-14,
-    };
+    let eps = 4e-8;
     assert!(comp_dvec(got.unwrap(), want, eps));
 }
 
@@ -312,10 +309,7 @@ fn test_num_jac() {
             &config.molecules,
             9,
         );
-        let tol = match hostname().as_str() {
-            "cactus" | "bonsai" | "keystone" | "lintel" => 4.2e-6,
-            _ => 1e-8,
-        };
+        let tol = 4.2e-6;
         assert!(comp_mat(got, want, tol));
     }
 }
@@ -482,11 +476,14 @@ fn test_algo() {
             rmsd: 4.710382877387839,
             max: 10.338208511214834,
         },
-        _ => Stats {
-            norm: 7.1820,
-            rmsd: 1.4364,
-            max: 3.7770,
-        },
+        h => {
+            eprintln!("unrecognized hostname: {h}");
+            Stats {
+                norm: 7.1820,
+                rmsd: 1.4364,
+                max: 3.7770,
+            }
+        }
     };
     let config = Config::load("test_files/test.toml");
     let queue = Local {

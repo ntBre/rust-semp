@@ -9,7 +9,7 @@ use psqs::{
     geom::Geom,
     program::{
         mopac::{Mopac, Params},
-        Job, ProgramResult, Template,
+        Job, Program, ProgramResult, Template,
     },
     queue::Queue,
 };
@@ -97,7 +97,7 @@ enum FreqParts {
     },
     Norm {
         normal: Normal,
-        taylor: Taylor,
+        taylor: Option<Taylor>,
         spectro: Spectro,
         output: Output,
     },
@@ -162,7 +162,7 @@ impl FreqParts {
     ) -> Self {
         Self::Norm {
             normal,
-            taylor,
+            taylor: Some(taylor),
             spectro,
             output,
         }
@@ -178,6 +178,7 @@ enum Builder {
         s: Spectro,
         o: Output,
         pg: PointGroup,
+        ref_energy: Option<f64>,
     },
 }
 
@@ -297,34 +298,75 @@ impl Frequency {
             }
             CoordType::Normal(..) => {
                 // there must be a way to tie these types together more smoothly
-                let Builder::Norm { mut norm, s, o, pg } = builder else {
+                let Builder::Norm { mut norm, s, o, pg, ref_energy } = builder else {
 		    unreachable!()
 		};
-                assert!(
-                    !norm.findiff,
-                    "only fitted normal coordinates are currently supported"
-                );
-                // adapted from Normal::run_fitted in pbqff
-                let pg = if pg.is_d2h() {
-                    pg.subgroup(symm::Pg::C2v).unwrap()
+                if !norm.findiff {
+                    // adapted from Normal::run_fitted in pbqff
+                    let pg = if pg.is_d2h() {
+                        pg.subgroup(symm::Pg::C2v).unwrap()
+                    } else {
+                        pg
+                    };
+                    norm.prep_qff(w, &o, pg);
+                    let (geoms, taylor, _atomic_numbers) =
+                        norm.generate_pts(w, &o.geom, &pg, STEP_SIZE).unwrap();
+                    let dir = "inp";
+                    let jobs = Mopac::build_jobs(
+                        geoms,
+                        None,
+                        dir,
+                        start_index,
+                        1.0,
+                        job_num,
+                        molecule.charge,
+                        tmpl,
+                    );
+                    Ok((FreqParts::norm(norm, taylor, s, o), jobs))
                 } else {
-                    pg
-                };
-                norm.prep_qff(w, &o, pg);
-                let (geoms, taylor, _atomic_numbers) =
-                    norm.generate_pts(w, &o.geom, &pg, STEP_SIZE).unwrap();
-                let dir = "inp";
-                let jobs = Mopac::build_jobs(
-                    geoms,
-                    None,
-                    dir,
-                    start_index,
-                    1.0,
-                    job_num,
-                    molecule.charge,
-                    tmpl,
-                );
-                Ok((FreqParts::norm(norm, taylor, s, o), jobs))
+                    // adapted from run_findiff in pbqff
+                    let n = norm.ncoords;
+                    let nfc2 = n * n;
+                    let nfc3 = n * (n + 1) * (n + 2) / 6;
+                    let nfc4 = n * (n + 1) * (n + 2) * (n + 3) / 24;
+                    let mut fcs = vec![0.0; nfc2 + nfc3 + nfc4];
+                    let mut map = BigHash::new(o.geom.clone(), pg);
+                    let geoms = norm.build_points(
+                        Geom::Xyz(o.geom.atoms.clone()),
+                        STEP_SIZE,
+                        ref_energy.unwrap(),
+                        Derivative::Quartic(nfc2, nfc3, nfc4),
+                        &mut fcs,
+                        &mut map,
+                        n,
+                    );
+                    let dir = "inp";
+                    let jobs: Vec<_> = geoms
+                        .into_iter()
+                        .enumerate()
+                        .map(|(job_num, mol)| {
+                            let filename = format!("{dir}/job.{job_num:08}");
+                            Job::new(
+                                Mopac::new(
+                                    filename,
+                                    tmpl.clone(),
+                                    molecule.charge,
+                                    mol.geom,
+                                ),
+                                mol.index,
+                            )
+                        })
+                        .collect();
+                    Ok((
+                        FreqParts::Norm {
+                            normal: norm,
+                            taylor: None,
+                            spectro: s,
+                            output: o,
+                        },
+                        jobs,
+                    ))
+                }
             }
             CoordType::NormalHarm => {
                 // kinda sloppy but copied from Cart case with just Derivative
@@ -425,42 +467,51 @@ impl Frequency {
                 spectro,
                 output,
             } => {
-                let (fcs, _) = normal
-                    .anpass(None, energies, taylor, STEP_SIZE, w)
-                    .unwrap();
-                // needed in case taylor eliminated some of the higher
-                // derivatives by symmetry. this should give the maximum, full
-                // sizes without resizing
-                let n = normal.ncoords;
-                let mut f3qcm = vec![0.0; fc3_index(n, n, n) + 1];
-                let mut f4qcm = vec![0.0; fc4_index(n, n, n, n) + 1];
-                for Fc(i, j, k, l, val) in fcs {
-                    // adapted from Intder::add_fc
-                    match (k, l) {
-                        (0, 0) => {
-                            // harmonic, skip it
-                        }
-                        (_, 0) => {
-                            let idx = fc3_index(i, j, k);
-                            f3qcm[idx] = val;
-                        }
-                        (_, _) => {
-                            let idx = fc4_index(i, j, k, l);
-                            f4qcm[idx] = val;
+                if let Some(taylor) = taylor {
+                    let (fcs, _) = normal
+                        .anpass(None, energies, taylor, STEP_SIZE, w)
+                        .unwrap();
+                    // needed in case taylor eliminated some of the higher
+                    // derivatives by symmetry. this should give the maximum, full
+                    // sizes without resizing
+                    let n = normal.ncoords;
+                    let mut f3qcm = vec![0.0; fc3_index(n, n, n) + 1];
+                    let mut f4qcm = vec![0.0; fc4_index(n, n, n, n) + 1];
+                    for Fc(i, j, k, l, val) in fcs {
+                        // adapted from Intder::add_fc
+                        match (k, l) {
+                            (0, 0) => {
+                                // harmonic, skip it
+                            }
+                            (_, 0) => {
+                                let idx = fc3_index(i, j, k);
+                                f3qcm[idx] = val;
+                            }
+                            (_, _) => {
+                                let idx = fc4_index(i, j, k, l);
+                                f4qcm[idx] = val;
+                            }
                         }
                     }
+                    let (f3, f4) = to_qcm(
+                        &output.harms,
+                        normal.ncoords,
+                        &f3qcm,
+                        &f4qcm,
+                        1.0,
+                    );
+                    let (o, _) = spectro.finish(
+                        DVector::from(output.harms.clone()),
+                        F3qcm::new(f3),
+                        F4qcm::new(f4),
+                        output.irreps.clone(),
+                        normal.lxm.as_ref().unwrap().clone(),
+                        normal.lx.as_ref().unwrap().clone(),
+                    );
+                    (std::mem::take(spectro), o)
+                } else {
+                    todo!("implement freqs for findiff");
                 }
-                let (f3, f4) =
-                    to_qcm(&output.harms, normal.ncoords, &f3qcm, &f4qcm, 1.0);
-                let (o, _) = spectro.finish(
-                    DVector::from(output.harms.clone()),
-                    F3qcm::new(f3),
-                    F4qcm::new(f4),
-                    output.irreps.clone(),
-                    normal.lxm.as_ref().unwrap().clone(),
-                    normal.lx.as_ref().unwrap().clone(),
-                );
-                (std::mem::take(spectro), o)
             }
             FreqParts::NormHarm { .. } => unimplemented!(),
         };
@@ -615,7 +666,13 @@ impl Frequency {
                         &dir,
                     );
                     let (s, o) = norm.harm_freqs(&dir, &mol, fc2);
-                    Builder::Norm { norm, s, o, pg }
+                    Builder::Norm {
+                        norm,
+                        s,
+                        o,
+                        pg,
+                        ref_energy: None,
+                    }
                 })
                 .collect();
             builders.extend(bs)
@@ -755,7 +812,7 @@ impl Optimize for Frequency {
                 // safe to use 0 as job_num because we have to reset directories
                 // after the harmonic part anyway
                 let tmpl = write_params(0, params, molecule.template.clone());
-                let (s, o, _ref_energy, pg, _) = norm.cart_part(
+                let (s, o, ref_energy, pg, _) = norm.cart_part(
                     &FirstPart {
                         template: tmpl.header,
                         optimize: false,
@@ -770,7 +827,13 @@ impl Optimize for Frequency {
                     "inp",
                 );
                 setup();
-                Builder::Norm { norm, s, o, pg }
+                Builder::Norm {
+                    norm,
+                    s,
+                    o,
+                    pg,
+                    ref_energy: Some(ref_energy),
+                }
             } else {
                 Builder::None
             };
@@ -796,6 +859,7 @@ impl Optimize for Frequency {
             if status.is_err() {
                 return None;
             }
+
             takedown();
 
             // convert energies to frequencies and return those

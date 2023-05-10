@@ -10,6 +10,7 @@ lazy_static = "1.4.0"
 libc = "0.2.126"
 nalgebra = "0.32.2"
 psqs = { git = "https://github.com/ntBre/psqs" }
+intder = { git = "https://github.com/ntBre/intder" }
 rayon = "1.5.3"
 rust-pbqff = { git = "https://github.com/ntBre/rust-pbqff" }
 serde = { version = "1.0", features = ["derive"] }

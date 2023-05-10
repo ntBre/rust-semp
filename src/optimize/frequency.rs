@@ -95,11 +95,21 @@ enum FreqParts {
         nfc3: usize,
         mol: Molecule,
     },
-    Norm {
+    FitNorm {
         normal: Normal,
-        taylor: Option<Taylor>,
+        taylor: Taylor,
         spectro: Spectro,
         output: Output,
+    },
+    FinNorm {
+        normal: Normal,
+        spectro: Spectro,
+        output: Output,
+        fcs: Vec<f64>,
+        target_map: BigHash,
+        n: usize,
+        nfc2: usize,
+        nfc3: usize,
     },
     NormHarm {
         fcs: Vec<f64>,
@@ -160,9 +170,9 @@ impl FreqParts {
         spectro: Spectro,
         output: Output,
     ) -> Self {
-        Self::Norm {
+        Self::FitNorm {
             normal,
-            taylor: Some(taylor),
+            taylor,
             spectro,
             output,
         }
@@ -330,14 +340,14 @@ impl Frequency {
                     let nfc3 = n * (n + 1) * (n + 2) / 6;
                     let nfc4 = n * (n + 1) * (n + 2) * (n + 3) / 24;
                     let mut fcs = vec![0.0; nfc2 + nfc3 + nfc4];
-                    let mut map = BigHash::new(o.geom.clone(), pg);
+                    let mut target_map = BigHash::new(o.geom.clone(), pg);
                     let geoms = norm.build_points(
                         Geom::Xyz(o.geom.atoms.clone()),
                         STEP_SIZE,
                         ref_energy.unwrap(),
                         Derivative::Quartic(nfc2, nfc3, nfc4),
                         &mut fcs,
-                        &mut map,
+                        &mut target_map,
                         n,
                     );
                     let dir = "inp";
@@ -358,11 +368,15 @@ impl Frequency {
                         })
                         .collect();
                     Ok((
-                        FreqParts::Norm {
+                        FreqParts::FinNorm {
                             normal: norm,
-                            taylor: None,
                             spectro: s,
                             output: o,
+                            fcs,
+                            target_map,
+                            n,
+                            nfc2,
+                            nfc3,
                         },
                         jobs,
                     ))
@@ -428,90 +442,106 @@ impl Frequency {
         w: &mut W,
         dir: &str,
         energies: &mut [f64],
-        freq: &mut FreqParts,
+        freq: FreqParts,
     ) -> DVector<f64> {
         let (_, summary) = match freq {
             FreqParts::Sic {
                 intder,
                 taylor,
                 atomic_numbers,
-            } => Sic::new(intder.clone())
-                .freqs(w, dir, energies, taylor, atomic_numbers, STEP_SIZE)
+            } => Sic::new(intder)
+                .freqs(w, dir, energies, &taylor, &atomic_numbers, STEP_SIZE)
                 .unwrap_or_else(|_| {
                     eprintln!("SIC freqs failed");
                     Default::default()
                 }),
             FreqParts::Cart {
-                fcs,
-                target_map,
+                mut fcs,
+                mut target_map,
                 n,
                 nfc2,
                 nfc3,
                 mol,
             } => {
                 let (fc2, f3, f4) = Cart.make_fcs(
-                    target_map,
+                    &mut target_map,
                     energies,
-                    fcs,
-                    *n,
+                    &mut fcs,
+                    n,
                     rust_pbqff::coord_type::cart::Derivative::Quartic(
-                        *nfc2, *nfc3, 0,
+                        nfc2, nfc3, 0,
                     ),
                     dir,
                 );
-                rust_pbqff::coord_type::cart::freqs(dir, mol, fc2, f3, f4)
+                rust_pbqff::coord_type::cart::freqs(dir, &mol, fc2, f3, f4)
             }
-            FreqParts::Norm {
+            FreqParts::FitNorm {
                 normal,
                 taylor,
                 spectro,
                 output,
             } => {
-                if let Some(taylor) = taylor {
-                    let (fcs, _) = normal
-                        .anpass(None, energies, taylor, STEP_SIZE, w)
-                        .unwrap();
-                    // needed in case taylor eliminated some of the higher
-                    // derivatives by symmetry. this should give the maximum,
-                    // full sizes without resizing
-                    let n = normal.ncoords;
-                    let mut f3qcm = vec![0.0; fc3_index(n, n, n) + 1];
-                    let mut f4qcm = vec![0.0; fc4_index(n, n, n, n) + 1];
-                    for Fc(i, j, k, l, val) in fcs {
-                        // adapted from Intder::add_fc
-                        match (k, l) {
-                            (0, 0) => {
-                                // harmonic, skip it
-                            }
-                            (_, 0) => {
-                                let idx = fc3_index(i, j, k);
-                                f3qcm[idx] = val;
-                            }
-                            (_, _) => {
-                                let idx = fc4_index(i, j, k, l);
-                                f4qcm[idx] = val;
-                            }
+                let (fcs, _) = normal
+                    .anpass(None, energies, &taylor, STEP_SIZE, w)
+                    .unwrap();
+                // needed in case taylor eliminated some of the higher
+                // derivatives by symmetry. this should give the maximum,
+                // full sizes without resizing
+                let n = normal.ncoords;
+                let mut f3qcm = vec![0.0; fc3_index(n, n, n) + 1];
+                let mut f4qcm = vec![0.0; fc4_index(n, n, n, n) + 1];
+                for Fc(i, j, k, l, val) in fcs {
+                    // adapted from Intder::add_fc
+                    match (k, l) {
+                        (0, 0) => {
+                            // harmonic, skip it
+                        }
+                        (_, 0) => {
+                            let idx = fc3_index(i, j, k);
+                            f3qcm[idx] = val;
+                        }
+                        (_, _) => {
+                            let idx = fc4_index(i, j, k, l);
+                            f4qcm[idx] = val;
                         }
                     }
-                    let (f3, f4) = to_qcm(
-                        &output.harms,
-                        normal.ncoords,
-                        &f3qcm,
-                        &f4qcm,
-                        1.0,
-                    );
-                    let (o, _) = spectro.finish(
-                        DVector::from(output.harms.clone()),
-                        F3qcm::new(f3),
-                        F4qcm::new(f4),
-                        output.irreps.clone(),
-                        normal.lxm.as_ref().unwrap().clone(),
-                        normal.lx.as_ref().unwrap().clone(),
-                    );
-                    (std::mem::take(spectro), o)
-                } else {
-                    todo!("implement freqs for findiff");
                 }
+                let (f3, f4) =
+                    to_qcm(&output.harms, normal.ncoords, &f3qcm, &f4qcm, 1.0);
+                let (o, _) = spectro.finish(
+                    DVector::from(output.harms.clone()),
+                    F3qcm::new(f3),
+                    F4qcm::new(f4),
+                    output.irreps,
+                    normal.lxm.as_ref().unwrap().clone(),
+                    normal.lx.as_ref().unwrap().clone(),
+                );
+                (spectro, o)
+            }
+            FreqParts::FinNorm {
+                normal,
+                spectro,
+                output,
+                mut fcs,
+                target_map,
+                n,
+                nfc2,
+                nfc3,
+            } => {
+                normal.map_energies(&target_map, energies, &mut fcs);
+                let cubs = &fcs[nfc2..nfc2 + nfc3];
+                let quarts = &fcs[nfc2 + nfc3..];
+                let (f3, f4) =
+                    to_qcm(&output.harms, n, cubs, quarts, intder::HART);
+                let (o, _) = spectro.finish(
+                    DVector::from(output.harms.clone()),
+                    F3qcm::new(f3),
+                    F4qcm::new(f4),
+                    output.irreps,
+                    normal.lxm.as_ref().unwrap().clone(),
+                    normal.lx.as_ref().unwrap().clone(),
+                );
+                (spectro, o)
             }
             FreqParts::NormHarm { .. } => unimplemented!(),
         };
@@ -838,7 +868,7 @@ impl Optimize for Frequency {
                 Builder::None
             };
 
-            let Ok((mut freq, jobs)) =
+            let Ok((freq, jobs)) =
 		self.build_jobs(&mut w, geom, params, 0, 0, molecule, &molecule.coord_type, builder)
 	    else {
 		return None
@@ -864,7 +894,7 @@ impl Optimize for Frequency {
 
             // convert energies to frequencies and return those
             let _ = std::fs::create_dir("freqs");
-            let res = self.freqs(&mut w, "freqs", &mut energies, &mut freq);
+            let res = self.freqs(&mut w, "freqs", &mut energies, freq);
             let _ = std::fs::remove_dir_all("freqs");
             ret.extend(res.iter());
         }
@@ -968,15 +998,10 @@ impl Optimize for Frequency {
                 .enumerate()
                 .map(|(i, (energy, freq))| {
                     let mut energy = energy.clone();
-                    let mut freq = freq.clone();
+                    let freq = freq.clone();
                     let dir = format!("freqs{i}_{m}");
                     let _ = std::fs::create_dir(&dir);
-                    self.freqs(
-                        &mut output_stream(),
-                        &dir,
-                        &mut energy,
-                        &mut freq,
-                    )
+                    self.freqs(&mut output_stream(), &dir, &mut energy, freq)
                 })
                 .collect();
 

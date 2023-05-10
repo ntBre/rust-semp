@@ -706,6 +706,7 @@ name = "rust-semp"
 version = "0.1.0"
 dependencies = [
  "approx",
+ "intder",
  "lazy_static",
  "libc",
  "nalgebra",

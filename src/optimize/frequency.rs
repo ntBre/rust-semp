@@ -9,7 +9,7 @@ use psqs::{
     geom::Geom,
     program::{
         mopac::{Mopac, Params},
-        Job, Program, ProgramResult, Template,
+        Job, ProgramResult, Template,
     },
     queue::Queue,
 };
@@ -342,32 +342,30 @@ impl Frequency {
                     let nfc4 = n * (n + 1) * (n + 2) * (n + 3) / 24;
                     let mut fcs = vec![0.0; nfc2 + nfc3 + nfc4];
                     let mut target_map = BigHash::new(o.geom.clone(), pg);
-                    let geoms = norm.build_points(
-                        Geom::Xyz(o.geom.atoms.clone()),
-                        STEP_SIZE,
-                        ref_energy.unwrap(),
-                        Derivative::Quartic(nfc2, nfc3, nfc4),
-                        &mut fcs,
-                        &mut target_map,
-                        n,
-                    );
-                    let dir = "inp";
-                    let jobs: Vec<_> = geoms
+                    let geoms = norm
+                        .build_points(
+                            Geom::Xyz(o.geom.atoms.clone()),
+                            STEP_SIZE,
+                            ref_energy.unwrap(),
+                            Derivative::Quartic(nfc2, nfc3, nfc4),
+                            &mut fcs,
+                            &mut target_map,
+                            n,
+                        )
                         .into_iter()
-                        .enumerate()
-                        .map(|(job_num, mol)| {
-                            let filename = format!("{dir}/job.{job_num:08}");
-                            Job::new(
-                                Mopac::new(
-                                    filename,
-                                    tmpl.clone(),
-                                    molecule.charge,
-                                    mol.geom,
-                                ),
-                                mol.index,
-                            )
-                        })
+                        .map(|g| g.geom)
                         .collect();
+                    let dir = "inp";
+                    let jobs = Mopac::build_jobs(
+                        geoms,
+                        None,
+                        dir,
+                        start_index,
+                        1.0,
+                        job_num,
+                        molecule.charge,
+                        tmpl,
+                    );
                     Ok((
                         FreqParts::FinNorm {
                             normal: norm,
@@ -675,6 +673,7 @@ impl Frequency {
                 .par_iter()
                 .enumerate()
                 .map(|(i, (energy, freq))| {
+                    let index = m * rows + i;
                     let freq = freq.clone();
                     let dir = format!("freqs{i}_{m}");
                     let _ = std::fs::create_dir(&dir);
@@ -702,7 +701,7 @@ impl Frequency {
                         s,
                         o,
                         pg,
-                        ref_energy: None,
+                        ref_energy: Some(geoms[index].energy),
                     }
                 })
                 .collect();

@@ -334,6 +334,7 @@ impl Frequency {
                     );
                     Ok((FreqParts::norm(norm, taylor, s, o), jobs))
                 } else {
+                    norm.prep_qff(w, &o, pg);
                     // adapted from run_findiff in pbqff
                     let n = norm.ncoords;
                     let nfc2 = n * n;

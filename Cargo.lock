@@ -283,7 +283,7 @@ dependencies = [
 [[package]]
 name = "dispatch"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#0aebe2148f15b55cfc872e4b1f3b71aeb0013469"
+source = "git+https://github.com/ntBre/rust-pbqff#713af82cb0d1512fc5210d437786de4feb388949"
 
 [[package]]
 name = "either"
@@ -683,7 +683,7 @@ dependencies = [
 [[package]]
 name = "rust-pbqff"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#0aebe2148f15b55cfc872e4b1f3b71aeb0013469"
+source = "git+https://github.com/ntBre/rust-pbqff#713af82cb0d1512fc5210d437786de4feb388949"
 dependencies = [
  "clap",
  "dispatch",

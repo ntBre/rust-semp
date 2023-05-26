@@ -376,7 +376,7 @@ dependencies = [
 [[package]]
 name = "intder"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/intder#c08481873c4008fdad965b2b19c5b1f64342160c"
+source = "git+https://github.com/ntBre/intder#7d905e9133213352b472c2dffaff4547af36cb0a"
 dependencies = [
  "approx",
  "lazy_static",
@@ -603,7 +603,7 @@ dependencies = [
 [[package]]
 name = "psqs"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/psqs#52a4ded533833573255e9e4722b8265c45dd0c15"
+source = "git+https://github.com/ntBre/psqs#911c5c301a91440ff455361f61cd82a9e635f16d"
 dependencies = [
  "chrono",
  "lazy_static",
@@ -655,9 +655,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.8.2"
+version = "1.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d1a59b5d8e97dee33696bf13c5ba8ab85341c002922fba050069326b9c498974"
+checksum = "81ca098a9821bd52d6b24fd8b10bd081f47d39c22778cafaa75a2857a62c6390"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -840,7 +840,7 @@ checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
 [[package]]
 name = "symm"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/symm#3772a64a7ddbc095cb6134337a04275d1e26b23a"
+source = "git+https://github.com/ntBre/symm#0954c688eed640a9b66cf1e9e0b6d305d24063c2"
 dependencies = [
  "approx",
  "nalgebra",

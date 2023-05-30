@@ -472,9 +472,9 @@ fn test_algo() {
             max: 3.4654645038349137,
         },
         "keystone" => Stats {
-            norm: 23.551914386939192,
-            rmsd: 4.710382877387839,
-            max: 10.338208511214834,
+            norm: 9.253577484008394,
+            rmsd: 1.850715496801679,
+            max: 3.4100922731486816,
         },
         _ => {
             // github actions answer because hostname is hard there

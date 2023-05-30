@@ -17,7 +17,7 @@ use rust_pbqff::{
     coord_type::{
         cart::FirstPart,
         findiff::{bighash::BigHash, FiniteDifference},
-        fitting::Fitted,
+        fitted::Fitted,
         normal::{fc3_index, fc4_index, to_qcm, F3qcm, F4qcm, Fc, Normal},
         Cart, Derivative, Sic,
     },

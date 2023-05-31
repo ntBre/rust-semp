@@ -24,15 +24,20 @@ use rust_pbqff::{
     Output, Spectro,
 };
 use std::{
-    cmp::Ordering, error::Error, fmt::Display, fs::File, io::Write,
-    marker::Sync, rc::Rc, sync::Mutex,
+    cmp::Ordering,
+    error::Error,
+    fmt::Display,
+    fs::File,
+    io::Write,
+    marker::Sync,
+    rc::Rc,
+    sync::{LazyLock, Mutex},
 };
 use symm::{Molecule, PointGroup};
 use taylor::Taylor;
 
-lazy_static::lazy_static! {
-    static ref DEBUG: bool = std::env::var("SEMP_FREQ_DEBUG").is_ok();
-}
+static DEBUG: LazyLock<bool> =
+    LazyLock::new(|| std::env::var("SEMP_FREQ_DEBUG").is_ok());
 
 /// pbqff step size
 const STEP_SIZE: f64 = 0.005;

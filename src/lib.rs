@@ -1,3 +1,5 @@
+#![feature(once_cell)]
+
 use crate::optimize::Optimize;
 use crate::utils::log_params;
 use config::Molecule;
@@ -5,6 +7,7 @@ use nalgebra as na;
 use psqs::program::mopac::{Mopac, Params};
 use psqs::queue::Queue;
 use stats::Stats;
+use std::sync::LazyLock;
 use std::{clone::Clone, io::Write};
 
 pub mod config;
@@ -14,9 +17,9 @@ pub mod stats;
 mod tests;
 pub mod utils;
 
-lazy_static::lazy_static! {
-    static ref DEBUG: String = std::env::var("SEMP_DEBUG").unwrap_or_default();
-}
+static DEBUG: LazyLock<String> =
+    LazyLock::new(|| std::env::var("SEMP_DEBUG").unwrap_or_default());
+
 /// convergence threshold for the change in the norm, rmsd, and max
 const DCONV_THRSH: f64 = 1e-5;
 

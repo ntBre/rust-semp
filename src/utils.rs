@@ -7,7 +7,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::iter::zip;
 use std::path::Path;
 use std::sync::mpsc::Sender;
-use std::sync::{mpsc, Mutex, Once};
+use std::sync::{mpsc, LazyLock, Mutex, Once};
 use std::thread::{self};
 use symm::atom::Atom;
 use symm::Irrep;
@@ -118,9 +118,8 @@ struct Takedown {
     sender: Sender<String>,
 }
 
-lazy_static::lazy_static! {
-    static ref DUMP_DEBUG: bool = std::env::var("DUMP_DEBUG").is_ok();
-}
+static DUMP_DEBUG: LazyLock<bool> =
+    LazyLock::new(|| std::env::var("DUMP_DEBUG").is_ok());
 
 impl Takedown {
     fn new() -> Mutex<Takedown> {
@@ -145,9 +144,7 @@ impl Takedown {
     }
 }
 
-lazy_static::lazy_static! {
-    static ref DUMPER: Mutex<Takedown> = Takedown::new();
-}
+static DUMPER: LazyLock<Mutex<Takedown>> = LazyLock::new(Takedown::new);
 
 /// on first call, create the "trash" directory and/or move the existing trash
 /// directory to it. on future calls, send DIRS to the global Takedown thread

@@ -122,9 +122,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chrono"
-version = "0.4.25"
+version = "0.4.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fdbc37d37da9e5bce8173f3a41b71d9bf3c674deebbaceacd0ebdabde76efb03"
+checksum = "ec837a71355b28f6556dbd569b37b3f363091c0bd4b2e735674521b4c5fd9bc5"
 dependencies = [
  "android-tzdata",
  "iana-time-zone",
@@ -235,7 +235,7 @@ dependencies = [
 [[package]]
 name = "dispatch"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#d0425e24167c9c9bd6e51ef312897b67b9b7c394"
+source = "git+https://github.com/ntBre/rust-pbqff#5c00bdc4c253c0d580fe8f4ee239a3e74d391f04"
 
 [[package]]
 name = "either"
@@ -327,10 +327,9 @@ dependencies = [
 [[package]]
 name = "intder"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/intder#5d82d568bc4e74e0a4cd34aaac9b3e3f0f8f7498"
+source = "git+https://github.com/ntBre/intder#89d3e75cc94d6b856079ccda22ae70c1826a2260"
 dependencies = [
  "approx",
- "lazy_static",
  "nalgebra",
  "ndarray",
  "psqs",
@@ -376,12 +375,6 @@ checksum = "2f37a4a5928311ac501dee68b3c7613a1037d0edb30c8e5427bd832d55d1b790"
 dependencies = [
  "wasm-bindgen",
 ]
-
-[[package]]
-name = "lazy_static"
-version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
@@ -542,10 +535,9 @@ dependencies = [
 [[package]]
 name = "psqs"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/psqs#911c5c301a91440ff455361f61cd82a9e635f16d"
+source = "git+https://github.com/ntBre/psqs#2d79f9e686c4650538ca23e52175ade918033eac"
 dependencies = [
  "chrono",
- "lazy_static",
  "libc",
  "nalgebra",
  "rayon",
@@ -622,7 +614,7 @@ dependencies = [
 [[package]]
 name = "rust-pbqff"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#d0425e24167c9c9bd6e51ef312897b67b9b7c394"
+source = "git+https://github.com/ntBre/rust-pbqff#5c00bdc4c253c0d580fe8f4ee239a3e74d391f04"
 dependencies = [
  "clap",
  "dispatch",
@@ -804,7 +796,7 @@ dependencies = [
 [[package]]
 name = "taylor"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/taylor#b6a1d1ab8f8f5174f0b032b4475bbbecf8c23aab"
+source = "git+https://github.com/ntBre/taylor#28c2c9acd7bf61d8d459834fa04dff8a29de1f22"
 dependencies = [
  "nalgebra",
  "rust-anpass",

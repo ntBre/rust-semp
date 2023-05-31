@@ -1,4 +1,4 @@
-#![feature(once_cell)]
+#![feature(lazy_cell)]
 
 use crate::optimize::Optimize;
 use crate::utils::log_params;

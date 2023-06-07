@@ -235,7 +235,7 @@ dependencies = [
 [[package]]
 name = "dispatch"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#12b2a7c0a4cc5e714ae2a09230469d8c1f58dc7a"
+source = "git+https://github.com/ntBre/rust-pbqff#3cf014cf0ce441a6d1bff2bf94e0d2f25db120a3"
 
 [[package]]
 name = "either"
@@ -614,7 +614,7 @@ dependencies = [
 [[package]]
 name = "rust-pbqff"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#12b2a7c0a4cc5e714ae2a09230469d8c1f58dc7a"
+source = "git+https://github.com/ntBre/rust-pbqff#3cf014cf0ce441a6d1bff2bf94e0d2f25db120a3"
 dependencies = [
  "clap",
  "dispatch",
@@ -796,7 +796,7 @@ dependencies = [
 [[package]]
 name = "taylor"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/taylor#1bf3abad0e73750d891a59ae8913b9c4e5de7507"
+source = "git+https://github.com/ntBre/taylor#293a3487f14745fd57f240c8cf46305a61f90053"
 dependencies = [
  "nalgebra",
  "rust-anpass",

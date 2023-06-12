@@ -18,7 +18,9 @@ use rust_pbqff::{
         cart::FirstPart,
         findiff::{bighash::BigHash, FiniteDifference},
         fitted::Fitted,
-        normal::{fc3_index, fc4_index, to_qcm, F3qcm, F4qcm, Fc, Normal},
+        normal::{
+            fc3_index, fc4_index, to_qcm, CartPart, F3qcm, F4qcm, Fc, Normal,
+        },
         Cart, Derivative, Sic,
     },
     Output, Spectro,
@@ -847,20 +849,28 @@ impl Optimize for Frequency {
                 // safe to use 0 as job_num because we have to reset directories
                 // after the harmonic part anyway
                 let tmpl = write_params(0, params, molecule.template.clone());
-                let (s, o, ref_energy, pg, _) = norm.cart_part(
-                    &FirstPart {
-                        template: tmpl.header,
-                        optimize: false,
-                        geometry: Geom::Xyz(
-                            geom.cart_geom.as_ref().unwrap().clone(),
-                        ),
-                        charge: molecule.charge,
-                        step_size: STEP_SIZE,
-                    },
-                    submitter,
-                    &mut w,
-                    "inp",
-                );
+                let CartPart {
+                    spectro: s,
+                    output: o,
+                    ref_energy,
+                    pg,
+                    ..
+                } = norm
+                    .cart_part(
+                        &FirstPart {
+                            template: tmpl.header,
+                            optimize: false,
+                            geometry: Geom::Xyz(
+                                geom.cart_geom.as_ref().unwrap().clone(),
+                            ),
+                            charge: molecule.charge,
+                            step_size: STEP_SIZE,
+                        },
+                        submitter,
+                        &mut w,
+                        "inp",
+                    )
+                    .ok()?;
                 setup();
                 Builder::Norm {
                     norm,

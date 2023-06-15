@@ -814,6 +814,7 @@ impl Optimize for Frequency {
         params: &Params,
         submitter: &Q,
         molecules: &[config::Molecule],
+        ntrue: usize,
     ) -> Option<DVector<f64>> {
         let mut w = output_stream();
 
@@ -913,6 +914,7 @@ impl Optimize for Frequency {
             let _ = std::fs::remove_dir_all("freqs");
             ret.extend(res.iter());
         }
+        ret.resize(ntrue, 0.0);
         Some(DVector::from(ret))
     }
 

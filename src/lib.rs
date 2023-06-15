@@ -116,17 +116,18 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
     reset_lambda: bool,
     optimizer: O,
 ) -> Stats {
+    let ntrue = ai.len();
     let conv = optimizer.stat_multiplier();
     let mut params = params;
     log_params(param_log, 0, &params);
     let semi_empirical_failure = || {
         eprintln!("semi_empirical failed, replacing");
-        na::DVector::zeros(ai.len())
+        na::DVector::zeros(ntrue)
     };
     let mut start = std::time::Instant::now();
     // initial semi-empirical energies and stats
     let mut se = optimizer
-        .semi_empirical(&params, &queue, molecules)
+        .semi_empirical(&params, &queue, molecules, ntrue)
         .unwrap_or_else(semi_empirical_failure);
     optimizer.log(0, &se, &ai);
     let mut old_se = se.clone();
@@ -143,7 +144,6 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
     let mut del_max: f64 = 1.0;
     let mut in_broyden = false;
     let mut need_num_jac = false;
-    let ntrue = ai.len();
     start = std::time::Instant::now();
     let mut jac = optimizer.num_jac(&params, &queue, molecules, ntrue);
 
@@ -182,7 +182,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
             &params.values + &step,
         );
         let mut new_se = optimizer
-            .semi_empirical(&try_params, &queue, molecules)
+            .semi_empirical(&try_params, &queue, molecules, ntrue)
             .unwrap_or_else(semi_empirical_failure);
         stats = Stats::new(&ai, &new_se, conv);
 
@@ -208,7 +208,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
                 &params.values + &step,
             );
             new_se = optimizer
-                .semi_empirical(&try_params, &queue, molecules)
+                .semi_empirical(&try_params, &queue, molecules, ntrue)
                 .unwrap_or_else(semi_empirical_failure);
             stats = Stats::new(&ai, &new_se, conv);
 
@@ -243,7 +243,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
                 &params.values + k * &step,
             );
             new_se = optimizer
-                .semi_empirical(&try_params, &queue, molecules)
+                .semi_empirical(&try_params, &queue, molecules, ntrue)
                 .unwrap_or_else(semi_empirical_failure);
             stats = Stats::new(&ai, &new_se, conv);
 

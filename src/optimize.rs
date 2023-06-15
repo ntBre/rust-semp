@@ -14,6 +14,7 @@ pub trait Optimize {
         params: &Params,
         submitter: &Q,
         molecules: &[Molecule],
+        ntrue: usize,
     ) -> Option<na::DVector<f64>>;
 
     fn num_jac<Q: Queue<Mopac> + Sync>(

@@ -24,6 +24,7 @@ impl Optimize for Energy {
         params: &Params,
         submitter: &Q,
         molecules: &[Molecule],
+        _ntrue: usize,
     ) -> Option<na::DVector<f64>> {
         // NOTE: still no loop over molecules here
         let jobs = Mopac::build_jobs(

@@ -210,6 +210,7 @@ fn test_one_iter() {
             ..Default::default()
         },
         &config.molecules,
+        want.len(),
     );
     let eps = 4e-8;
     assert!(comp_dvec(got.unwrap(), want, eps));
@@ -547,6 +548,7 @@ FN11           C      0.046302000000"
                 .unwrap(),
             &queue,
             &config.molecules,
+            9,
         )
         .unwrap();
     let got = got.as_mut_slice();

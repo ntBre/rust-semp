@@ -327,7 +327,7 @@ dependencies = [
 [[package]]
 name = "intder"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/intder#d4f7d41696e047dc68ef4966b501b9b6bc927585"
+source = "git+https://github.com/ntBre/intder#b4fb003032d4c093db52c00a6fa53170f07b3036"
 dependencies = [
  "approx",
  "nalgebra",

@@ -189,7 +189,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
         // cases ii. and iii. from Marquardt63; first iteration is case ii.
         // increase λ*ν until the norm improves or we hit MAX_TRIES or Δnorm
         // increases
-        let mut i = 0;
+        let mut i = 1;
         let mut bad = false;
         while stats.norm > last_stats.norm {
             eprintln!(
@@ -212,11 +212,11 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
                 .unwrap_or_else(semi_empirical_failure);
             stats = Stats::new(&ai, &new_se, conv);
 
-            i += 1;
             if stats.norm - last_stats.norm > dnorm || i > MAX_TRIES {
                 bad = true;
                 break;
             }
+            i += 1;
         }
 
         if reset_lambda {

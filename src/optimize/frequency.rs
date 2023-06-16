@@ -16,7 +16,10 @@ use psqs::{
 use rust_pbqff::{
     coord_type::{
         cart::FirstPart,
-        findiff::{bighash::BigHash, FiniteDifference},
+        findiff::{
+            bighash::{BigHash, Target},
+            FiniteDifference,
+        },
         fitted::Fitted,
         normal::{
             fc3_index, fc4_index, to_qcm, CartPart, F3qcm, F4qcm, Fc, Normal,
@@ -96,7 +99,7 @@ enum FreqParts {
     },
     Cart {
         fcs: Vec<f64>,
-        target_map: BigHash,
+        targets: Vec<Target>,
         n: usize,
         nfc2: usize,
         nfc3: usize,
@@ -113,14 +116,14 @@ enum FreqParts {
         spectro: Spectro,
         output: Output,
         fcs: Vec<f64>,
-        target_map: BigHash,
+        targets: Vec<Target>,
         n: usize,
         nfc2: usize,
         nfc3: usize,
     },
     NormHarm {
         fcs: Vec<f64>,
-        target_map: BigHash,
+        targets: Vec<Target>,
         n: usize,
         nfc2: usize,
         nfc3: usize,
@@ -155,7 +158,7 @@ impl FreqParts {
 
     fn cart(
         fcs: Vec<f64>,
-        target_map: BigHash,
+        targets: Vec<Target>,
         n: usize,
         nfc2: usize,
         nfc3: usize,
@@ -163,7 +166,7 @@ impl FreqParts {
     ) -> Self {
         Self::Cart {
             fcs,
-            target_map,
+            targets,
             n,
             nfc2,
             nfc3,
@@ -294,6 +297,7 @@ impl Frequency {
                     &mut target_map,
                     n,
                 );
+                let targets = target_map.values();
                 let dir = "inp";
                 let mut job_num = start_index;
                 let mut jobs = Vec::new();
@@ -311,7 +315,7 @@ impl Frequency {
                         mol.index + start_index,
                     ));
                 }
-                Ok((FreqParts::cart(fcs, target_map, n, nfc2, nfc3, mol), jobs))
+                Ok((FreqParts::cart(fcs, targets, n, nfc2, nfc3, mol), jobs))
             }
             CoordType::Normal(..) => {
                 // there must be a way to tie these types together more smoothly
@@ -362,6 +366,7 @@ impl Frequency {
                         .into_iter()
                         .map(|g| g.geom)
                         .collect();
+                    let targets = target_map.values();
                     let dir = "inp";
                     let jobs = Mopac::build_jobs(
                         geoms,
@@ -379,7 +384,7 @@ impl Frequency {
                             spectro: s,
                             output: o,
                             fcs,
-                            target_map,
+                            targets,
                             n,
                             nfc2,
                             nfc3,
@@ -408,6 +413,7 @@ impl Frequency {
                     &mut target_map,
                     n,
                 );
+                let targets = target_map.values();
                 let dir = "inp";
                 let mut job_num = start_index;
                 let mut jobs = Vec::new();
@@ -428,7 +434,7 @@ impl Frequency {
                 Ok((
                     FreqParts::NormHarm {
                         fcs,
-                        target_map,
+                        targets,
                         n,
                         nfc2,
                         nfc3,
@@ -463,14 +469,14 @@ impl Frequency {
                 }),
             FreqParts::Cart {
                 mut fcs,
-                mut target_map,
+                targets,
                 n,
                 nfc2,
                 nfc3,
                 mol,
             } => {
                 let (fc2, f3, f4) = Cart.make_fcs(
-                    &mut target_map,
+                    targets,
                     energies,
                     &mut fcs,
                     n,
@@ -529,12 +535,12 @@ impl Frequency {
                 spectro,
                 output,
                 mut fcs,
-                target_map,
+                targets,
                 n,
                 nfc2,
                 nfc3,
             } => {
-                normal.map_energies(&target_map, energies, &mut fcs);
+                normal.map_energies(targets, energies, &mut fcs);
                 let cubs = &fcs[nfc2..nfc2 + nfc3];
                 let quarts = &fcs[nfc2 + nfc3..];
                 let (f3, f4) =
@@ -687,7 +693,7 @@ impl Frequency {
                     let norm = Normal::findiff(b.unwrap_or(false));
                     let FreqParts::NormHarm {
                         mut fcs,
-                        mut target_map,
+                        targets,
                         n,
                         nfc2,
                         nfc3,
@@ -695,7 +701,7 @@ impl Frequency {
                         pg,
                     } = freq else { unimplemented!() } ;
                     let (fc2, _, _) = norm.make_fcs(
-                        &mut target_map,
+                        targets,
                         energy,
                         &mut fcs,
                         n,

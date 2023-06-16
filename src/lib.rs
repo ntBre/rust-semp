@@ -189,7 +189,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
         // cases ii. and iii. from Marquardt63; first iteration is case ii.
         // increase λ*ν until the norm improves or we hit MAX_TRIES or Δnorm
         // increases
-        let mut i = 1;
+        let mut i = 0;
         let mut bad = false;
         while stats.norm > last_stats.norm {
             eprintln!(

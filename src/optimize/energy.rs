@@ -1,6 +1,6 @@
 use psqs::geom::Geom;
 use psqs::program::mopac::{Mopac, Params};
-use psqs::queue::Queue;
+use psqs::queue::{Check, Queue};
 
 use crate::config::Molecule;
 use crate::utils::relative;
@@ -40,7 +40,7 @@ impl Optimize for Energy {
         let mut got = vec![0.0; jobs.len()];
         setup();
         submitter
-            .drain("inp", jobs, &mut got, 0)
+            .drain("inp", jobs, &mut got, Check::None)
             .expect("energies failed");
         takedown();
         Some(relative(&na::DVector::from(got)))
@@ -101,7 +101,7 @@ impl Optimize for Energy {
         }
         setup();
         submitter
-            .drain("inp", jobs, &mut jac_t, 0)
+            .drain("inp", jobs, &mut jac_t, Check::None)
             .expect("numjac energies failed");
         takedown();
         // nalgebra does from_vec in col-major order, so lead with cols and I get

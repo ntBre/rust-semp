@@ -11,7 +11,7 @@ use psqs::{
         mopac::{Mopac, Params},
         Job, ProgramResult, Template,
     },
-    queue::Queue,
+    queue::{Check, Queue},
 };
 use rust_pbqff::{
     coord_type::{
@@ -261,7 +261,7 @@ impl Frequency {
 
                 let mut sic = Sic::new(intder);
                 let (moles, taylor, atomic_numbers) =
-                    sic.generate_pts(w, &mol, &pg, STEP_SIZE)?;
+                    sic.generate_pts(".", w, &mol, &pg, STEP_SIZE)?;
 
                 // dir created in generate_pts but unused here
                 let _ = std::fs::remove_dir_all("pts");
@@ -330,9 +330,10 @@ impl Frequency {
                         pg
                     };
                     norm.prep_qff(w, &o, pg);
-                    let (geoms, taylor, _atomic_numbers) =
-                        norm.generate_pts(w, &o.geom, &pg, STEP_SIZE).unwrap();
                     let dir = "inp";
+                    let (geoms, taylor, _atomic_numbers) = norm
+                        .generate_pts(dir, w, &o.geom, &pg, STEP_SIZE)
+                        .unwrap();
                     let jobs = Mopac::build_jobs(
                         geoms,
                         None,
@@ -494,7 +495,7 @@ impl Frequency {
                 output,
             } => {
                 let (fcs, _) = normal
-                    .anpass(None, energies, &taylor, STEP_SIZE, w)
+                    .anpass(".", energies, &taylor, STEP_SIZE, w)
                     .unwrap();
                 // needed in case taylor eliminated some of the higher
                 // derivatives by symmetry. this should give the maximum,
@@ -653,7 +654,7 @@ impl Frequency {
         // but only the builders for non-normal molecules are built.
         let mut energies = vec![0.0; jobs.len()];
         submitter
-            .drain("inp", jobs, &mut energies, 0)
+            .drain("inp", jobs, &mut energies, Check::None)
             .expect("numjac optimizations failed");
         // reset for rest of num_jac
         setup();
@@ -906,7 +907,8 @@ impl Optimize for Frequency {
 
             let mut energies = vec![0.0; jobs.len()];
             // drain to get energies
-            let status = submitter.drain("inp", jobs, &mut energies, 0);
+            let status =
+                submitter.drain("inp", jobs, &mut energies, Check::None);
 
             if status.is_err() {
                 return None;
@@ -982,7 +984,7 @@ impl Optimize for Frequency {
         // run all of the energies
         let mut energies = vec![0.0; jobs.len()];
         submitter
-            .drain("inp", jobs, &mut energies, 0)
+            .drain("inp", jobs, &mut energies, Check::None)
             .expect("numjac optimizations failed");
         takedown();
 

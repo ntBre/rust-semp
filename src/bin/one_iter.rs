@@ -23,7 +23,7 @@ fn main() {
     let mut energies = vec![0.; ml];
     setup();
     Local::new(128, 128, 2, "inp", true, None)
-        .drain("inp", jobs, &mut energies, 0)
+        .drain("inp", jobs, &mut energies, psqs::queue::Check::None)
         .unwrap();
     takedown();
     for (i, e) in energies.iter().enumerate() {

@@ -260,3 +260,9 @@ pub fn sort_irreps(freqs: &[f64], irreps: &[Irrep]) -> Vec<f64> {
     });
     pairs.iter().map(|x| *x.1).collect()
 }
+
+pub fn sort_ascending(freqs: &[f64], _irreps: &[Irrep]) -> Vec<f64> {
+    let mut freqs = freqs.to_vec();
+    freqs.sort_by(|a, b| a.total_cmp(b));
+    freqs
+}

@@ -1,7 +1,7 @@
 use super::Optimize;
 use crate::{
     config::{self, CoordType},
-    utils::{setup, sort_irreps, takedown},
+    utils::{setup, takedown},
 };
 use na::DVector;
 use nalgebra as na;
@@ -38,7 +38,7 @@ use std::{
     rc::Rc,
     sync::{LazyLock, Mutex},
 };
-use symm::{Molecule, PointGroup};
+use symm::{Irrep, Molecule, PointGroup};
 use taylor::Taylor;
 
 static DEBUG: LazyLock<bool> =
@@ -58,6 +58,7 @@ fn output_stream() -> Box<dyn Write> {
 pub struct Frequency {
     delta: f64,
     logger: Mutex<File>,
+    sort_fn: fn(&[f64], &[Irrep]) -> Vec<f64>,
 }
 
 pub fn optimize_geometry<Q: Queue<Mopac> + Sync>(
@@ -203,12 +204,21 @@ enum Builder {
 }
 
 impl Frequency {
-    pub fn new(delta: f64) -> Self {
+    pub fn new(delta: f64, sort_ascending: bool) -> Self {
         let logger = Mutex::new(
             std::fs::File::create("freqs.log")
                 .expect("failed to create 'freqs.log'"),
         );
-        Self { delta, logger }
+        let sort_fn = if sort_ascending {
+            crate::utils::sort_ascending
+        } else {
+            crate::utils::sort_irreps
+        };
+        Self {
+            delta,
+            logger,
+            sort_fn,
+        }
     }
 
     /// build jobs for a fixed set of Params. instead of passing the params as
@@ -572,7 +582,7 @@ impl Frequency {
         if s != e {
             eprintln!("filtered out {} non-finite corrs from", s - e);
         }
-        let freqs = sort_irreps(&freqs, &summary.irreps);
+        let freqs = (self.sort_fn)(&freqs, &summary.irreps);
         DVector::from(freqs)
     }
 
@@ -810,7 +820,7 @@ fn write_params(
 
 impl Default for Frequency {
     fn default() -> Self {
-        Self::new(1e-4)
+        Self::new(1e-4, false)
     }
 }
 

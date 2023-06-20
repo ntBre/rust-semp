@@ -12,7 +12,9 @@ use rust_pbqff::config::Queue;
 use rust_semp::config::Config;
 use rust_semp::optimize::energy::Energy;
 use rust_semp::optimize::frequency::Frequency;
-use rust_semp::utils::{load_energies, load_geoms, parse_params, sort_irreps};
+use rust_semp::utils::{
+    load_energies, load_geoms, parse_params, sort_ascending, sort_irreps,
+};
 use rust_semp::*;
 
 fn main() {
@@ -102,9 +104,13 @@ fn main() {
             eprintln!("symmetry-sorted true frequencies:");
             for (i, mol) in conf.molecules.iter().enumerate() {
                 eprintln!("Molecule {i}");
-                let a = mol.true_freqs.clone();
-                let irreps = mol.irreps.clone();
-                let a = sort_irreps(&a, &irreps);
+                let irreps = &mol.irreps;
+                let mut a = mol.true_freqs.clone();
+                if conf.sort_ascending {
+                    a = sort_ascending(&a, irreps);
+                } else {
+                    a = sort_irreps(&a, irreps);
+                }
                 for (i, a) in zip(irreps, a.clone()) {
                     eprintln!("{i} {a:8.1}");
                 }
@@ -129,7 +135,7 @@ fn main() {
                         conf.queue_template,
                     ),
                     conf.reset_lambda,
-                    Frequency::new(conf.delta),
+                    Frequency::new(conf.delta, conf.sort_ascending),
                 ),
                 Queue::Slurm => run_algo(
                     &mut param_log,
@@ -148,7 +154,7 @@ fn main() {
                         conf.queue_template,
                     ),
                     conf.reset_lambda,
-                    Frequency::new(conf.delta),
+                    Frequency::new(conf.delta, conf.sort_ascending),
                 ),
                 Queue::Local => run_algo(
                     &mut param_log,
@@ -166,7 +172,7 @@ fn main() {
                         ),
                     },
                     conf.reset_lambda,
-                    Frequency::new(conf.delta),
+                    Frequency::new(conf.delta, conf.sort_ascending),
                 ),
             };
         }

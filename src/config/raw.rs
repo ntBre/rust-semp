@@ -54,6 +54,9 @@ pub(super) struct RawConfig {
 
     /// optional template for the queue
     pub queue_template: Option<String>,
+
+    /// sort frequencies in descending order instead of by symmetry too
+    pub sort_ascending: Option<bool>,
 }
 
 #[derive(Clone, Deserialize, Debug, PartialEq)]
@@ -168,6 +171,7 @@ HCC =               147.81488230
             mopac: None,
             delta: 1e-4,
             queue_template: None,
+            sort_ascending: None,
         };
         assert_eq!(got, want);
     }

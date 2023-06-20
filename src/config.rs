@@ -63,6 +63,8 @@ pub struct Config {
     pub delta: f64,
 
     pub queue_template: Option<String>,
+
+    pub sort_ascending: bool,
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -142,6 +144,7 @@ impl Config {
             mopac: raw.mopac,
             delta: raw.delta,
             queue_template: raw.queue_template,
+            sort_ascending: raw.sort_ascending.unwrap_or(false),
         }
     }
 }

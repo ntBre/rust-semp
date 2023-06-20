@@ -9,7 +9,7 @@ TESTFLAGS += --include-ignored
 endif
 
 ELAND_DEST = 'eland:programs/semp/.'
-WOODS_DEST = 'woods:Programs/semp/.'
+WOODS_DEST = 'woods:bin/semp'
 
 clippy:
 	cargo clippy --workspace --tests

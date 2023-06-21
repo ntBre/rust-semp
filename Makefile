@@ -23,7 +23,7 @@ eland: build
 	scp -C ${BASE}/target/x86_64-unknown-linux-gnu/release/rust-semp ${ELAND_DEST}
 
 woods: build
-	scp -C ${BASE}/target/x86_64-unknown-linux-gnu/release/rust-semp ${WOODS_DEST}
+	scp -C ${BASE}/target/x86_64-unknown-linux-gnu/release/rust-semp ${WOODS_DEST}${ALPHA}
 
 eland.scripts: scripts/time.awk
 	scp -C $? ${ELAND_DEST}

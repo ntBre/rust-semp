@@ -364,31 +364,34 @@ impl Frequency {
                     let nfc4 = n * (n + 1) * (n + 2) * (n + 3) / 24;
                     let mut fcs = vec![0.0; nfc2 + nfc3 + nfc4];
                     let mut target_map = BigHash::new(o.geom.clone(), pg);
-                    let geoms = norm
-                        .build_points(
-                            Geom::Xyz(o.geom.atoms.clone()),
-                            STEP_SIZE,
-                            ref_energy.unwrap(),
-                            Derivative::Quartic(nfc2, nfc3, nfc4),
-                            &mut fcs,
-                            &mut target_map,
-                            n,
-                        )
-                        .into_iter()
-                        .map(|g| g.geom)
-                        .collect();
+                    let geoms = norm.build_points(
+                        Geom::Xyz(o.geom.atoms.clone()),
+                        STEP_SIZE,
+                        ref_energy.unwrap(),
+                        Derivative::Quartic(nfc2, nfc3, nfc4),
+                        &mut fcs,
+                        &mut target_map,
+                        n,
+                    );
                     let targets = target_map.values();
                     let dir = "inp";
-                    let jobs = Mopac::build_jobs(
-                        geoms,
-                        None,
-                        dir,
-                        start_index,
-                        1.0,
-                        job_num,
-                        molecule.charge,
-                        tmpl,
-                    );
+                    let mut job_num = start_index;
+                    let mut jobs = Vec::new();
+                    // TODO no copy pasta between this, normalharm and cart
+                    for mol in geoms {
+                        let filename = format!("{dir}/job.{job_num:08}");
+                        job_num += 1;
+                        jobs.push(Job::new(
+                            Mopac::new_full(
+                                filename,
+                                None,
+                                mol.geom.clone(),
+                                molecule.charge,
+                                tmpl.clone(),
+                            ),
+                            mol.index + start_index,
+                        ));
+                    }
                     Ok((
                         FreqParts::FinNorm {
                             normal: norm,

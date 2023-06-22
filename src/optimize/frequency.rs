@@ -700,7 +700,9 @@ impl Frequency {
                 .par_iter()
                 .enumerate()
                 .map(|(i, (energy, freq))| {
-                    let index = m * rows + i;
+                    // there are 2 entries per molecule per row + i, which is
+                    // the current entry
+                    let index = 2 * m * rows + i;
                     let freq = freq.clone();
                     let dir = format!("freqs{i}_{m}");
                     let _ = std::fs::create_dir(&dir);

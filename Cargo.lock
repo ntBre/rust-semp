@@ -43,15 +43,15 @@ dependencies = [
 
 [[package]]
 name = "anstyle"
-version = "1.0.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41ed9a86bf92ae6580e0a31281f65a1b1d867c0cc68d5346e2ae128dddfa6a7d"
+checksum = "3a30da5c5f2d5e72842e00bcb57657162cdabef0931f40e2deb9b4140440cecd"
 
 [[package]]
 name = "anstyle-parse"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e765fd216e48e067936442276d1d57399e37bce53c264d6fefbe298080cb57ee"
+checksum = "938874ff5980b03a87c5524b3ae5b59cf99b1d6bc836848df7bc5ada9643c333"
 dependencies = [
  "utf8parse",
 ]
@@ -137,9 +137,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.3.4"
+version = "4.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80672091db20273a15cf9fdd4e47ed43b5091ec9841bf4c6145c9dfbbcae09ed"
+checksum = "2686c4115cb0810d9a984776e197823d08ec94f176549a89a9efded477c456dc"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -148,9 +148,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.3.4"
+version = "4.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1458a1df40e1e2afebb7ab60ce55c1fa8f431146205aa5f4887e0b111c27636"
+checksum = "2e53afce1efce6ed1f633cf0e57612fe51db54a1ee4fd8f8503d078fe02d69ae"
 dependencies = [
  "anstream",
  "anstyle",
@@ -235,7 +235,7 @@ dependencies = [
 [[package]]
 name = "dispatch"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#4c51b94dccfefba7dd485b3f9a2a0af2f4f2cc6b"
+source = "git+https://github.com/ntBre/rust-pbqff#2069e138c8692c2611e642233664a7eb72ccf231"
 
 [[package]]
 name = "either"
@@ -614,7 +614,7 @@ dependencies = [
 [[package]]
 name = "rust-pbqff"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#4c51b94dccfefba7dd485b3f9a2a0af2f4f2cc6b"
+source = "git+https://github.com/ntBre/rust-pbqff#2069e138c8692c2611e642233664a7eb72ccf231"
 dependencies = [
  "clap",
  "dispatch",
@@ -746,7 +746,7 @@ dependencies = [
 [[package]]
 name = "spectro"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/spectro#e58863d1ec94a465218ba76a8bf4dc958174ece3"
+source = "git+https://github.com/ntBre/spectro#12b78067199d6cb1aac9332beed91c2dcba0cfe1"
 dependencies = [
  "nalgebra",
  "serde",
@@ -796,7 +796,7 @@ dependencies = [
 [[package]]
 name = "taylor"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/taylor#0fe07886e7bc4b68c1e9197fe47ff5f1d8ba14be"
+source = "git+https://github.com/ntBre/taylor#85eae81b5714cd5117093a122dd31736e7c35a14"
 dependencies = [
  "nalgebra",
  "rust-anpass",

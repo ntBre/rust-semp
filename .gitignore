@@ -1,14 +1,9 @@
 /target
-/inp/
-/tmparam/
 /perf.data*
 /callgrind.out*
 /flamegraph.svg
 /heaptrack*
-/opt/
 /freqs.log
 /jac
 /eland.out
 /trash/
-/energy.dat
-/rel.dat

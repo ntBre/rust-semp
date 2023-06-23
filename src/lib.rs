@@ -227,7 +227,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
         // K until the norm improves or k ≈ 0
         let mut k = 1.0;
         let mut i = 2;
-        const K_MIN: f64 = 1e-8;
+        const K_MIN: f64 = 1e-14;
         while bad && stats.norm > last_stats.norm && k > K_MIN {
             eprintln!(
                 "\tk_{} to {:e} with ΔNorm = {}",

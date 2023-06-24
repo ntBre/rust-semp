@@ -39,7 +39,7 @@ profile = RUSTFLAGS='-g' cargo build --release --bin $(1); \
 		--collect-jumps=yes --simulate-cache=yes		\
 		${BASE}/target/release/$(1)
 cover:
-	cargo tarpaulin --color=never --skip-clean ${TESTFLAGS} ${ARGS}
+	cargo tarpaulin --skip-clean --timeout 3600 ${TESTFLAGS} ${ARGS} ${SKIP}
 
 profile.one_iter:
 	$(call profile,one_iter)

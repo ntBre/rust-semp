@@ -17,10 +17,7 @@ impl Stats {
         conv: f64,
     ) -> Self {
         let count = tru.len();
-        let mut w = w.clone();
-        if w.len() < count {
-            w.extend(vec![0.0; count - w.len()]);
-        }
+        let w = w.clone().resize_vertically(count, 0.0);
         let mut sq_diffs = 0.0;
         let mut max = tru[0] - w[0];
         for i in 0..count {

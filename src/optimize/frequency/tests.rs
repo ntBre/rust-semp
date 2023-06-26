@@ -1,11 +1,12 @@
 use super::*;
 use crate::{config::Config, tests::load_mat, utils::setup};
+
+use nalgebra as na;
 use psqs::queue::local::Local;
 
-#[test]
-#[ignore]
-fn freq_semi_empirical() {
-    let config = Config::load("test_files/test.toml");
+/// this is kinda lame because these are essentially pbqff tests, but they do
+/// utilize a lot of the same machinery
+fn se_from_config(config: Config, want: na::DVector<f64>) {
     let freq = Frequency::default();
     setup();
     let queue = Local {
@@ -42,20 +43,46 @@ FN11           C      0.046302000000"
     got.sort_by(|a, b| b.partial_cmp(a).unwrap());
     approx::assert_abs_diff_eq!(
         na::DVector::from(Vec::from(got)),
-        na::DVector::from(vec![
-            2783.961357017977,
-            2764.3281931305864,
-            1775.6737582101287,
-            1177.145694605022,
-            1040.6327552461862,
-            960.1588882411834,
-            927.0954879807678,
-            919.9554364598707,
-            905.3386838377455
-        ]),
+        want,
         epsilon = 0.1
     );
     takedown();
+}
+
+#[test]
+#[ignore]
+fn sic_semi_empirical() {
+    let config = Config::load("test_files/test.toml");
+    let want = na::dvector![
+        2783.961357017977,
+        2764.3281931305864,
+        1775.6737582101287,
+        1177.145694605022,
+        1040.6327552461862,
+        960.1588882411834,
+        927.0954879807678,
+        919.9554364598707,
+        905.3386838377455
+    ];
+    se_from_config(config, want);
+}
+
+#[test]
+#[ignore]
+fn cart_semi_empirical() {
+    let config = Config::load("test_files/cart.toml");
+    let want = na::dvector![
+        2783.0355951341962,
+        2763.275377957968,
+        1776.3820512917491,
+        1177.824074229593,
+        1041.2641575043508,
+        960.0159356063677,
+        927.3499180637409,
+        920.5868937867253,
+        906.0837431489708
+    ];
+    se_from_config(config, want);
 }
 
 #[test]

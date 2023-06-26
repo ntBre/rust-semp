@@ -1,7 +1,7 @@
 use super::Optimize;
 use crate::{
     config::{self, CoordType},
-    utils::{setup, takedown},
+    utils::{mae, setup, takedown},
 };
 use na::DVector;
 use nalgebra as na;
@@ -1173,37 +1173,5 @@ impl Frequency {
             }
         }
         opts
-    }
-}
-
-/// return the mean absolute error (1/N ∑ᵢᴺ |aᵢ - bᵢ|) where N is the shorter of
-/// `a.len()` and `b.len()` to guard against panics
-fn mae(a: &DVector<f64>, b: &DVector<f64>) -> f64 {
-    let al = a.len();
-    let bl = b.len();
-    if al != bl {
-        eprintln!("len mismatch in mae: {al} vs {bl}");
-    }
-    let l = al.min(bl);
-    let mut sum = 0.0;
-    for i in 0..l {
-        sum += f64::abs(a[i] - b[i]);
-    }
-    sum / l as f64
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-
-    fn test_mae() {
-        let se = na::dvector![
-            3130.3, 3107.9, 1590.1, 1227.0, 1117.1, 1002.9, 876.2, 925.6, 773.6
-        ];
-        let ai = na::dvector![
-            3142.6, 3120.8, 1600.9, 1278.8, 1065.1, 970.2, 888.6, 878.6, 772.8
-        ];
-        approx::assert_abs_diff_eq!(mae(&se, &ai), 25.855555555555547);
     }
 }

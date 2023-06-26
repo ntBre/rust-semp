@@ -41,6 +41,9 @@ use std::{
 use symm::{Irrep, Molecule, PointGroup};
 use taylor::Taylor;
 
+#[cfg(test)]
+mod tests;
+
 static DEBUG: LazyLock<bool> =
     LazyLock::new(|| std::env::var("SEMP_FREQ_DEBUG").is_ok());
 

@@ -91,6 +91,16 @@ pub fn optimize_geometry<Q: Queue<Mopac> + Sync>(
     Some(res.pop().unwrap())
 }
 
+/// the shared components of a finite difference FreqPart
+#[derive(Clone, Debug)]
+struct FinDiff {
+    fcs: Vec<f64>,
+    targets: Vec<Target>,
+    n: usize,
+    nfc2: usize,
+    nfc3: usize,
+}
+
 /// the state generated in build_jobs needed to finish running frequencies after
 /// the energies are run
 #[derive(Clone, Debug)]
@@ -102,11 +112,7 @@ enum FreqParts {
         atomic_numbers: Vec<usize>,
     },
     Cart {
-        fcs: Vec<f64>,
-        targets: Vec<Target>,
-        n: usize,
-        nfc2: usize,
-        nfc3: usize,
+        inner: FinDiff,
         mol: Molecule,
     },
     FitNorm {
@@ -119,18 +125,10 @@ enum FreqParts {
         normal: Normal,
         spectro: Spectro,
         output: Output,
-        fcs: Vec<f64>,
-        targets: Vec<Target>,
-        n: usize,
-        nfc2: usize,
-        nfc3: usize,
+        inner: FinDiff,
     },
     NormHarm {
-        fcs: Vec<f64>,
-        targets: Vec<Target>,
-        n: usize,
-        nfc2: usize,
-        nfc3: usize,
+        inner: FinDiff,
         mol: Molecule,
         pg: PointGroup,
     },
@@ -157,24 +155,6 @@ impl FreqParts {
             intder,
             taylor,
             atomic_numbers,
-        }
-    }
-
-    fn cart(
-        fcs: Vec<f64>,
-        targets: Vec<Target>,
-        n: usize,
-        nfc2: usize,
-        nfc3: usize,
-        mol: Molecule,
-    ) -> Self {
-        Self::Cart {
-            fcs,
-            targets,
-            n,
-            nfc2,
-            nfc3,
-            mol,
         }
     }
 
@@ -228,7 +208,10 @@ impl Frequency {
     /// part of each separate Mopac, write the parameters once and update the
     /// Template passed to Mopac::new. returns FreqParts, which contains
     /// whatever this molecule's coordinate type requires to finish running
-    /// frequencies, and the list of jobs to run
+    /// frequencies, and the list of jobs to run. At first glance, it appears
+    /// redundant to pass both `molecule` and `coord_type` because each
+    /// [config::Molecule] contains its own coordinate type, but this is needed
+    /// to call `build_jobs` for the harmonic portion of a normal QFF.
     #[allow(clippy::too_many_arguments, clippy::type_complexity)]
     fn build_jobs<W>(
         &self,
@@ -293,48 +276,24 @@ impl Frequency {
                 Ok((FreqParts::sic(sic.intder, taylor, atomic_numbers), jobs))
             }
             CoordType::Cart => {
-                let n = 3 * mol.atoms.len();
-                let nfc2 = n * n;
-                let nfc3 = n * (n + 1) * (n + 2) / 6;
-                let nfc4 = n * (n + 1) * (n + 2) * (n + 3) / 24;
-                let mut fcs = vec![0.0; nfc2 + nfc3 + nfc4];
-
-                let mut target_map = BigHash::new(mol.clone(), pg);
-
-                let geoms = Cart.build_points(
-                    Geom::Xyz(mol.atoms.clone()),
-                    STEP_SIZE,
+                let (inner, jobs) = build_findiff(
+                    3 * mol.atoms.len(),
+                    &mol,
+                    pg,
                     energy,
-                    Derivative::Quartic(nfc2, nfc3, nfc4),
-                    &mut fcs,
-                    &mut target_map,
-                    n,
+                    start_index,
+                    molecule,
+                    &tmpl,
+                    &Cart,
                 );
-                let targets = target_map.values();
-                let dir = "inp";
-                let mut job_num = start_index;
-                let mut jobs = Vec::new();
-                for mol in geoms {
-                    let filename = format!("{dir}/job.{job_num:08}");
-                    job_num += 1;
-                    jobs.push(Job::new(
-                        Mopac::new_full(
-                            filename,
-                            None,
-                            mol.geom.clone(),
-                            molecule.charge,
-                            tmpl.clone(),
-                        ),
-                        mol.index + start_index,
-                    ));
-                }
-                Ok((FreqParts::cart(fcs, targets, n, nfc2, nfc3, mol), jobs))
+                Ok((FreqParts::Cart { inner, mol }, jobs))
             }
             CoordType::Normal(..) => {
                 // there must be a way to tie these types together more smoothly
                 let Builder::Norm { mut norm, s, o, pg, ref_energy } = builder else {
 		    unreachable!()
 		};
+                norm.prep_qff(w, &o, pg);
                 if !norm.findiff {
                     // adapted from Normal::run_fitted in pbqff
                     let pg = if pg.is_d2h() {
@@ -342,7 +301,6 @@ impl Frequency {
                     } else {
                         pg
                     };
-                    norm.prep_qff(w, &o, pg);
                     let dir = "inp";
                     let (geoms, taylor, _atomic_numbers) = norm
                         .generate_pts(dir, w, &o.geom, &pg, STEP_SIZE)
@@ -359,60 +317,29 @@ impl Frequency {
                     );
                     Ok((FreqParts::norm(norm, taylor, s, o), jobs))
                 } else {
-                    norm.prep_qff(w, &o, pg);
-                    // adapted from run_findiff in pbqff
-                    let n = norm.ncoords;
-                    let nfc2 = n * n;
-                    let nfc3 = n * (n + 1) * (n + 2) / 6;
-                    let nfc4 = n * (n + 1) * (n + 2) * (n + 3) / 24;
-                    let mut fcs = vec![0.0; nfc2 + nfc3 + nfc4];
-                    let mut target_map = BigHash::new(o.geom.clone(), pg);
-                    let geoms = norm.build_points(
-                        Geom::Xyz(o.geom.atoms.clone()),
-                        STEP_SIZE,
+                    let (inner, jobs) = build_findiff(
+                        norm.ncoords,
+                        &o.geom,
+                        pg,
                         ref_energy.unwrap(),
-                        Derivative::Quartic(nfc2, nfc3, nfc4),
-                        &mut fcs,
-                        &mut target_map,
-                        n,
+                        start_index,
+                        molecule,
+                        &tmpl,
+                        &norm,
                     );
-                    let targets = target_map.values();
-                    let dir = "inp";
-                    let mut job_num = start_index;
-                    let mut jobs = Vec::new();
-                    // TODO no copy pasta between this, normalharm and cart
-                    for mol in geoms {
-                        let filename = format!("{dir}/job.{job_num:08}");
-                        job_num += 1;
-                        jobs.push(Job::new(
-                            Mopac::new_full(
-                                filename,
-                                None,
-                                mol.geom.clone(),
-                                molecule.charge,
-                                tmpl.clone(),
-                            ),
-                            mol.index + start_index,
-                        ));
-                    }
                     Ok((
                         FreqParts::FinNorm {
                             normal: norm,
                             spectro: s,
                             output: o,
-                            fcs,
-                            targets,
-                            n,
-                            nfc2,
-                            nfc3,
+                            inner,
                         },
                         jobs,
                     ))
                 }
             }
             CoordType::NormalHarm => {
-                // kinda sloppy but copied from Cart case with just Derivative
-                // changed
+                // TODO pass derivative to build_findiff and use it here
                 let n = 3 * mol.atoms.len();
                 let nfc2 = n * n;
                 let nfc3 = n * (n + 1) * (n + 2) / 6;
@@ -450,11 +377,13 @@ impl Frequency {
                 }
                 Ok((
                     FreqParts::NormHarm {
-                        fcs,
-                        targets,
-                        n,
-                        nfc2,
-                        nfc3,
+                        inner: FinDiff {
+                            fcs,
+                            targets,
+                            n,
+                            nfc2,
+                            nfc3,
+                        },
                         mol,
                         pg,
                     },
@@ -485,12 +414,15 @@ impl Frequency {
                     Default::default()
                 }),
             FreqParts::Cart {
-                mut fcs,
-                targets,
-                n,
-                nfc2,
-                nfc3,
                 mol,
+                inner:
+                    FinDiff {
+                        mut fcs,
+                        targets,
+                        n,
+                        nfc2,
+                        nfc3,
+                    },
             } => {
                 let (fc2, f3, f4) = Cart.make_fcs(
                     targets,
@@ -551,11 +483,14 @@ impl Frequency {
                 normal,
                 spectro,
                 output,
-                mut fcs,
-                targets,
-                n,
-                nfc2,
-                nfc3,
+                inner:
+                    FinDiff {
+                        mut fcs,
+                        targets,
+                        n,
+                        nfc2,
+                        nfc3,
+                    },
             } => {
                 normal.map_energies(targets, energies, &mut fcs);
                 let cubs = &fcs[nfc2..nfc2 + nfc3];
@@ -711,11 +646,13 @@ impl Frequency {
                     let _ = std::fs::create_dir(&dir);
                     let norm = Normal::findiff(b);
                     let FreqParts::NormHarm {
+			inner: FinDiff {
                         mut fcs,
                         targets,
                         n,
                         nfc2,
                         nfc3,
+			},
                         mol,
                         pg,
                     } = freq else { unimplemented!() } ;
@@ -809,6 +746,62 @@ impl Frequency {
         }
         (jobs, freqs, indices)
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_findiff<F: FiniteDifference>(
+    ncoords: usize,
+    mol: &Molecule,
+    pg: PointGroup,
+    energy: f64,
+    start_index: usize,
+    molecule: &config::Molecule,
+    tmpl: &Template,
+    coord: &F,
+) -> (FinDiff, Vec<Job<Mopac>>) {
+    let n = ncoords;
+    let nfc2 = n * n;
+    let nfc3 = n * (n + 1) * (n + 2) / 6;
+    let nfc4 = n * (n + 1) * (n + 2) * (n + 3) / 24;
+    let mut fcs = vec![0.0; nfc2 + nfc3 + nfc4];
+    let mut target_map = BigHash::new(mol.clone(), pg);
+    let geoms = coord.build_points(
+        Geom::Xyz(mol.atoms.clone()),
+        STEP_SIZE,
+        energy,
+        Derivative::Quartic(nfc2, nfc3, nfc4),
+        &mut fcs,
+        &mut target_map,
+        n,
+    );
+    let targets = target_map.values();
+    let dir = "inp";
+    let mut job_num = start_index;
+    let mut jobs = Vec::new();
+    for mol in geoms {
+        let filename = format!("{dir}/job.{job_num:08}");
+        job_num += 1;
+        jobs.push(Job::new(
+            Mopac::new_full(
+                filename,
+                None,
+                mol.geom.clone(),
+                molecule.charge,
+                tmpl.clone(),
+            ),
+            mol.index + start_index,
+        ));
+    }
+    (
+        FinDiff {
+            n,
+            nfc2,
+            nfc3,
+            fcs,
+            targets,
+        },
+        jobs,
+    )
 }
 
 /// generate a parameter filename using `job_num`, write the parameters to that

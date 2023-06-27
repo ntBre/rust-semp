@@ -71,7 +71,7 @@ pub struct Config {
 pub(crate) enum CoordType {
     Sic(Intder),
     Cart,
-    Normal(Option<bool>),
+    Normal(bool),
     NormalHarm,
 }
 
@@ -117,7 +117,9 @@ impl Config {
             let coord_type = match molecule.coord_type {
                 raw::CoordType::Sic(f) => CoordType::Sic(Intder::load_file(&f)),
                 raw::CoordType::Cart => CoordType::Cart,
-                raw::CoordType::Norm(b) => CoordType::Normal(b),
+                raw::CoordType::Norm(b) => {
+                    CoordType::Normal(b.unwrap_or(false))
+                }
             };
             molecules.push(Molecule {
                 atom_names: molecule.atom_names,

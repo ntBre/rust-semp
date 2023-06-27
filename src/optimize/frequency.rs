@@ -709,7 +709,7 @@ impl Frequency {
                     let freq = freq.clone();
                     let dir = format!("freqs{i}_{m}");
                     let _ = std::fs::create_dir(&dir);
-                    let norm = Normal::findiff(b.unwrap_or(false));
+                    let norm = Normal::findiff(b);
                     let FreqParts::NormHarm {
                         mut fcs,
                         targets,
@@ -871,7 +871,7 @@ impl Optimize for Frequency {
 
             let builder = if let CoordType::Normal(b) = molecule.coord_type {
                 // NOTE using fitted normal coordinates
-                let norm = Normal::findiff(b.unwrap_or(false));
+                let norm = Normal::findiff(b);
                 // safe to use 0 as job_num because we have to reset directories
                 // after the harmonic part anyway
                 let tmpl = write_params(0, params, molecule.template.clone());

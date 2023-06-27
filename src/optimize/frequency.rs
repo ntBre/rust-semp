@@ -244,7 +244,7 @@ impl Frequency {
     where
         W: Write,
     {
-        let Some(g) = geom.cart_geom else {
+        let ProgramResult { energy, cart_geom: Some(g), .. } = geom else {
 	    return Err(GeomError.into());
 	};
 
@@ -304,7 +304,7 @@ impl Frequency {
                 let geoms = Cart.build_points(
                     Geom::Xyz(mol.atoms.clone()),
                     STEP_SIZE,
-                    geom.energy,
+                    energy,
                     Derivative::Quartic(nfc2, nfc3, nfc4),
                     &mut fcs,
                     &mut target_map,

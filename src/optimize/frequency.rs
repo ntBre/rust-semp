@@ -183,6 +183,8 @@ enum Builder {
     },
 }
 
+type Jobs = Vec<Job<Mopac>>;
+
 impl Frequency {
     pub fn new(delta: f64, sort_ascending: bool) -> Self {
         let logger = Mutex::new(
@@ -209,7 +211,7 @@ impl Frequency {
     /// redundant to pass both `molecule` and `coord_type` because each
     /// [config::Molecule] contains its own coordinate type, but this is needed
     /// to call `build_jobs` for the harmonic portion of a normal QFF.
-    #[allow(clippy::too_many_arguments, clippy::type_complexity)]
+    #[allow(clippy::too_many_arguments)]
     fn build_jobs<W>(
         &self,
         w: &mut W,
@@ -220,7 +222,7 @@ impl Frequency {
         molecule: &config::Molecule,
         coord_type: &CoordType,
         builder: Builder,
-    ) -> Result<(FreqParts, Vec<Job<Mopac>>), Box<dyn Error>>
+    ) -> Result<(FreqParts, Jobs), Box<dyn Error>>
     where
         W: Write,
     {

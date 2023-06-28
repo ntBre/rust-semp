@@ -285,6 +285,7 @@ impl Frequency {
                     molecule,
                     &tmpl,
                     &Cart,
+                    false,
                 );
                 Ok((FreqParts::Cart { inner, mol }, jobs))
             }
@@ -326,6 +327,7 @@ impl Frequency {
                         molecule,
                         &tmpl,
                         &norm,
+                        false,
                     );
                     Ok((
                         FreqParts::FinNorm {
@@ -339,56 +341,18 @@ impl Frequency {
                 }
             }
             CoordType::NormalHarm => {
-                // TODO pass derivative to build_findiff and use it here
-                let n = 3 * mol.atoms.len();
-                let nfc2 = n * n;
-                let nfc3 = n * (n + 1) * (n + 2) / 6;
-                let nfc4 = n * (n + 1) * (n + 2) * (n + 3) / 24;
-                let mut fcs = vec![0.0; nfc2 + nfc3 + nfc4];
-
-                let mut target_map = BigHash::new(mol.clone(), pg);
-
-                let geoms = Cart.build_points(
-                    Geom::Xyz(mol.atoms.clone()),
-                    STEP_SIZE,
-                    geom.energy,
-                    Derivative::Harmonic(nfc2),
-                    &mut fcs,
-                    &mut target_map,
-                    n,
+                let (inner, jobs) = build_findiff(
+                    3 * mol.atoms.len(),
+                    &mol,
+                    pg,
+                    energy,
+                    start_index,
+                    molecule,
+                    &tmpl,
+                    &Cart,
+                    true,
                 );
-                let targets = target_map.values();
-                let dir = "inp";
-                let mut job_num = start_index;
-                let mut jobs = Vec::new();
-                for mol in geoms {
-                    let filename = format!("{dir}/job.{job_num:08}");
-                    job_num += 1;
-                    jobs.push(Job::new(
-                        Mopac::new_full(
-                            filename,
-                            None,
-                            mol.geom.clone(),
-                            molecule.charge,
-                            tmpl.clone(),
-                        ),
-                        mol.index + start_index,
-                    ));
-                }
-                Ok((
-                    FreqParts::NormHarm {
-                        inner: FinDiff {
-                            fcs,
-                            targets,
-                            n,
-                            nfc2,
-                            nfc3,
-                        },
-                        mol,
-                        pg,
-                    },
-                    jobs,
-                ))
+                Ok((FreqParts::NormHarm { inner, mol, pg }, jobs))
             }
         }
     }
@@ -730,6 +694,7 @@ fn build_findiff<F: FiniteDifference>(
     molecule: &config::Molecule,
     tmpl: &Template,
     coord: &F,
+    harmonic: bool,
 ) -> (FinDiff, Vec<Job<Mopac>>) {
     let n = ncoords;
     let nfc2 = n * n;
@@ -737,11 +702,16 @@ fn build_findiff<F: FiniteDifference>(
     let nfc4 = n * (n + 1) * (n + 2) * (n + 3) / 24;
     let mut fcs = vec![0.0; nfc2 + nfc3 + nfc4];
     let mut target_map = BigHash::new(mol.clone(), pg);
+    let deriv = if harmonic {
+        Derivative::Harmonic(nfc2)
+    } else {
+        Derivative::Quartic(nfc2, nfc3, nfc4)
+    };
     let geoms = coord.build_points(
         Geom::Xyz(mol.atoms.clone()),
         STEP_SIZE,
         energy,
-        Derivative::Quartic(nfc2, nfc3, nfc4),
+        deriv,
         &mut fcs,
         &mut target_map,
         n,

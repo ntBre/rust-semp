@@ -12,6 +12,7 @@ psqs = { git = "https://github.com/ntBre/psqs" }
 intder = { git = "https://github.com/ntBre/intder" }
 rayon = "1.5.3"
 rust-pbqff = { git = "https://github.com/ntBre/rust-pbqff" }
+# rust-pbqff = { path = "../rust-pbqff" }
 serde = { version = "1.0", features = ["derive"] }
 symm = { git = "https://github.com/ntBre/symm" }
 taylor = { git = "https://github.com/ntBre/taylor" }

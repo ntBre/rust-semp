@@ -360,7 +360,6 @@ impl Frequency {
     fn freqs<W: std::io::Write>(
         &self,
         w: &mut W,
-        dir: &str,
         energies: &mut [f64],
         freq: FreqParts,
     ) -> DVector<f64> {
@@ -370,7 +369,14 @@ impl Frequency {
                 taylor,
                 atomic_numbers,
             } => Sic::new(intder)
-                .freqs(w, dir, energies, &taylor, &atomic_numbers, STEP_SIZE)
+                .freqs(
+                    w,
+                    None::<&Path>,
+                    energies,
+                    &taylor,
+                    &atomic_numbers,
+                    STEP_SIZE,
+                )
                 .unwrap_or_else(|_| {
                     eprintln!("SIC freqs failed");
                     Default::default()
@@ -402,8 +408,14 @@ impl Frequency {
                 spectro,
                 output,
             } => {
-                let (f3, f4) = normal
-                    .fit_freqs(".", energies, taylor, STEP_SIZE, w, &output);
+                let (f3, f4) = normal.fit_freqs(
+                    None::<&Path>,
+                    energies,
+                    taylor,
+                    STEP_SIZE,
+                    w,
+                    &output,
+                );
                 let (o, _) = spectro.finish(
                     DVector::from(output.harms.clone()),
                     F3qcm::new(f3),
@@ -445,7 +457,6 @@ impl Frequency {
             FreqParts::NormHarm { .. } => unimplemented!(),
         };
         if *DEBUG {
-            writeln!(w, "dir={dir}").unwrap();
             writeln!(w, "{:?}", summary.corrs).unwrap();
         }
         let s = summary.corrs.len();
@@ -838,9 +849,7 @@ impl Optimize for Frequency {
             takedown();
 
             // convert energies to frequencies and return those
-            let _ = std::fs::create_dir("freqs");
-            let res = self.freqs(&mut w, "freqs", &mut energies, freq);
-            let _ = std::fs::remove_dir_all("freqs");
+            let res = self.freqs(&mut w, &mut energies, freq);
             ret.extend(res.iter());
         }
         ret.resize(ntrue, 0.0);
@@ -940,23 +949,16 @@ impl Optimize for Frequency {
             // iterate over the energy/freqparts pairs in parallel
             let freqs: Vec<_> = pairs
                 .par_iter()
-                .enumerate()
-                .map(|(i, (energy, freq))| {
+                .map(|(energy, freq)| {
                     let mut energy = energy.clone();
                     let freq = freq.clone();
-                    let dir = format!("freqs{i}_{m}");
-                    let _ = std::fs::create_dir(&dir);
-                    self.freqs(&mut output_stream(), &dir, &mut energy, freq)
+                    self.freqs(&mut output_stream(), &mut energy, freq)
                 })
                 .collect();
 
             // should be a forward and backward step for each parameter
             assert_eq!(freqs.len(), 2 * params.len());
 
-            for i in 0..pairs.len() {
-                let dir = format!("freqs{i}_{m}");
-                let _ = std::fs::remove_dir_all(&dir);
-            }
             let jac_t: Vec<_> = freqs
                 .chunks(2)
                 .map(|pair| {

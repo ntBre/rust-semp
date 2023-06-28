@@ -445,7 +445,7 @@ fn test_solve() {
     assert!(comp_dvec(got, want, 1.04e-6));
 }
 
-fn hostname() -> String {
+pub(crate) fn hostname() -> String {
     String::from_utf8(
         std::process::Command::new("hostname")
             .output()

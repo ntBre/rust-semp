@@ -1,5 +1,9 @@
 use super::*;
-use crate::{config::Config, tests::load_mat, utils::setup};
+use crate::{
+    config::Config,
+    tests::{hostname, load_mat},
+    utils::setup,
+};
 
 use nalgebra as na;
 use psqs::queue::local::Local;
@@ -114,7 +118,11 @@ ZS             C      2.047558000000
         &config.molecules,
         9,
     );
-    let want = load_mat("test_files/freq.jac");
+    let want = if hostname() == "keystone" {
+        load_mat("test_files/freq.jac")
+    } else {
+        load_mat("test_files/github.jac")
+    };
     if !approx::abs_diff_eq!(got, want, epsilon = 1e-12) {
         panic!("got\n{got}, wanted\n{want}");
     }

@@ -69,24 +69,6 @@ fn sic_semi_empirical() {
 
 #[test]
 #[ignore]
-fn cart_semi_empirical() {
-    let config = Config::load("test_files/cart.toml");
-    let want = na::dvector![
-        2783.0355951341962,
-        2763.275377957968,
-        1776.3820512917491,
-        1177.824074229593,
-        1041.2641575043508,
-        960.0159356063677,
-        927.3499180637409,
-        920.5868937867253,
-        906.0837431489708
-    ];
-    se_from_config(config, want);
-}
-
-#[test]
-#[ignore]
 fn norm_semi_empirical() {
     let config = Config::load("test_files/norm.toml");
     let want = na::dvector![

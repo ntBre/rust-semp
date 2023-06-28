@@ -550,54 +550,40 @@ impl Frequency {
             // at this point we know the coord_type is normal
             for row in 0..rows {
                 let index = 2 * i * rows + 2 * row;
+
                 let mut pf = params.clone();
                 pf.values[row] += self.delta;
-                // idx = job_num so use it twice
-                let (freq, fwd_jobs) = match self.build_jobs(
-                    &mut output_stream(),
-                    geoms[index].clone(),
-                    &pf,
-                    idx,
-                    idx,
-                    molecule,
-                    &CoordType::NormalHarm,
-                    Builder::None,
-                ) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        // we exit here because it's not entirely clear how to
-                        // recover from one half of one column going off the
-                        // rails.
-                        eprintln!(
-                            "failed to build jobs with {e} at index {index}"
-                        );
-                        eprintln!("params:\n{pf}");
-                        std::process::exit(1);
-                    }
-                };
-                idx += fwd_jobs.len();
-                indices[i].push(idx);
-                jobs.extend(fwd_jobs);
-                freqs[i].push(freq);
-
                 let mut pb = params.clone();
                 pb.values[row] -= self.delta;
-                let (freq, bwd_jobs) = self
-                    .build_jobs(
-                        &mut output_stream(),
-                        geoms[index + 1].clone(),
-                        &pb,
-                        idx,
-                        idx,
-                        molecule,
-                        &CoordType::NormalHarm,
-                        Builder::None,
-                    )
-                    .unwrap();
-                idx += bwd_jobs.len();
-                indices[i].push(idx);
-                jobs.extend(bwd_jobs);
-                freqs[i].push(freq);
+
+                for (p, pf) in [pf, pb].iter().enumerate() {
+                    // idx = job_num so use it twice
+                    let (freq, fwd_jobs) = self
+                        .build_jobs(
+                            &mut output_stream(),
+                            geoms[index + p].clone(),
+                            pf,
+                            idx,
+                            idx,
+                            molecule,
+                            &CoordType::NormalHarm,
+                            Builder::None,
+                        )
+                        .unwrap_or_else(|e| {
+                            // we exit here because it's not entirely clear how
+                            // to recover from one half of one column going off
+                            // the rails.
+                            eprintln!(
+				"failed to build jobs with {e} at index {index}"
+			    );
+                            eprintln!("params:\n{pf}");
+                            std::process::exit(1);
+                        });
+                    idx += fwd_jobs.len();
+                    indices[i].push(idx);
+                    jobs.extend(fwd_jobs);
+                    freqs[i].push(freq);
+                }
             }
         }
 

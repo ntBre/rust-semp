@@ -2,7 +2,6 @@ BASE = /home/brent/Projects/rust-semp
 ARGS =
 TESTFLAGS = -- --test-threads=1 --nocapture
 SHORT = 0
-SKIP = --skip freq_num_jac
 
 ifeq ($(SHORT),0)
 TESTFLAGS += --include-ignored
@@ -29,7 +28,7 @@ eland.scripts: scripts/time.awk
 	scp -C $? ${ELAND_DEST}
 
 test:
-	RUST_BACKTRACE=1 cargo test ${TESTFLAGS} ${ARGS} ${SKIP}
+	RUST_BACKTRACE=1 cargo test ${TESTFLAGS} ${ARGS}
 
 clean:
 	cargo clean
@@ -42,7 +41,7 @@ cover:
 	cargo tarpaulin --skip-clean --timeout 3600 --out html \
 	    --exclude-files src/bin/* src/main.rs \
             --color=never \
-	    ${TESTFLAGS} ${ARGS} ${SKIP}
+	    ${TESTFLAGS} ${ARGS}
 
 profile.one_iter:
 	$(call profile,one_iter)

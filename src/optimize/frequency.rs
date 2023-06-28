@@ -33,7 +33,7 @@ use std::{
     fs::File,
     io::Write,
     marker::Sync,
-    rc::Rc,
+    path::Path,
     sync::{LazyLock, Mutex},
 };
 use symm::{Irrep, Molecule, PointGroup};
@@ -391,12 +391,10 @@ impl Frequency {
                     energies,
                     &mut fcs,
                     n,
-                    rust_pbqff::coord_type::cart::Derivative::Quartic(
-                        nfc2, nfc3, 0,
-                    ),
-                    dir,
+                    Derivative::Quartic(nfc2, nfc3, 0),
+                    None::<&Path>,
                 );
-                rust_pbqff::coord_type::cart::freqs(dir, &mol, fc2, f3, f4)
+                cart::freqs(None::<&Path>, &mol, fc2, f3, f4)
             }
             FreqParts::FitNorm {
                 normal,
@@ -564,8 +562,6 @@ impl Frequency {
                     // the current entry
                     let index = 2 * m * rows + i;
                     let freq = freq.clone();
-                    let dir = format!("freqs{i}_{m}");
-                    let _ = std::fs::create_dir(&dir);
                     let norm = Normal::findiff(b);
                     let FreqParts::NormHarm {
 			inner: FinDiff {
@@ -584,9 +580,9 @@ impl Frequency {
                         &mut fcs,
                         n,
                         Derivative::Quartic(nfc2, nfc3, 0),
-                        &dir,
+                        None::<&Path>,
                     );
-                    let (s, o) = norm.harm_freqs(&dir, &mol, fc2);
+                    let (s, o) = norm.harm_freqs(None, &mol, fc2);
                     Builder::Norm {
                         norm,
                         s,

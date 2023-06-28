@@ -615,8 +615,7 @@ impl Frequency {
             }
             // zip it with the FreqParts
             let pairs: Vec<_> = energy_chunks
-                .iter()
-                .cloned()
+                .into_iter()
                 .zip(freqs.pop().unwrap())
                 .collect();
             // iterate over the energy/freqparts pairs in parallel

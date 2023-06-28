@@ -102,7 +102,6 @@ struct FinDiff {
 /// the state generated in build_jobs needed to finish running frequencies after
 /// the energies are run
 #[derive(Clone, Debug)]
-#[allow(clippy::large_enum_variant)]
 enum FreqParts {
     Sic {
         intder: rust_pbqff::Intder,

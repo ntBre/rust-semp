@@ -751,14 +751,13 @@ fn build_findiff<F: FiniteDifference>(
 fn write_params(
     job_num: usize,
     params: &Params,
-    template: Template,
+    mut template: Template,
 ) -> Template {
-    let param_file = Rc::new(format!("tmparam/{job_num}.dat"));
+    let param_file = format!("tmparam/{job_num}.dat");
     Mopac::write_params(params, &param_file);
-    let mut tmpl = template;
     use std::fmt::Write;
-    write!(tmpl.header, " external={param_file}").unwrap();
-    tmpl
+    write!(template.header, " external={param_file}").unwrap();
+    template
 }
 
 impl Default for Frequency {

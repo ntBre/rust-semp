@@ -15,16 +15,14 @@ use psqs::{
 };
 use rust_pbqff::{
     coord_type::{
-        cart::FirstPart,
+        cart::{self, Derivative, FirstPart},
         findiff::{
             bighash::{BigHash, Target},
             FiniteDifference,
         },
         fitted::Fitted,
-        normal::{
-            fc3_index, fc4_index, to_qcm, CartPart, F3qcm, F4qcm, Fc, Normal,
-        },
-        Cart, Derivative, Sic,
+        normal::{to_qcm, CartPart, F3qcm, F4qcm, Normal},
+        Cart, Sic,
     },
     Output, Spectro,
 };
@@ -406,33 +404,8 @@ impl Frequency {
                 spectro,
                 output,
             } => {
-                let (fcs, _) = normal
-                    .anpass(".", energies, &taylor, STEP_SIZE, w)
-                    .unwrap();
-                // needed in case taylor eliminated some of the higher
-                // derivatives by symmetry. this should give the maximum,
-                // full sizes without resizing
-                let n = normal.ncoords;
-                let mut f3qcm = vec![0.0; fc3_index(n, n, n) + 1];
-                let mut f4qcm = vec![0.0; fc4_index(n, n, n, n) + 1];
-                for Fc(i, j, k, l, val) in fcs {
-                    // adapted from Intder::add_fc
-                    match (k, l) {
-                        (0, 0) => {
-                            // harmonic, skip it
-                        }
-                        (_, 0) => {
-                            let idx = fc3_index(i, j, k);
-                            f3qcm[idx] = val;
-                        }
-                        (_, _) => {
-                            let idx = fc4_index(i, j, k, l);
-                            f4qcm[idx] = val;
-                        }
-                    }
-                }
-                let (f3, f4) =
-                    to_qcm(&output.harms, normal.ncoords, &f3qcm, &f4qcm, 1.0);
+                let (f3, f4) = normal
+                    .fit_freqs(".", energies, taylor, STEP_SIZE, w, &output);
                 let (o, _) = spectro.finish(
                     DVector::from(output.harms.clone()),
                     F3qcm::new(f3),

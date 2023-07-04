@@ -226,9 +226,14 @@ impl Frequency {
     where
         W: Write,
     {
-        let ProgramResult { energy, cart_geom: Some(g), .. } = geom else {
-	    return Err(GeomError.into());
-	};
+        let ProgramResult {
+            energy,
+            cart_geom: Some(g),
+            ..
+        } = geom
+        else {
+            return Err(GeomError.into());
+        };
 
         let mol = {
             let mut mol = Molecule::new(g);
@@ -290,9 +295,16 @@ impl Frequency {
             }
             CoordType::Normal(..) => {
                 // there must be a way to tie these types together more smoothly
-                let Builder::Norm { mut norm, s, o, pg, ref_energy } = builder else {
-		    unreachable!()
-		};
+                let Builder::Norm {
+                    mut norm,
+                    s,
+                    o,
+                    pg,
+                    ref_energy,
+                } = builder
+                else {
+                    unreachable!()
+                };
                 norm.prep_qff(w, &o, pg);
                 if !norm.findiff {
                     // adapted from Normal::run_fitted in pbqff
@@ -549,8 +561,8 @@ impl Frequency {
         for m in 0..molecules.len() {
             let CoordType::Normal(b) = molecules[m].coord_type else {
                 builders.extend(vec![Builder::None; 2 * params.len()]);
-		continue;
-	    };
+                continue;
+            };
 
             let mut energy_chunks = Vec::new();
             assert_eq!(indices[m].len(), 2 * params.len() + 1);
@@ -576,16 +588,20 @@ impl Frequency {
                     let freq = freq.clone();
                     let norm = Normal::findiff(b);
                     let FreqParts::NormHarm {
-			inner: FinDiff {
-                        mut fcs,
-                        targets,
-                        n,
-                        nfc2,
-                        nfc3,
-			},
+                        inner:
+                            FinDiff {
+                                mut fcs,
+                                targets,
+                                n,
+                                nfc2,
+                                nfc3,
+                            },
                         mol,
                         pg,
-                    } = freq else { unimplemented!() } ;
+                    } = freq
+                    else {
+                        unimplemented!()
+                    };
                     let (fc2, _, _) = norm.make_fcs(
                         targets,
                         energy,
@@ -824,11 +840,18 @@ impl Optimize for Frequency {
                 Builder::None
             };
 
-            let Ok((freq, jobs)) =
-		self.build_jobs(&mut w, geom, params, 0, 0, molecule, &molecule.coord_type, builder)
-	    else {
-		return None
-	    };
+            let Ok((freq, jobs)) = self.build_jobs(
+                &mut w,
+                geom,
+                params,
+                0,
+                0,
+                molecule,
+                &molecule.coord_type,
+                builder,
+            ) else {
+                return None;
+            };
 
             writeln!(
                 w,

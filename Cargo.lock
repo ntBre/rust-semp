@@ -234,7 +234,7 @@ dependencies = [
 [[package]]
 name = "dispatch"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#ef0d885c0d8be7bc5efac230d6ed7220fe552ccc"
+source = "git+https://github.com/ntBre/rust-pbqff#1b7275c1a82fe02e9bc96002bf7c28ed9bd6104e"
 
 [[package]]
 name = "either"
@@ -323,7 +323,7 @@ dependencies = [
 [[package]]
 name = "intder"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/intder#72ad7058ad390a50bc176578a6dc9b9e59bfac7f"
+source = "git+https://github.com/ntBre/intder#999cc1b709067b22b81a94cbcbcd9859d1cf9c34"
 dependencies = [
  "approx",
  "nalgebra",
@@ -609,7 +609,7 @@ dependencies = [
 [[package]]
 name = "rust-pbqff"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#ef0d885c0d8be7bc5efac230d6ed7220fe552ccc"
+source = "git+https://github.com/ntBre/rust-pbqff#1b7275c1a82fe02e9bc96002bf7c28ed9bd6104e"
 dependencies = [
  "clap",
  "dispatch",
@@ -740,7 +740,7 @@ dependencies = [
 [[package]]
 name = "spectro"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/spectro#d058b48f4a1ed5cfe3a755fabf3cdf74687c2589"
+source = "git+https://github.com/ntBre/spectro#03cca5ff43aea2ea8e5aa6976e01b515f2cea0ef"
 dependencies = [
  "nalgebra",
  "serde",
@@ -790,7 +790,7 @@ dependencies = [
 [[package]]
 name = "taylor"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/taylor#216dde57636590b0c1a0528bf0713ce4126d151d"
+source = "git+https://github.com/ntBre/taylor#d835df67c3233ffe1f98de2c4459e6c1a109d9a2"
 dependencies = [
  "nalgebra",
  "rust-anpass",

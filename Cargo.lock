@@ -234,7 +234,7 @@ dependencies = [
 [[package]]
 name = "dispatch"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#1b7275c1a82fe02e9bc96002bf7c28ed9bd6104e"
+source = "git+https://github.com/ntBre/rust-pbqff#bf7634a0b43e35b374ef40f26f01527b8bf72ac1"
 
 [[package]]
 name = "either"
@@ -323,7 +323,7 @@ dependencies = [
 [[package]]
 name = "intder"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/intder#999cc1b709067b22b81a94cbcbcd9859d1cf9c34"
+source = "git+https://github.com/ntBre/intder#09dad5abf169a01d88d074683a19edd995f3c870"
 dependencies = [
  "approx",
  "nalgebra",
@@ -405,9 +405,9 @@ dependencies = [
 
 [[package]]
 name = "nalgebra"
-version = "0.32.2"
+version = "0.32.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d68d47bba83f9e2006d117a9a33af1524e655516b8919caac694427a6fb1e511"
+checksum = "307ed9b18cc2423f29e83f84fd23a8e73628727990181f18641a8b5dc2ab1caa"
 dependencies = [
  "approx",
  "matrixmultiply",
@@ -422,9 +422,9 @@ dependencies = [
 
 [[package]]
 name = "nalgebra-macros"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d232c68884c0c99810a5a4d333ef7e47689cfd0edc85efc9e54e1e6bf5212766"
+checksum = "91761aed67d03ad966ef783ae962ef9bbaca728d2dd7ceb7939ec110fffad998"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -519,7 +519,7 @@ dependencies = [
 [[package]]
 name = "psqs"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/psqs#abbf4dfeff83123a5bfe033d607a4e7ca9ef8c99"
+source = "git+https://github.com/ntBre/psqs#3c092eff8a8f166a60c30d1d21776f73b2a15876"
 dependencies = [
  "chrono",
  "libc",
@@ -570,9 +570,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.9.0"
+version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89089e897c013b3deb627116ae56a6955a72b8bed395c9526af31c9fe528b484"
+checksum = "b2eae68fc220f7cf2532e4494aded17545fce192d59cd996e0fe7887f4ceb575"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -582,9 +582,9 @@ dependencies = [
 
 [[package]]
 name = "regex-automata"
-version = "0.3.0"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa250384981ea14565685dea16a9ccc4d1c541a13f82b9c168572264d1df8c56"
+checksum = "83d3daa6976cffb758ec878f108ba0e062a45b2d6ca3a2cca965338855476caf"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -600,7 +600,7 @@ checksum = "2ab07dc67230e4a4718e70fd5c20055a4334b121f1f9db8fe63ef39ce9b8c846"
 [[package]]
 name = "rust-anpass"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-anpass#55caab4f22db5eca777fb2c88df147a2a4ae2a5f"
+source = "git+https://github.com/ntBre/rust-anpass#51fc7bd88977d245aeb61ea1f7e72675beb6e056"
 dependencies = [
  "nalgebra",
  "regex",
@@ -609,7 +609,7 @@ dependencies = [
 [[package]]
 name = "rust-pbqff"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#1b7275c1a82fe02e9bc96002bf7c28ed9bd6104e"
+source = "git+https://github.com/ntBre/rust-pbqff#bf7634a0b43e35b374ef40f26f01527b8bf72ac1"
 dependencies = [
  "clap",
  "dispatch",
@@ -740,7 +740,7 @@ dependencies = [
 [[package]]
 name = "spectro"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/spectro#03cca5ff43aea2ea8e5aa6976e01b515f2cea0ef"
+source = "git+https://github.com/ntBre/spectro#f807885adf3abaf3a3306f15d3c0b6cf553b0105"
 dependencies = [
  "nalgebra",
  "serde",
@@ -790,7 +790,7 @@ dependencies = [
 [[package]]
 name = "taylor"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/taylor#d835df67c3233ffe1f98de2c4459e6c1a109d9a2"
+source = "git+https://github.com/ntBre/taylor#693edb77a822e98df404b39eab89e920e1f56f2a"
 dependencies = [
  "nalgebra",
  "rust-anpass",

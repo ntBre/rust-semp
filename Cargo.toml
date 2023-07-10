@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 libc = "0.2.146"
-nalgebra = "0.32.2"
+nalgebra = "0.32.3"
 psqs = { git = "https://github.com/ntBre/psqs" }
 intder = { git = "https://github.com/ntBre/intder" }
 rayon = "1.5.3"

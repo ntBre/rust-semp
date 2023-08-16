@@ -237,7 +237,7 @@ dependencies = [
 [[package]]
 name = "dispatch"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#4b7b451510e08294d4a2f027eb8ab8a465667035"
+source = "git+https://github.com/ntBre/rust-pbqff#60a20f7b0b77d79e4a5527dad4b9dfab5b376e3c"
 
 [[package]]
 name = "either"
@@ -612,7 +612,7 @@ dependencies = [
 [[package]]
 name = "rust-pbqff"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#4b7b451510e08294d4a2f027eb8ab8a465667035"
+source = "git+https://github.com/ntBre/rust-pbqff#60a20f7b0b77d79e4a5527dad4b9dfab5b376e3c"
 dependencies = [
  "clap",
  "dispatch",
@@ -709,9 +709,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.104"
+version = "1.0.105"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "076066c5f1078eac5b722a31827a8832fe108bed65dfa75e233c89f8206e976c"
+checksum = "693151e1ac27563d6dbcec9dee9fbd5da8539b20fa14ad3752b2e6d363ace360"
 dependencies = [
  "itoa",
  "ryu",
@@ -743,7 +743,7 @@ dependencies = [
 [[package]]
 name = "spectro"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/spectro#ccb61eb12336f604e3ba94a3196c2c48a1f94bfe"
+source = "git+https://github.com/ntBre/spectro#808d8151e82ad437e13261f53479150da6446c96"
 dependencies = [
  "nalgebra",
  "serde",

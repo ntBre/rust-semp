@@ -140,9 +140,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.3.21"
+version = "4.3.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c27cdf28c0f604ba3f512b0c9a409f8de8513e4816705deb0498b627e7c3a3fd"
+checksum = "b417ae4361bca3f5de378294fc7472d3c4ed86a5ef9f49e93ae722f432aae8d2"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -151,9 +151,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.3.21"
+version = "4.3.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08a9f1ab5e9f01a9b81f202e8562eb9a10de70abf9eaeac1be465c28b75aa4aa"
+checksum = "9c90dc0f0e42c64bff177ca9d7be6fcc9ddb0f26a6e062174a61c84dd6c644d4"
 dependencies = [
  "anstream",
  "anstyle",
@@ -237,7 +237,7 @@ dependencies = [
 [[package]]
 name = "dispatch"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#9c5f976952305ebc385e82c7d38163ca34981f68"
+source = "git+https://github.com/ntBre/rust-pbqff#66cbb9677bc578d14e5c521c42e6156ec199a19a"
 
 [[package]]
 name = "either"
@@ -612,7 +612,7 @@ dependencies = [
 [[package]]
 name = "rust-pbqff"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#9c5f976952305ebc385e82c7d38163ca34981f68"
+source = "git+https://github.com/ntBre/rust-pbqff#66cbb9677bc578d14e5c521c42e6156ec199a19a"
 dependencies = [
  "clap",
  "dispatch",
@@ -743,7 +743,7 @@ dependencies = [
 [[package]]
 name = "spectro"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/spectro#808d8151e82ad437e13261f53479150da6446c96"
+source = "git+https://github.com/ntBre/spectro#cc439eff9145b18a914ef8941164fd6a67dc57ba"
 dependencies = [
  "nalgebra",
  "serde",
@@ -793,7 +793,7 @@ dependencies = [
 [[package]]
 name = "taylor"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/taylor#9432c26f81afc60807a9c31a8ab789c0dcee6448"
+source = "git+https://github.com/ntBre/taylor#4cbaa70fdb5aae3cdc2b3d5da61fc59ddc22175f"
 dependencies = [
  "nalgebra",
  "rust-anpass",

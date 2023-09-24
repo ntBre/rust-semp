@@ -429,7 +429,7 @@ impl Frequency {
                     w,
                     &output,
                 );
-                let (o, _) = spectro.finish(
+                let o = spectro.finish(
                     DVector::from(output.harms.clone()),
                     F3qcm::new(f3),
                     F4qcm::new(f4),
@@ -457,7 +457,7 @@ impl Frequency {
                 let quarts = &fcs[nfc2 + nfc3..];
                 let (f3, f4) =
                     to_qcm(&output.harms, n, cubs, quarts, intder::HART);
-                let (o, _) = spectro.finish(
+                let o = spectro.finish(
                     DVector::from(output.harms.clone()),
                     F3qcm::new(f3),
                     F4qcm::new(f4),

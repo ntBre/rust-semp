@@ -217,11 +217,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dispatch"
-version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#1521d3fc8a11f2893cce55e769516dde979ac31d"
-
-[[package]]
 name = "either"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -538,10 +533,9 @@ dependencies = [
 [[package]]
 name = "rust-pbqff"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#1521d3fc8a11f2893cce55e769516dde979ac31d"
+source = "git+https://github.com/ntBre/rust-pbqff#a97fc736343e3dbb93b901e60b21800de6fcbf6c"
 dependencies = [
  "clap",
- "dispatch",
  "intder",
  "libc",
  "nalgebra",
@@ -656,7 +650,7 @@ dependencies = [
 [[package]]
 name = "spectro"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/spectro#c70005fda1e0a634596cb98c8c8cff4958dbdcf7"
+source = "git+https://github.com/ntBre/spectro#a1d5d15deb871d8ebb3460a9973e594d32e83981"
 dependencies = [
  "nalgebra",
  "serde",

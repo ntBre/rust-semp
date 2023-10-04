@@ -276,7 +276,7 @@ dependencies = [
 [[package]]
 name = "intder"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/intder#00cf8e43e62bc97548072d7976cdc984c5446d04"
+source = "git+https://github.com/ntBre/intder#a06bb66d07ea5e5d2ff91d9bb9e075b9265d0b74"
 dependencies = [
  "approx",
  "nalgebra",
@@ -494,9 +494,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.9.5"
+version = "1.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "697061221ea1b4a94a624f67d0ae2bfe4e22b8a17b6a192afb11046542cc8c47"
+checksum = "ebee201405406dbf528b8b672104ae6d6d63e6d118cb10e4d51abbc7b58044ff"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -506,9 +506,9 @@ dependencies = [
 
 [[package]]
 name = "regex-automata"
-version = "0.3.8"
+version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2f401f4955220693b56f8ec66ee9c78abffd8d1c4f23dc41a23839eb88f0795"
+checksum = "59b23e92ee4318893fa3fe3e6fb365258efbfe6ac6ab30f090cdcbb7aa37efa9"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -524,7 +524,7 @@ checksum = "dbb5fb1acd8a1a18b3dd5be62d25485eb770e05afb408a9627d14d451bae12da"
 [[package]]
 name = "rust-anpass"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-anpass#330c64bede4b77ecb04dea79bf08595063924960"
+source = "git+https://github.com/ntBre/rust-anpass#77f49905c0bf5c14b0e496ae12c8c7cfea6ebb8d"
 dependencies = [
  "nalgebra",
  "regex",
@@ -533,7 +533,7 @@ dependencies = [
 [[package]]
 name = "rust-pbqff"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#a97fc736343e3dbb93b901e60b21800de6fcbf6c"
+source = "git+https://github.com/ntBre/rust-pbqff#0eb2ec2405ecb8884dfb8204c6d7d7ccabcc33ff"
 dependencies = [
  "clap",
  "intder",
@@ -547,7 +547,7 @@ dependencies = [
  "spectro",
  "symm",
  "taylor",
- "toml",
+ "toml 0.8.2",
 ]
 
 [[package]]
@@ -564,7 +564,7 @@ dependencies = [
  "serde",
  "symm",
  "taylor",
- "toml",
+ "toml 0.7.6",
 ]
 
 [[package]]
@@ -700,7 +700,7 @@ dependencies = [
 [[package]]
 name = "taylor"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/taylor#772cd38e3494d29e128fe281f485508efd9a5f9f"
+source = "git+https://github.com/ntBre/taylor#f53b8521d61934921f243d34f38fd3afcc01106b"
 dependencies = [
  "nalgebra",
  "rust-anpass",
@@ -736,7 +736,19 @@ dependencies = [
  "serde",
  "serde_spanned",
  "toml_datetime",
- "toml_edit",
+ "toml_edit 0.19.14",
+]
+
+[[package]]
+name = "toml"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "185d8ab0dfbb35cf1399a6344d8484209c088f75f8f68230da55d48d95d43e3d"
+dependencies = [
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "toml_edit 0.20.2",
 ]
 
 [[package]]
@@ -753,6 +765,19 @@ name = "toml_edit"
 version = "0.19.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8123f27e969974a3dfba720fdb560be359f57b44302d280ba72e76a74480e8a"
+dependencies = [
+ "indexmap",
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "winnow",
+]
+
+[[package]]
+name = "toml_edit"
+version = "0.20.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "396e4d48bbb2b7554c944bde63101b5ae446cff6ec4a24227428f15eb72ef338"
 dependencies = [
  "indexmap",
  "serde",

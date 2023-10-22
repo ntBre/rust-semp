@@ -763,15 +763,18 @@ impl Default for Frequency {
     }
 }
 
-impl Optimize for Frequency {
+impl Optimize<Mopac> for Frequency {
     /// compute the semi-empirical energies of `moles` for the given `params`
-    fn semi_empirical<Q: Queue<Mopac> + Sync>(
+    fn semi_empirical<Q>(
         &self,
         params: &Params,
         submitter: &Q,
         molecules: &[config::Molecule],
         ntrue: usize,
-    ) -> Option<DVector<f64>> {
+    ) -> Option<DVector<f64>>
+    where
+        Q: Queue<Mopac> + Sync,
+    {
         let mut w = output_stream();
 
         writeln!(w, "Params:\n{params}").unwrap();

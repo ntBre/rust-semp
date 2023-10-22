@@ -18,15 +18,18 @@ pub struct Energy {
     pub moles: Vec<Geom>,
 }
 
-impl Optimize for Energy {
+impl Optimize<Mopac> for Energy {
     /// compute the semi-empirical energies of `moles` for the given `params`
-    fn semi_empirical<Q: Queue<Mopac> + Sync>(
+    fn semi_empirical<Q>(
         &self,
         params: &Params,
         submitter: &Q,
         molecules: &[Molecule],
         _ntrue: usize,
-    ) -> Option<Dvec> {
+    ) -> Option<Dvec>
+    where
+        Q: Queue<Mopac> + Sync,
+    {
         // NOTE: still no loop over molecules here
         let jobs = Mopac::build_jobs(
             self.moles.clone(),

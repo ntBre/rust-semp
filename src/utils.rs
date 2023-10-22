@@ -3,6 +3,7 @@ use nalgebra as na;
 use psqs::geom::Geom;
 use psqs::program::mopac::Params;
 use std::cmp::Ordering;
+use std::fmt::Display;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Write};
 use std::iter::zip;
@@ -241,7 +242,11 @@ pub fn relative(energies: &Dvec) -> Dvec {
     ret - min
 }
 
-pub(crate) fn log_params<W: Write>(w: &mut W, iter: usize, params: &Params) {
+pub(crate) fn log_params<W: Write, D: Display>(
+    w: &mut W,
+    iter: usize,
+    params: D,
+) {
     let _ = writeln!(w, "Iter {iter}");
     let _ = writeln!(w, "{params}");
 }

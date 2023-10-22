@@ -14,6 +14,7 @@ use crate::{
 
 use psqs::{
     geom::Geom,
+    program::mopac::Mopac,
     queue::{local::Local, slurm::Slurm},
 };
 use symm::Molecule;
@@ -142,7 +143,7 @@ fn test_load_energies() {
 fn test_load_params() {
     let got = load_params("test_files/params.dat");
     #[rustfmt::skip]
-	let want = Params::from_literal(
+	let want = psqs::program::mopac::Params::from_literal(
             vec![
                 "USS", "ZS", "BETAS", "GSS", "USS", "UPP", "ZS", "ZP", "BETAS",
                 "BETAP", "GSS", "GPP", "GSP", "GP2", "HSP",

@@ -1,16 +1,19 @@
 #![feature(lazy_cell)]
 
+use crate::driver::Params;
 use crate::optimize::Optimize;
 use crate::utils::log_params;
 use config::Molecule;
+use driver::Driver;
 use nalgebra as na;
-use psqs::program::mopac::{Mopac, Params};
 use psqs::queue::Queue;
 use stats::Stats;
+use std::fmt::Display;
 use std::sync::LazyLock;
 use std::{clone::Clone, io::Write};
 
 pub mod config;
+pub mod driver;
 pub mod optimize;
 pub mod stats;
 #[cfg(test)]
@@ -102,10 +105,10 @@ pub fn broyden_update(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn run_algo<O, Q, W>(
+pub fn run_algo<D, O, Q, W>(
     param_log: &mut W,
     molecules: &[Molecule],
-    params: Params,
+    params: D::Params,
     ai: Dvec,
     max_iter: usize,
     broyden: bool,
@@ -115,8 +118,10 @@ pub fn run_algo<O, Q, W>(
     optimizer: O,
 ) -> Stats
 where
-    O: Optimize,
-    Q: Queue<Mopac> + Sync,
+    D: Driver,
+    D::Params: Display,
+    O: Optimize<D>,
+    Q: Queue<D> + Sync,
     W: Write,
 {
     let ntrue = ai.len();
@@ -180,9 +185,9 @@ where
         lambda /= NU;
         step = lev_mar(&jac, &ai, &se, lambda);
         let mut try_params = Params::new(
-            params.names.clone(),
-            params.atoms.clone(),
-            &params.values + &step,
+            params.names().clone(),
+            params.atoms().clone(),
+            params.values() + &step,
         );
         let mut new_se = optimizer
             .semi_empirical(&try_params, &queue, molecules, ntrue)
@@ -206,9 +211,9 @@ where
 
             step = lev_mar(&jac, &ai, &se, lambda);
             try_params = Params::new(
-                params.names.clone(),
-                params.atoms.clone(),
-                &params.values + &step,
+                params.names().clone(),
+                params.atoms().clone(),
+                params.values() + &step,
             );
             new_se = optimizer
                 .semi_empirical(&try_params, &queue, molecules, ntrue)
@@ -242,9 +247,9 @@ where
 
             step = lev_mar(&jac, &ai, &se, lambda);
             try_params = Params::new(
-                params.names.clone(),
-                params.atoms.clone(),
-                &params.values + k * &step,
+                params.names().clone(),
+                params.atoms().clone(),
+                params.values() + k * &step,
             );
             new_se = optimizer
                 .semi_empirical(&try_params, &queue, molecules, ntrue)

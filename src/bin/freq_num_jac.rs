@@ -1,3 +1,4 @@
+use psqs::program::mopac::Mopac;
 use psqs::queue::local::Local;
 use rust_semp::optimize::{frequency::Frequency, Optimize};
 use rust_semp::utils::setup;
@@ -7,7 +8,8 @@ fn main() {
     let freq = Frequency::default();
     setup();
     let queue = Local::new(128, 128, 2, "inp", true, None);
-    freq.num_jac(
+    Optimize::<Mopac>::num_jac(
+        &freq,
         &"USS            H    -11.246958000000
     ZS             H      1.268641000000
     BETAS          H     -8.352984000000

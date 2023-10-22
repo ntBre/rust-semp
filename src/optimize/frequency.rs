@@ -1,16 +1,14 @@
 use super::Optimize;
 use crate::{
     config::{self, CoordType},
+    driver::{Driver, Params},
     utils::{mae, setup, takedown},
 };
 use na::DVector;
 use nalgebra as na;
 use psqs::{
     geom::Geom,
-    program::{
-        mopac::{Mopac, Params},
-        Job, ProgramResult, Template,
-    },
+    program::{Job, ProgramResult, Template},
     queue::{Check, Queue},
 };
 use rust_pbqff::{
@@ -60,33 +58,6 @@ pub struct Frequency {
     delta: f64,
     logger: Mutex<File>,
     sort_fn: fn(&[f64], &[Irrep]) -> Vec<f64>,
-}
-
-pub fn optimize_geometry<Q: Queue<Mopac> + Sync>(
-    geom: Geom,
-    params: &Params,
-    queue: &Q,
-    dir: &str,
-    name: &str,
-    charge: isize,
-    template: Template,
-) -> Option<ProgramResult> {
-    let opt = Job::new(
-        Mopac::new_full(
-            format!("{dir}/{name}"),
-            Some(params.clone()),
-            geom,
-            charge,
-            template,
-        ),
-        0,
-    );
-    let mut res = vec![Default::default(); 1];
-    let status = queue.energize(dir, vec![opt], &mut res);
-    if status.is_err() {
-        return None;
-    }
-    Some(res.pop().unwrap())
 }
 
 /// the shared components of a finite difference FreqPart
@@ -183,7 +154,7 @@ enum Builder {
     },
 }
 
-type Jobs = Vec<Job<Mopac>>;
+type Jobs<D> = Vec<Job<D>>;
 
 impl Frequency {
     pub fn new(delta: f64, sort_ascending: bool) -> Self {
@@ -212,19 +183,20 @@ impl Frequency {
     /// [config::Molecule] contains its own coordinate type, but this is needed
     /// to call `build_jobs` for the harmonic portion of a normal QFF.
     #[allow(clippy::too_many_arguments)]
-    fn build_jobs<W>(
+    fn build_jobs<W, D>(
         &self,
         w: &mut W,
         geom: ProgramResult,
-        params: &Params,
+        params: &D::Params,
         start_index: usize,
         job_num: usize,
         molecule: &config::Molecule,
         coord_type: &CoordType,
         builder: Builder,
-    ) -> Result<(FreqParts, Jobs), Box<dyn Error>>
+    ) -> Result<(FreqParts, Jobs<D>), Box<dyn Error>>
     where
         W: Write,
+        D: Driver,
     {
         let ProgramResult {
             energy,
@@ -246,7 +218,7 @@ impl Frequency {
         writeln!(w, "Normalized Geometry:\n{mol:20.12}").unwrap();
         writeln!(w, "Point Group = {pg}").unwrap();
 
-        let tmpl = write_params(job_num, params, molecule.template.clone());
+        let tmpl = D::write_params(job_num, params, molecule.template.clone());
 
         match &coord_type {
             CoordType::Sic(intder) => {
@@ -267,7 +239,7 @@ impl Frequency {
                 let _ = std::fs::remove_dir_all("pts");
 
                 // call build_jobs like before
-                let jobs = Mopac::build_jobs(
+                let jobs = <D as Driver>::build_jobs(
                     moles,
                     None,
                     "inp",
@@ -317,7 +289,7 @@ impl Frequency {
                     let (geoms, taylor, _atomic_numbers) = norm
                         .generate_pts(dir, w, &o.geom, &pg, STEP_SIZE)
                         .unwrap();
-                    let jobs = Mopac::build_jobs(
+                    let jobs = <D as Driver>::build_jobs(
                         geoms,
                         None,
                         dir,
@@ -487,10 +459,10 @@ impl Frequency {
     }
 
     /// generate all of the HFF energies for finding normal coordinates
-    fn harm_jac_energies<Q: Queue<Mopac> + Sync>(
+    fn harm_jac_energies<Q: Queue<D> + Sync, D: Driver>(
         &self,
         rows: usize,
-        params: &Params,
+        params: &D::Params,
         geoms: &[ProgramResult],
         molecules: &[config::Molecule],
         submitter: &Q,
@@ -511,9 +483,9 @@ impl Frequency {
                 let index = 2 * i * rows + 2 * row;
 
                 let mut pf = params.clone();
-                pf.values[row] += self.delta;
+                pf.incr_value(row, self.delta);
                 let mut pb = params.clone();
-                pb.values[row] -= self.delta;
+                pb.decr_value(row, self.delta);
 
                 for (p, pf) in [pf, pb].iter().enumerate() {
                     // idx = job_num so use it twice
@@ -629,14 +601,14 @@ impl Frequency {
     /// jacobian. `builders` should be of length 2 * molecules.len() *
     /// params.len()
     #[allow(clippy::type_complexity)]
-    fn jac_energies(
+    fn jac_energies<D: Driver>(
         &self,
         rows: usize,
-        params: &Params,
+        params: &D::Params,
         geoms: &[ProgramResult],
         molecules: &[config::Molecule],
         mut builders: Vec<Builder>,
-    ) -> (Vec<Job<Mopac>>, Vec<Vec<FreqParts>>, Vec<Vec<usize>>) {
+    ) -> (Vec<Job<D>>, Vec<Vec<FreqParts>>, Vec<Vec<usize>>) {
         let mut idx = 0;
         let mut jobs = Vec::new();
         let mut freqs = vec![vec![]; molecules.len()];
@@ -650,9 +622,9 @@ impl Frequency {
                 let index = 2 * i * rows + 2 * row;
 
                 let mut pf = params.clone();
-                pf.values[row] += self.delta;
+                pf.incr_value(row, self.delta);
                 let mut pb = params.clone();
-                pb.values[row] -= self.delta;
+                pb.decr_value(row, self.delta);
 
                 for (p, pf) in [pf, pb].iter().enumerate() {
                     // idx = job_num so use it twice
@@ -682,7 +654,7 @@ impl Frequency {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn build_findiff<F: FiniteDifference>(
+fn build_findiff<F: FiniteDifference, D: Driver>(
     ncoords: usize,
     mol: &Molecule,
     pg: PointGroup,
@@ -692,7 +664,7 @@ fn build_findiff<F: FiniteDifference>(
     tmpl: &Template,
     coord: &F,
     harmonic: bool,
-) -> (FinDiff, Vec<Job<Mopac>>) {
+) -> (FinDiff, Vec<Job<D>>) {
     let n = ncoords;
     let nfc2 = n * n;
     let nfc3 = n * (n + 1) * (n + 2) / 6;
@@ -721,7 +693,7 @@ fn build_findiff<F: FiniteDifference>(
         let filename = format!("{dir}/job.{job_num:08}");
         job_num += 1;
         jobs.push(Job::new(
-            Mopac::new_full(
+            D::new_full(
                 filename,
                 None,
                 mol.geom.clone(),
@@ -743,37 +715,26 @@ fn build_findiff<F: FiniteDifference>(
     )
 }
 
-/// generate a parameter filename using `job_num`, write the parameters to that
-/// file, and return the template with the parameter filename added
-fn write_params(
-    job_num: usize,
-    params: &Params,
-    mut template: Template,
-) -> Template {
-    let param_file = format!("tmparam/{job_num}.dat");
-    Mopac::write_params(params, &param_file);
-    use std::fmt::Write;
-    write!(template.header, " external={param_file}").unwrap();
-    template
-}
-
 impl Default for Frequency {
     fn default() -> Self {
         Self::new(1e-4, false)
     }
 }
 
-impl Optimize<Mopac> for Frequency {
+impl<D> Optimize<D> for Frequency
+where
+    D: Driver,
+{
     /// compute the semi-empirical energies of `moles` for the given `params`
     fn semi_empirical<Q>(
         &self,
-        params: &Params,
+        params: &D::Params,
         submitter: &Q,
         molecules: &[config::Molecule],
         ntrue: usize,
     ) -> Option<DVector<f64>>
     where
-        Q: Queue<Mopac> + Sync,
+        Q: Queue<D> + Sync,
     {
         let mut w = output_stream();
 
@@ -783,7 +744,7 @@ impl Optimize<Mopac> for Frequency {
 
         for molecule in molecules {
             setup();
-            let geom = optimize_geometry(
+            let geom = D::optimize_geometry(
                 molecule.geometry.clone(),
                 params,
                 submitter,
@@ -808,7 +769,8 @@ impl Optimize<Mopac> for Frequency {
                 let norm = Normal::findiff(b);
                 // safe to use 0 as job_num because we have to reset directories
                 // after the harmonic part anyway
-                let tmpl = write_params(0, params, molecule.template.clone());
+                let tmpl =
+                    D::write_params(0, params, molecule.template.clone());
                 let CartPart {
                     spectro: s,
                     output: o,
@@ -888,9 +850,9 @@ impl Optimize<Mopac> for Frequency {
     /// actually computed and returned. `ntrue` is the expected ("true") size of
     /// the frequency vectors in case something goes wrong and a different
     /// number of entries comes out of freqs
-    fn num_jac<Q: Queue<Mopac> + Sync>(
+    fn num_jac<Q: Queue<D> + Sync>(
         &self,
-        params: &Params,
+        params: &D::Params,
         submitter: &Q,
         molecules: &[config::Molecule],
         ntrue: usize,
@@ -1058,14 +1020,14 @@ impl Optimize<Mopac> for Frequency {
 }
 
 impl Frequency {
-    /// helper function for generating the optimizations for the jacobian. returns a
-    /// vec of Jobs and also a vec of indices separating each molecule
-    fn jac_opt(
+    /// helper function for generating the optimizations for the jacobian.
+    /// returns a vec of Jobs and also a vec of indices separating each molecule
+    fn jac_opt<D: Driver>(
         &self,
         rows: usize,
-        params: &Params,
+        params: &D::Params,
         molecules: &[config::Molecule],
-    ) -> Vec<Job<Mopac>> {
+    ) -> Vec<Job<D>> {
         let mut opts = Vec::new();
         // each row corresponds to one parameter
         for (i, molecule) in molecules.iter().enumerate() {
@@ -1074,9 +1036,9 @@ impl Frequency {
                 // forward
                 {
                     let mut pf = params.clone();
-                    pf.values[row] += self.delta;
+                    pf.incr_value(row, self.delta);
                     opts.push(Job::new(
-                        Mopac::new_full(
+                        D::new_full(
                             format!("inp/opt{row}_fwd{i}"),
                             Some(pf),
                             molecule.geometry.clone(),
@@ -1093,9 +1055,9 @@ impl Frequency {
                 // backward
                 {
                     let mut pb = params.clone();
-                    pb.values[row] -= self.delta;
+                    pb.decr_value(row, self.delta);
                     opts.push(Job::new(
-                        Mopac::new_full(
+                        D::new_full(
                             format!("inp/opt{row}_bwd{i}"),
                             Some(pb),
                             molecule.geometry.clone(),

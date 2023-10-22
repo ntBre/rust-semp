@@ -5,6 +5,7 @@ use std::os::unix::io::AsRawFd;
 
 use nalgebra as na;
 
+use psqs::program::mopac::Mopac;
 use psqs::queue::local::Local;
 use psqs::queue::pbs::Pbs;
 use psqs::queue::slurm::Slurm;
@@ -118,7 +119,7 @@ fn main() {
             }
             write_true(&ai);
             match conf.queue {
-                Queue::Pbs => run_algo(
+                Queue::Pbs => run_algo::<Mopac, _, _, _>(
                     &mut param_log,
                     &conf.molecules,
                     parse_params(&conf.params),
@@ -137,7 +138,7 @@ fn main() {
                     conf.reset_lambda,
                     Frequency::new(conf.delta, conf.sort_ascending),
                 ),
-                Queue::Slurm => run_algo(
+                Queue::Slurm => run_algo::<Mopac, _, _, _>(
                     &mut param_log,
                     &conf.molecules,
                     parse_params(&conf.params),
@@ -156,7 +157,7 @@ fn main() {
                     conf.reset_lambda,
                     Frequency::new(conf.delta, conf.sort_ascending),
                 ),
-                Queue::Local => run_algo(
+                Queue::Local => run_algo::<Mopac, _, _, _>(
                     &mut param_log,
                     &conf.molecules,
                     parse_params(&conf.params),

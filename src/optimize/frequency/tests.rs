@@ -19,9 +19,9 @@ fn se_from_config(config: Config, want: Dvec) {
         chunk_size: 128,
         mopac: "/opt/mopac/mopac".to_owned(),
     };
-    let mut got = freq
-        .semi_empirical(
-            &"USS            H    -11.246958000000
+    let mut got = Optimize::<psqs::program::mopac::Mopac>::semi_empirical(
+        &freq,
+        &"USS            H    -11.246958000000
 ZS             H      1.268641000000
 BETAS          H     -8.352984000000
 GSS            H     14.448686000000
@@ -37,13 +37,13 @@ GSP            C     11.528134000000
 GP2            C      9.486212000000
 HSP            C      0.717322000000
 FN11           C      0.046302000000"
-                .parse()
-                .unwrap(),
-            &queue,
-            &config.molecules,
-            9,
-        )
-        .unwrap();
+            .parse()
+            .unwrap(),
+        &queue,
+        &config.molecules,
+        9,
+    )
+    .unwrap();
     let got = got.as_mut_slice();
     got.sort_by(|a, b| b.partial_cmp(a).unwrap());
     approx::assert_abs_diff_eq!(
@@ -105,7 +105,8 @@ fn freq_num_jac() {
         chunk_size: 128,
         mopac: "/opt/mopac/mopac".to_owned(),
     };
-    let got = freq.num_jac(
+    let got = Optimize::<psqs::program::mopac::Mopac>::num_jac(
+        &freq,
         &"
 USS            H    -11.246958000000
 ZS             H      1.268641000000

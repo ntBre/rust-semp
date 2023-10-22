@@ -87,10 +87,11 @@ pub fn lev_mar(jac: &Dmat, ai: &Dvec, se: &Dvec, lambda: f64) -> Dvec {
 
 /// Approximately update the Jacobian matrix using Broyden's method:
 ///
-/// Jₙ = Jₙ₋₁ + (Δfₙ - Jₙ₋₁Δxₙ)Δxₙᵀ / ||Δxₙ||², where Jₙ is the updated Jacobian,
-/// Jₙ₋₁ is the Jacobian from the previous iteration, Δf is the change in the
-/// function value between iterations (the new semi-empirical energies minus the
-/// old), and Δx is the step (δ) determined by the last lev_mar iteration
+/// Jₙ = Jₙ₋₁ + (Δfₙ - Jₙ₋₁Δxₙ)Δxₙᵀ / ||Δxₙ||², where Jₙ is the updated
+/// Jacobian, Jₙ₋₁ is the Jacobian from the previous iteration, Δf is the change
+/// in the function value between iterations (the new semi-empirical energies
+/// minus the old), and Δx is the step (δ) determined by the last lev_mar
+/// iteration
 pub fn broyden_update(
     jac: &Dmat,
     se_old: &Dvec,

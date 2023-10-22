@@ -102,7 +102,7 @@ pub fn broyden_update(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
+pub fn run_algo<O, Q, W>(
     param_log: &mut W,
     molecules: &[Molecule],
     params: Params,
@@ -113,7 +113,12 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
     queue: Q,
     reset_lambda: bool,
     optimizer: O,
-) -> Stats {
+) -> Stats
+where
+    O: Optimize,
+    Q: Queue<Mopac> + Sync,
+    W: Write,
+{
     let ntrue = ai.len();
     let conv = optimizer.stat_multiplier();
     let mut params = params;

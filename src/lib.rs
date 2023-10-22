@@ -8,7 +8,6 @@ use driver::Driver;
 use nalgebra as na;
 use psqs::queue::Queue;
 use stats::Stats;
-use std::fmt::Display;
 use std::sync::LazyLock;
 use std::{clone::Clone, io::Write};
 
@@ -120,7 +119,6 @@ pub fn run_algo<D, O, Q, W>(
 ) -> Stats
 where
     D: Driver,
-    D::Params: Display,
     O: Optimize<D>,
     Q: Queue<D> + Sync,
     W: Write,

@@ -57,6 +57,8 @@ impl Params for psqs::program::mopac::Params {
     }
 }
 
+/// [Driver] is an extension of [psqs::program::Program] with the additional
+/// methods needed to call `run_algo`.
 pub trait Driver:
     Program + Clone + Sync + Send + Serialize + for<'a> Deserialize<'a>
 {

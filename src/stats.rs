@@ -1,4 +1,4 @@
-use nalgebra as na;
+use crate::Dvec;
 
 #[derive(Debug)]
 pub struct Stats {
@@ -11,11 +11,7 @@ impl Stats {
     /// compute the Stats between `v` and `w` in cm-1 under the assumption they
     /// started out in Ht. `tru` is taken to be the "true" value, so length
     /// mismatches are resolved in its favor.
-    pub fn new(
-        tru: &na::DVector<f64>,
-        w: &na::DVector<f64>,
-        conv: f64,
-    ) -> Self {
+    pub fn new(tru: &Dvec, w: &Dvec, conv: f64) -> Self {
         let count = tru.len();
         let w = w.clone().resize_vertically(count, 0.0);
         let mut sq_diffs = 0.0;

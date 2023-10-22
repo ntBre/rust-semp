@@ -13,6 +13,8 @@ use std::thread::{self};
 use symm::atom::Atom;
 use symm::Irrep;
 
+use crate::Dvec;
+
 /// from [StackOverflow](https://stackoverflow.com/a/45145246)
 #[macro_export]
 macro_rules! string {
@@ -66,7 +68,7 @@ pub fn load_geoms(filename: &str, atom_names: &[String]) -> Vec<Geom> {
     ret
 }
 
-pub fn load_energies(filename: &str) -> na::DVector<f64> {
+pub fn load_energies(filename: &str) -> Dvec {
     let mut ret = Vec::new();
     let f = match File::open(filename) {
         Ok(f) => f,
@@ -213,7 +215,7 @@ pub fn parse_params(params: &str) -> Params {
     Params::from(names, atoms, values)
 }
 
-pub fn dump_vec<W: Write>(w: &mut W, vec: &na::DVector<f64>) {
+pub fn dump_vec<W: Write>(w: &mut W, vec: &Dvec) {
     for (i, v) in vec.iter().enumerate() {
         writeln!(w, "{i:>5}{v:>20.12}").unwrap();
     }
@@ -232,7 +234,7 @@ pub fn dump_mat<W: Write>(w: &mut W, mat: &na::DMatrix<f64>) {
 }
 
 /// return `energies` relative to its minimum element
-pub fn relative(energies: &na::DVector<f64>) -> na::DVector<f64> {
+pub fn relative(energies: &Dvec) -> Dvec {
     let min = energies.min();
     let min = na::DVector::from(vec![min; energies.len()]);
     let ret = energies.clone();

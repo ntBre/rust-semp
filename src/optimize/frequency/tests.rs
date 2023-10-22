@@ -3,6 +3,7 @@ use crate::{
     config::Config,
     tests::{hostname, load_mat},
     utils::setup,
+    Dvec,
 };
 
 use nalgebra as na;
@@ -10,7 +11,7 @@ use psqs::queue::local::Local;
 
 /// this is kinda lame because these are essentially pbqff tests, but they do
 /// utilize a lot of the same machinery
-fn se_from_config(config: Config, want: na::DVector<f64>) {
+fn se_from_config(config: Config, want: Dvec) {
     let freq = Frequency::default();
     setup();
     let queue = Local {

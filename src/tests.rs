@@ -256,7 +256,7 @@ fn transpose(orig: &[f64], rows: usize, cols: usize) -> Vec<f64> {
 
 /// report whether or not the euclidean norm of the difference between `got`
 /// and `want` is less than epsilon
-fn comp_dvec(got: na::DVector<f64>, want: na::DVector<f64>, eps: f64) -> bool {
+fn comp_dvec(got: Dvec, want: Dvec, eps: f64) -> bool {
     let norm = (got - want).norm();
     if norm < eps {
         return true;

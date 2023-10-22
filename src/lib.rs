@@ -27,19 +27,17 @@ pub static LAMBDA0: f64 = 1e-8;
 pub static NU: f64 = 2.0;
 pub static MAX_TRIES: usize = 10;
 
+type Dmat = na::DMatrix<f64>;
+type Dvec = na::DVector<f64>;
+
 /// Solve (JᵀJ + λI)δ = Jᵀ[y - f(β)] for δ. y is the vector of "true" training
 /// energies, and f(β) represents the current semi-empirical energies.
-pub fn lev_mar(
-    jac: &na::DMatrix<f64>,
-    ai: &na::DVector<f64>,
-    se: &na::DVector<f64>,
-    lambda: f64,
-) -> na::DVector<f64> {
+pub fn lev_mar(jac: &Dmat, ai: &Dvec, se: &Dvec, lambda: f64) -> Dvec {
     let jac_t = jac.transpose();
     let (rows, _) = jac_t.shape();
     // compute scaled matrix, A*, from JᵀJ
     let a = &jac_t * jac;
-    let mut a_star = na::DMatrix::from_vec(rows, rows, vec![0.0; rows * rows]);
+    let mut a_star = Dmat::from_vec(rows, rows, vec![0.0; rows * rows]);
     for i in 0..rows {
         for j in 0..rows {
             a_star[(i, j)] = a[(i, j)] / (a[(i, i)].sqrt() * a[(j, j)].sqrt())
@@ -56,7 +54,7 @@ pub fn lev_mar(
     };
     // compute λI
     let li = {
-        let mut i = na::DMatrix::<f64>::identity(rows, rows);
+        let mut i = Dmat::identity(rows, rows);
         i.scale_mut(lambda);
         i
     };
@@ -91,11 +89,11 @@ pub fn lev_mar(
 /// function value between iterations (the new semi-empirical energies minus the
 /// old), and Δx is the step (δ) determined by the last lev_mar iteration
 pub fn broyden_update(
-    jac: &na::DMatrix<f64>,
-    se_old: &na::DVector<f64>,
-    se_new: &na::DVector<f64>,
-    step: &na::DVector<f64>,
-) -> na::DMatrix<f64> {
+    jac: &Dmat,
+    se_old: &Dvec,
+    se_new: &Dvec,
+    step: &Dvec,
+) -> Dmat {
     let df = se_new - se_old;
     let numerator = (df - jac * step) * step.transpose();
     let denominator = 1.0 / step.norm();
@@ -108,7 +106,7 @@ pub fn run_algo<O: Optimize, Q: Queue<Mopac> + Sync, W: Write>(
     param_log: &mut W,
     molecules: &[Molecule],
     params: Params,
-    ai: na::DVector<f64>,
+    ai: Dvec,
     max_iter: usize,
     broyden: bool,
     broyd_int: usize,

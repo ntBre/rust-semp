@@ -4,6 +4,7 @@ use psqs::queue::{Check, Queue};
 
 use crate::config::Molecule;
 use crate::utils::relative;
+use crate::Dvec;
 use crate::{utils::setup, utils::takedown, DEBUG};
 use nalgebra as na;
 
@@ -25,7 +26,7 @@ impl Optimize for Energy {
         submitter: &Q,
         molecules: &[Molecule],
         _ntrue: usize,
-    ) -> Option<na::DVector<f64>> {
+    ) -> Option<Dvec> {
         // NOTE: still no loop over molecules here
         let jobs = Mopac::build_jobs(
             self.moles.clone(),
@@ -115,11 +116,5 @@ impl Optimize for Energy {
         HT_TO_CM
     }
 
-    fn log(
-        &self,
-        _iter: usize,
-        _got: &na::DVector<f64>,
-        _want: &na::DVector<f64>,
-    ) {
-    }
+    fn log(&self, _iter: usize, _got: &Dvec, _want: &Dvec) {}
 }

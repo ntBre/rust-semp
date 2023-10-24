@@ -16,7 +16,7 @@ rust-pbqff = { git = "https://github.com/ntBre/rust-pbqff" }
 serde = { version = "1.0", features = ["derive"] }
 symm = { git = "https://github.com/ntBre/symm" }
 taylor = { git = "https://github.com/ntBre/taylor" }
-toml = "0.8.2"
+toml = "0.8.4"
 
 [dev-dependencies]
 approx = "0.5.1"

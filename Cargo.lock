@@ -523,7 +523,7 @@ checksum = "c08c74e62047bb2de4ff487b251e4a92e24f48745648451635cec7d591162d9f"
 [[package]]
 name = "rust-anpass"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-anpass#7cc5106aeaa87394b49881a002aa486699d2b7b8"
+source = "git+https://github.com/ntBre/rust-anpass#665ce432f14cee809d55a244e6f916dbb3352121"
 dependencies = [
  "nalgebra",
  "regex",
@@ -532,7 +532,7 @@ dependencies = [
 [[package]]
 name = "rust-pbqff"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#9a6d1f71a7916b2e7d5ee476da6feed0feaac471"
+source = "git+https://github.com/ntBre/rust-pbqff#1f7175be587e27d7599ecf5d4271b3deea497bfa"
 dependencies = [
  "clap",
  "intder",

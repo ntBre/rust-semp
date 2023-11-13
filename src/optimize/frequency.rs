@@ -787,6 +787,7 @@ where
                             ),
                             charge: molecule.charge,
                             step_size: STEP_SIZE,
+                            weights: None,
                         },
                         submitter,
                         &mut w,

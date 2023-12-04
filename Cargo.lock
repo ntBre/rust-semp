@@ -532,7 +532,7 @@ dependencies = [
 [[package]]
 name = "rust-pbqff"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#c55ec7a2d55e57786820e859b79947dffff16cc4"
+source = "git+https://github.com/ntBre/rust-pbqff#fbe80d2dcb656be23949f12886d4a8157ef3c7fe"
 dependencies = [
  "clap",
  "intder",
@@ -699,7 +699,7 @@ dependencies = [
 [[package]]
 name = "taylor"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/taylor#5d32d87e1b2d7a0a267dfbff47ead3246fcfb8b8"
+source = "git+https://github.com/ntBre/taylor#919b52cb75be5131c181cd15df0f98ebe62a7432"
 dependencies = [
  "nalgebra",
  "rust-anpass",

@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-libc = "0.2.150"
+libc = "0.2.152"
 nalgebra = "0.32.3"
 psqs = { git = "https://github.com/ntBre/psqs" }
 intder = { git = "https://github.com/ntBre/intder" }

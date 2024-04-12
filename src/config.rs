@@ -2,7 +2,7 @@ use psqs::program::Template;
 use rust_pbqff::{config::Queue, Intder};
 use serde::Deserialize;
 
-#[derive(Deserialize, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Deserialize, Debug, PartialEq, Eq)]
 pub enum Protocol {
     #[serde(alias = "energy")]
     Energy,
@@ -69,7 +69,7 @@ pub struct Config {
     pub program: ProgramType,
 }
 
-#[derive(Debug, Default, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq)]
 pub enum ProgramType {
     #[default]
     Mopac,

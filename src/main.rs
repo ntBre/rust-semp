@@ -2,9 +2,11 @@ use std::fs::File;
 use std::io::Write;
 use std::iter::zip;
 use std::os::unix::io::AsRawFd;
+use std::str::FromStr;
 
 use nalgebra as na;
 
+use psqs::program::molpro::Molpro;
 use psqs::program::mopac::Mopac;
 use psqs::queue::local::Local;
 use psqs::queue::pbs::Pbs;
@@ -13,6 +15,7 @@ use rust_pbqff::config::Queue;
 use rust_semp::config::Config;
 use rust_semp::optimize::energy::Energy;
 use rust_semp::optimize::frequency::Frequency;
+use rust_semp::params::molpro::MolproParams;
 use rust_semp::params::mopac::MopacParams;
 use rust_semp::utils::{
     load_energies, load_geoms, parse_params, sort_ascending, sort_irreps,
@@ -29,6 +32,27 @@ fn write_true(tru: &[f64]) {
         write!(f, "{t:8.1}").unwrap();
     }
     writeln!(f).unwrap();
+}
+
+fn sort_freqs(conf: &Config) -> Vec<f64> {
+    let mut ai = Vec::new();
+    eprintln!("symmetry-sorted true frequencies:");
+    for (i, mol) in conf.molecules.iter().enumerate() {
+        eprintln!("Molecule {i}");
+        let irreps = &mol.irreps;
+        let mut a = mol.true_freqs.clone();
+        if conf.sort_ascending {
+            a = sort_ascending(&a, irreps);
+        } else {
+            a = sort_irreps(&a, irreps);
+        }
+        for (i, a) in zip(irreps, a.clone()) {
+            eprintln!("{i} {a:8.1}");
+        }
+        ai.extend(a);
+    }
+    write_true(&ai);
+    ai
 }
 
 fn main() {
@@ -114,23 +138,7 @@ fn main() {
         // 1. intder template called `intder.in` (for SICs)
         // 2. optimize = "frequency" in `semp.toml`
         (config::Protocol::Frequency, config::ProgramType::Mopac) => {
-            let mut ai = Vec::new();
-            eprintln!("symmetry-sorted true frequencies:");
-            for (i, mol) in conf.molecules.iter().enumerate() {
-                eprintln!("Molecule {i}");
-                let irreps = &mol.irreps;
-                let mut a = mol.true_freqs.clone();
-                if conf.sort_ascending {
-                    a = sort_ascending(&a, irreps);
-                } else {
-                    a = sort_irreps(&a, irreps);
-                }
-                for (i, a) in zip(irreps, a.clone()) {
-                    eprintln!("{i} {a:8.1}");
-                }
-                ai.extend(a);
-            }
-            write_true(&ai);
+            let ai = sort_freqs(&conf);
             match conf.queue {
                 Queue::Pbs => run_algo::<Mopac, _, _, _>(
                     &mut param_log,
@@ -192,6 +200,30 @@ fn main() {
             };
         }
         (config::Protocol::Energy, config::ProgramType::Molpro) => todo!(),
-        (config::Protocol::Frequency, config::ProgramType::Molpro) => todo!(),
+        (config::Protocol::Frequency, config::ProgramType::Molpro) => {
+            let ai = sort_freqs(&conf);
+            match conf.queue {
+                Queue::Pbs => run_algo::<Molpro, _, _, _>(
+                    &mut param_log,
+                    &conf.molecules,
+                    MolproParams::from_str(&conf.params).unwrap(),
+                    na::DVector::from(ai),
+                    conf.max_iter,
+                    conf.broyden,
+                    conf.broyd_int,
+                    Pbs::new(
+                        conf.chunk_size,
+                        conf.job_limit,
+                        conf.sleep_int,
+                        "inp",
+                        false,
+                        conf.queue_template,
+                    ),
+                    conf.reset_lambda,
+                    Frequency::new(conf.delta, conf.sort_ascending),
+                ),
+                _ => todo!(),
+            };
+        }
     }
 }

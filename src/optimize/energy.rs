@@ -3,7 +3,7 @@ use psqs::program::mopac::Mopac;
 use psqs::queue::{Check, Queue};
 
 use crate::config::Molecule;
-use crate::params::MopacParams;
+use crate::params::mopac::{self, MopacParams};
 use crate::utils::relative;
 use crate::Dvec;
 use crate::{utils::setup, utils::takedown, DEBUG};
@@ -56,7 +56,7 @@ impl Optimize<Mopac> for Energy {
     /// actually computed and returned
     fn num_jac<Q: Queue<Mopac> + std::marker::Sync>(
         &self,
-        params: &MopacParams,
+        params: &mopac::MopacParams,
         submitter: &Q,
         molecules: &[Molecule],
         _ntrue: usize,

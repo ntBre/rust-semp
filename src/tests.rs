@@ -8,7 +8,7 @@ use std::str::FromStr;
 use crate::{
     config::Config,
     optimize::energy::Energy,
-    params::MopacParams,
+    params::mopac::MopacParams,
     utils::{load_energies, load_params},
 };
 

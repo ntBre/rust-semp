@@ -1,7 +1,7 @@
 use psqs::queue::local::Local;
 use rust_semp::config::Config;
 use rust_semp::optimize::energy::Energy;
-use rust_semp::params::MopacParams;
+use rust_semp::params::mopac::MopacParams;
 use rust_semp::utils::*;
 use rust_semp::*;
 

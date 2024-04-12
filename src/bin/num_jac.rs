@@ -2,7 +2,7 @@ use psqs::queue::local::Local;
 use rust_semp::{
     config::Config,
     optimize::{energy::Energy, Optimize},
-    params::MopacParams,
+    params::mopac::MopacParams,
     utils::{load_geoms, load_params},
     *,
 };

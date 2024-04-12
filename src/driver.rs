@@ -7,7 +7,7 @@ use psqs::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{params::MopacParams, Dvec};
+use crate::{params::mopac::MopacParams, Dvec};
 
 pub trait Params {
     fn names(&self) -> &Vec<String>;

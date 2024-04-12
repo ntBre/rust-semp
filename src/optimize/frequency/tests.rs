@@ -2,7 +2,6 @@ use super::*;
 use crate::{
     config::Config,
     tests::{hostname, load_mat},
-    utils::setup,
     Dvec,
 };
 

@@ -23,7 +23,7 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let mut conf_name = "semp.toml".to_string();
     if args.len() == 2 {
-        conf_name = args[1].clone();
+        conf_name.clone_from(&args[1]);
     }
     // TODO take these names from conf_name
     let outfile = File::create("semp.out").expect("failed to create outfile");

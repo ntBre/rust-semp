@@ -8,7 +8,6 @@ use std::str::FromStr;
 use crate::{
     config::Config,
     optimize::energy::Energy,
-    stats::Stats,
     utils::{load_energies, load_params},
 };
 

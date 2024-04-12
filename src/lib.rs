@@ -8,8 +8,8 @@ use driver::Driver;
 use nalgebra as na;
 use psqs::queue::Queue;
 use stats::Stats;
+use std::io::Write;
 use std::sync::LazyLock;
-use std::{clone::Clone, io::Write};
 
 pub mod config;
 pub mod driver;

@@ -30,7 +30,6 @@ use std::{
     fmt::Display,
     fs::File,
     io::Write,
-    marker::Sync,
     path::Path,
     sync::{LazyLock, Mutex},
 };

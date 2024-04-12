@@ -55,8 +55,8 @@ fn main() {
     let conf = Config::load(&conf_name);
     let mut param_log = File::create("params.log")
         .expect("failed to create parameter log file");
-    match conf.optimize {
-        config::Protocol::Energy => {
+    match (conf.optimize, conf.program) {
+        (config::Protocol::Energy, config::ProgramType::Mopac) => {
             let ai = load_energies("rel.dat");
             match conf.queue {
                 Queue::Pbs => run_algo(
@@ -113,7 +113,7 @@ fn main() {
         // requirements for a Frequency calculation:
         // 1. intder template called `intder.in` (for SICs)
         // 2. optimize = "frequency" in `semp.toml`
-        config::Protocol::Frequency => {
+        (config::Protocol::Frequency, config::ProgramType::Mopac) => {
             let mut ai = Vec::new();
             eprintln!("symmetry-sorted true frequencies:");
             for (i, mol) in conf.molecules.iter().enumerate() {
@@ -191,5 +191,7 @@ fn main() {
                 ),
             };
         }
+        (config::Protocol::Energy, config::ProgramType::Molpro) => todo!(),
+        (config::Protocol::Frequency, config::ProgramType::Molpro) => todo!(),
     }
 }

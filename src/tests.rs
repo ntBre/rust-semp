@@ -289,6 +289,7 @@ fn test_num_jac() {
                 dir: "inp".to_owned(),
                 chunk_size: 128,
                 mopac: "/opt/mopac/mopac".to_owned(),
+                template: None,
             },
             &config.molecules,
             9,
@@ -306,6 +307,7 @@ fn test_num_jac() {
                 dir: "inp".to_owned(),
                 chunk_size: 128,
                 mopac: "/opt/mopac/mopac".to_owned(),
+                template: None,
             },
             &config.molecules,
             9,
@@ -491,6 +493,7 @@ fn test_algo() {
         dir: "inp".to_owned(),
         chunk_size: 128,
         mopac: "/opt/mopac/mopac".to_owned(),
+        template: None,
     };
     let geom_file = "test_files/small07";
     let param_file = "test_files/small.params";

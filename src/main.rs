@@ -171,6 +171,7 @@ fn main() {
                         mopac: conf.mopac.expect(
                             "mopac field must be specified for local queue",
                         ),
+                        template: None,
                     },
                     conf.reset_lambda,
                     Frequency::new(conf.delta, conf.sort_ascending),

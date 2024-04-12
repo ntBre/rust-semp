@@ -65,6 +65,15 @@ pub struct Config {
     pub queue_template: Option<String>,
 
     pub sort_ascending: bool,
+
+    pub program: ProgramType,
+}
+
+#[derive(Debug, Default, Deserialize, PartialEq)]
+pub enum ProgramType {
+    #[default]
+    Mopac,
+    Molpro,
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -147,6 +156,7 @@ impl Config {
             delta: raw.delta,
             queue_template: raw.queue_template,
             sort_ascending: raw.sort_ascending.unwrap_or(false),
+            program: raw.program,
         }
     }
 }

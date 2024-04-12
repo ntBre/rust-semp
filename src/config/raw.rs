@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use symm::Irrep;
 
-use super::Protocol;
+use super::{ProgramType, Protocol};
 
 #[derive(Deserialize, Debug, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -57,6 +57,9 @@ pub(super) struct RawConfig {
 
     /// sort frequencies in descending order instead of by symmetry too
     pub sort_ascending: Option<bool>,
+
+    #[serde(default)]
+    pub program: ProgramType,
 }
 
 #[derive(Clone, Deserialize, Debug, PartialEq)]
@@ -172,6 +175,7 @@ HCC =               147.81488230
             delta: 1e-4,
             queue_template: None,
             sort_ascending: None,
+            program: ProgramType::Mopac,
         };
         assert_eq!(got, want);
     }

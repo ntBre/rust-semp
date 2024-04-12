@@ -7,10 +7,9 @@ use psqs::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::Dvec;
+use crate::{params::MopacParams, Dvec};
 
 pub trait Params {
-    fn new(names: Vec<String>, atoms: Vec<String>, values: Dvec) -> Self;
     fn names(&self) -> &Vec<String>;
     fn atoms(&self) -> &Vec<String>;
     fn values(&self) -> &Dvec;
@@ -46,10 +45,6 @@ impl Params for psqs::program::mopac::Params {
 
     fn values(&self) -> &Dvec {
         &self.values
-    }
-
-    fn new(names: Vec<String>, atoms: Vec<String>, values: Dvec) -> Self {
-        psqs::program::mopac::params::Params::new(names, atoms, values)
     }
 
     fn incr_value(&mut self, idx: usize, delta: f64) {
@@ -102,7 +97,7 @@ pub trait Driver:
 }
 
 impl Driver for Mopac {
-    type Params = psqs::program::mopac::Params;
+    type Params = MopacParams;
 
     fn optimize_geometry<Q: Queue<Self> + Sync>(
         geom: Geom,
@@ -116,7 +111,7 @@ impl Driver for Mopac {
         let opt = Job::new(
             Mopac::new_full(
                 format!("{dir}/{name}"),
-                Some(params.clone()),
+                Some(params.0.clone()),
                 geom,
                 charge,
                 template,
@@ -139,7 +134,7 @@ impl Driver for Mopac {
         mut template: Template,
     ) -> Template {
         let param_file = format!("tmparam/{job_num}.dat");
-        Mopac::write_params(params, &param_file);
+        Mopac::write_params(&params.0, &param_file);
         use std::fmt::Write;
         write!(template.header, " external={param_file}").unwrap();
         template
@@ -157,7 +152,7 @@ impl Driver for Mopac {
     ) -> Vec<Job<Self>> {
         Mopac::build_jobs(
             moles,
-            params,
+            params.map(|p| &p.0),
             dir,
             start_index,
             coeff,
@@ -174,6 +169,6 @@ impl Driver for Mopac {
         charge: isize,
         template: Template,
     ) -> Self {
-        Mopac::new_full(filename, params, geom, charge, template)
+        Mopac::new_full(filename, params.map(|p| p.0), geom, charge, template)
     }
 }

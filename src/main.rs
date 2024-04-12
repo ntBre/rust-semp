@@ -13,6 +13,7 @@ use rust_pbqff::config::Queue;
 use rust_semp::config::Config;
 use rust_semp::optimize::energy::Energy;
 use rust_semp::optimize::frequency::Frequency;
+use rust_semp::params::MopacParams;
 use rust_semp::utils::{
     load_energies, load_geoms, parse_params, sort_ascending, sort_irreps,
 };
@@ -61,7 +62,7 @@ fn main() {
                 Queue::Pbs => run_algo(
                     &mut param_log,
                     &conf.molecules,
-                    parse_params(&conf.params),
+                    MopacParams(parse_params(&conf.params)),
                     ai,
                     conf.max_iter,
                     conf.broyden,
@@ -85,7 +86,7 @@ fn main() {
                 Queue::Slurm => run_algo(
                     &mut param_log,
                     &conf.molecules,
-                    parse_params(&conf.params),
+                    MopacParams(parse_params(&conf.params)),
                     ai,
                     conf.max_iter,
                     conf.broyden,
@@ -134,7 +135,7 @@ fn main() {
                 Queue::Pbs => run_algo::<Mopac, _, _, _>(
                     &mut param_log,
                     &conf.molecules,
-                    parse_params(&conf.params),
+                    MopacParams(parse_params(&conf.params)),
                     na::DVector::from(ai),
                     conf.max_iter,
                     conf.broyden,
@@ -153,7 +154,7 @@ fn main() {
                 Queue::Slurm => run_algo::<Mopac, _, _, _>(
                     &mut param_log,
                     &conf.molecules,
-                    parse_params(&conf.params),
+                    MopacParams(parse_params(&conf.params)),
                     na::DVector::from(ai),
                     conf.max_iter,
                     conf.broyden,
@@ -172,7 +173,7 @@ fn main() {
                 Queue::Local => run_algo::<Mopac, _, _, _>(
                     &mut param_log,
                     &conf.molecules,
-                    parse_params(&conf.params),
+                    MopacParams(parse_params(&conf.params)),
                     na::DVector::from(ai),
                     conf.max_iter,
                     conf.broyden,

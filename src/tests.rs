@@ -8,6 +8,7 @@ use std::str::FromStr;
 use crate::{
     config::Config,
     optimize::energy::Energy,
+    params::MopacParams,
     utils::{load_energies, load_params},
 };
 
@@ -203,7 +204,7 @@ fn test_one_iter() {
         0.0013685188198143683,
     ]);
     let got = Energy { moles }.semi_empirical(
-        &params,
+        &MopacParams(params),
         &Local {
             chunk_size: 128,
             dir: "inp".to_string(),
@@ -284,7 +285,7 @@ fn test_num_jac() {
         let params = utils::load_params("test_files/small.params");
         let want = load_mat("test_files/small.jac");
         let got = Energy { moles }.num_jac(
-            &params,
+            &MopacParams(params),
             &Local {
                 dir: "inp".to_owned(),
                 chunk_size: 128,
@@ -302,7 +303,7 @@ fn test_num_jac() {
         let params = utils::load_params("test_files/three.params");
         let want = load_mat("test_files/three.jac");
         let got = Energy { moles }.num_jac(
-            &params,
+            &MopacParams(params),
             &Local {
                 dir: "inp".to_owned(),
                 chunk_size: 128,
@@ -501,7 +502,7 @@ fn test_algo() {
     let got = run_algo(
         &mut std::io::sink(),
         &config.molecules,
-        utils::load_params(param_file),
+        MopacParams(utils::load_params(param_file)),
         utils::load_energies(energy_file),
         5,
         true,

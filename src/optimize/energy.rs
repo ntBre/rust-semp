@@ -1,8 +1,9 @@
 use psqs::geom::Geom;
-use psqs::program::mopac::{Mopac, Params};
+use psqs::program::mopac::Mopac;
 use psqs::queue::{Check, Queue};
 
 use crate::config::Molecule;
+use crate::params::MopacParams;
 use crate::utils::relative;
 use crate::Dvec;
 use crate::{utils::setup, utils::takedown, DEBUG};
@@ -22,7 +23,7 @@ impl Optimize<Mopac> for Energy {
     /// compute the semi-empirical energies of `moles` for the given `params`
     fn semi_empirical<Q>(
         &self,
-        params: &Params,
+        params: &MopacParams,
         submitter: &Q,
         molecules: &[Molecule],
         _ntrue: usize,
@@ -33,7 +34,7 @@ impl Optimize<Mopac> for Energy {
         // NOTE: still no loop over molecules here
         let jobs = Mopac::build_jobs(
             self.moles.clone(),
-            Some(params),
+            Some(&params.0),
             "inp",
             0,
             1.0,
@@ -55,13 +56,13 @@ impl Optimize<Mopac> for Energy {
     /// actually computed and returned
     fn num_jac<Q: Queue<Mopac> + std::marker::Sync>(
         &self,
-        params: &Params,
+        params: &MopacParams,
         submitter: &Q,
         molecules: &[Molecule],
         _ntrue: usize,
     ) -> na::DMatrix<f64> {
         // NOTE: no loop over molecules here
-        let rows = params.values.len();
+        let rows = params.0.values.len();
         let cols = self.moles.len();
         let mut jac_t = vec![0.; rows * cols];
         // front and back for each row and col
@@ -72,10 +73,10 @@ impl Optimize<Mopac> for Energy {
             let mut pf = params.clone();
             let mut pb = params.clone();
             let idx = row * cols;
-            pf.values[row] += DELTA;
+            pf.0.values[row] += DELTA;
             let mut fwd_jobs = Mopac::build_jobs(
                 self.moles.clone(),
-                Some(&pf),
+                Some(&pf.0),
                 "inp",
                 idx,
                 DELTA_FWD,
@@ -86,10 +87,10 @@ impl Optimize<Mopac> for Energy {
             job_num += fwd_jobs.len();
             jobs.append(&mut fwd_jobs);
 
-            pb.values[row] -= DELTA;
+            pb.0.values[row] -= DELTA;
             let mut bwd_jobs = Mopac::build_jobs(
                 self.moles.clone(),
-                Some(&pb),
+                Some(&pb.0),
                 "inp",
                 idx,
                 DELTA_BWD,

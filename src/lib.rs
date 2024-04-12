@@ -1,6 +1,5 @@
 #![feature(lazy_cell)]
 
-use crate::driver::Params;
 use crate::optimize::Optimize;
 use crate::utils::log_params;
 use config::Molecule;
@@ -9,6 +8,7 @@ use nalgebra as na;
 use psqs::queue::Queue;
 use stats::Stats;
 use std::io::Write;
+use std::ops::Add;
 use std::sync::LazyLock;
 
 pub mod config;
@@ -104,6 +104,68 @@ pub fn broyden_update(
     jac + update
 }
 
+pub mod params {
+    //! Implementations of the [Params] interface
+
+    use std::{fmt::Display, ops::Add, str::FromStr};
+
+    use psqs::program::mopac::Params;
+
+    use crate::{driver, Dvec};
+
+    #[derive(Clone)]
+    pub struct MopacParams(pub psqs::program::mopac::Params);
+
+    impl Display for MopacParams {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{}", self.0)
+        }
+    }
+
+    impl FromStr for MopacParams {
+        type Err = std::string::ParseError;
+
+        fn from_str(s: &str) -> Result<Self, Self::Err> {
+            Params::from_str(s).map(Self)
+        }
+    }
+
+    impl driver::Params for MopacParams {
+        fn names(&self) -> &Vec<String> {
+            self.0.names()
+        }
+
+        fn atoms(&self) -> &Vec<String> {
+            self.0.atoms()
+        }
+
+        fn values(&self) -> &Dvec {
+            self.0.values()
+        }
+
+        fn incr_value(&mut self, idx: usize, delta: f64) {
+            self.0.incr_value(idx, delta)
+        }
+    }
+
+    impl Add<&Dvec> for MopacParams {
+        type Output = Self;
+
+        fn add(self, rhs: &Dvec) -> Self::Output {
+            let MopacParams(Params {
+                names,
+                atoms,
+                values,
+            }) = self;
+            Self(Params {
+                names,
+                atoms,
+                values: values + rhs,
+            })
+        }
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn run_algo<D, O, Q, W>(
     param_log: &mut W,
@@ -122,6 +184,7 @@ where
     O: Optimize<D>,
     Q: Queue<D> + Sync,
     W: Write,
+    <D as Driver>::Params: for<'a> Add<&'a Dvec, Output = D::Params>,
 {
     let ntrue = ai.len();
     let conv = optimizer.stat_multiplier();
@@ -183,11 +246,7 @@ where
         // first try with λ/ν
         lambda /= NU;
         step = lev_mar(&jac, &ai, &se, lambda);
-        let mut try_params = Params::new(
-            params.names().clone(),
-            params.atoms().clone(),
-            params.values() + &step,
-        );
+        let mut try_params = params.clone() + &step;
         let mut new_se = optimizer
             .semi_empirical(&try_params, &queue, molecules, ntrue)
             .unwrap_or_else(semi_empirical_failure);
@@ -209,11 +268,7 @@ where
             let dnorm = stats.norm - last_stats.norm;
 
             step = lev_mar(&jac, &ai, &se, lambda);
-            try_params = Params::new(
-                params.names().clone(),
-                params.atoms().clone(),
-                params.values() + &step,
-            );
+            try_params = params.clone() + &step;
             new_se = optimizer
                 .semi_empirical(&try_params, &queue, molecules, ntrue)
                 .unwrap_or_else(semi_empirical_failure);
@@ -245,11 +300,7 @@ where
             k = 1.0 / 10.0_f64.powf(i as f64);
 
             step = lev_mar(&jac, &ai, &se, lambda);
-            try_params = Params::new(
-                params.names().clone(),
-                params.atoms().clone(),
-                params.values() + k * &step,
-            );
+            try_params = params.clone() + &(k * &step);
             new_se = optimizer
                 .semi_empirical(&try_params, &queue, molecules, ntrue)
                 .unwrap_or_else(semi_empirical_failure);

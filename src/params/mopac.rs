@@ -22,20 +22,12 @@ impl FromStr for MopacParams {
 }
 
 impl driver::Params for MopacParams {
-    fn names(&self) -> &Vec<String> {
-        self.0.names()
-    }
-
-    fn atoms(&self) -> &Vec<String> {
-        self.0.atoms()
-    }
-
-    fn values(&self) -> &Dvec {
-        self.0.values()
-    }
-
     fn incr_value(&mut self, idx: usize, delta: f64) {
         self.0.incr_value(idx, delta)
+    }
+
+    fn len(&self) -> usize {
+        self.0.names.len()
     }
 }
 

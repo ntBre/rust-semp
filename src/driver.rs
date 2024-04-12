@@ -2,18 +2,16 @@ use std::fmt::Display;
 
 use psqs::{
     geom::Geom,
-    program::{mopac::Mopac, Job, Program, ProgramResult, Template},
+    program::{
+        molpro::Molpro, mopac::Mopac, Job, Program, ProgramResult, Template,
+    },
     queue::Queue,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{params::mopac::MopacParams, Dvec};
+use crate::params::{molpro::MolproParams, mopac::MopacParams};
 
 pub trait Params {
-    fn names(&self) -> &Vec<String>;
-    fn atoms(&self) -> &Vec<String>;
-    fn values(&self) -> &Dvec;
-
     /// increment the `idx`th parameter value by `delta`
     fn incr_value(&mut self, idx: usize, delta: f64);
 
@@ -25,9 +23,7 @@ pub trait Params {
 
     /// returns the length of `self.names()`. assumes `names`, `atoms`, and
     /// `values` have the same length
-    fn len(&self) -> usize {
-        self.names().len()
-    }
+    fn len(&self) -> usize;
 
     fn is_empty(&self) -> bool {
         self.len() == 0
@@ -35,20 +31,12 @@ pub trait Params {
 }
 
 impl Params for psqs::program::mopac::Params {
-    fn names(&self) -> &Vec<String> {
-        &self.names
-    }
-
-    fn atoms(&self) -> &Vec<String> {
-        &self.atoms
-    }
-
-    fn values(&self) -> &Dvec {
-        &self.values
-    }
-
     fn incr_value(&mut self, idx: usize, delta: f64) {
         self.values[idx] += delta;
+    }
+
+    fn len(&self) -> usize {
+        self.names.len()
     }
 }
 
@@ -170,5 +158,53 @@ impl Driver for Mopac {
         template: Template,
     ) -> Self {
         Mopac::new_full(filename, params.map(|p| p.0), geom, charge, template)
+    }
+}
+
+#[allow(unused)]
+impl Driver for Molpro {
+    type Params = MolproParams;
+
+    fn optimize_geometry<Q: Queue<Self> + Sync>(
+        geom: Geom,
+        params: &Self::Params,
+        queue: &Q,
+        dir: &str,
+        name: &str,
+        charge: isize,
+        template: Template,
+    ) -> Option<ProgramResult> {
+        todo!()
+    }
+
+    fn write_params(
+        job_num: usize,
+        params: &Self::Params,
+        template: Template,
+    ) -> Template {
+        todo!()
+    }
+
+    fn build_jobs(
+        moles: Vec<Geom>,
+        params: Option<&Self::Params>,
+        dir: &'static str,
+        start_index: usize,
+        coeff: f64,
+        job_num: usize,
+        charge: isize,
+        tmpl: Template,
+    ) -> Vec<Job<Self>> {
+        todo!()
+    }
+
+    fn new_full(
+        filename: String,
+        params: Option<Self::Params>,
+        geom: Geom,
+        charge: isize,
+        template: Template,
+    ) -> Self {
+        todo!()
     }
 }

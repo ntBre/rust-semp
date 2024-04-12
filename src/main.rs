@@ -18,6 +18,18 @@ use rust_semp::utils::{
 };
 use rust_semp::*;
 
+/// write the `true` frequencies to `true.dat` in the same format used in the
+/// log
+fn write_true(tru: &[f64]) {
+    let mut f =
+        std::fs::File::create("true.dat").expect("failed to make true.dat");
+    write!(f, "{:5}", "true").unwrap();
+    for t in tru {
+        write!(f, "{t:8.1}").unwrap();
+    }
+    writeln!(f).unwrap();
+}
+
 fn main() {
     // load first arg or default to `semp.toml`
     let args: Vec<String> = std::env::args().collect();
@@ -179,16 +191,4 @@ fn main() {
             };
         }
     }
-}
-
-/// write the `true` frequencies to `true.dat` in the same format used in the
-/// log
-fn write_true(tru: &[f64]) {
-    let mut f =
-        std::fs::File::create("true.dat").expect("failed to make true.dat");
-    write!(f, "{:5}", "true").unwrap();
-    for t in tru {
-        write!(f, "{t:8.1}").unwrap();
-    }
-    writeln!(f).unwrap();
 }

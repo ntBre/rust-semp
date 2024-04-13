@@ -189,11 +189,13 @@ impl Driver for Molpro {
     }
 
     fn write_params(
-        job_num: usize,
+        _job_num: usize,
         params: &Self::Params,
-        template: Template,
+        mut template: Template,
     ) -> Template {
-        todo!()
+        template.header =
+            template.header.replace("{{.basis}}", &params.to_string());
+        template
     }
 
     fn build_jobs(

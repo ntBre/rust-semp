@@ -41,7 +41,18 @@ impl FromStr for MolproParams {
 
 impl Display for MolproParams {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", std::any::type_name::<Self>())
+        for ((c1, c2), rest) in self.col1.iter().zip(&self.col2).zip(&self.rest)
+        {
+            write!(f, "{c1}, {c2}, ")?;
+            for (i, r) in rest.iter().enumerate() {
+                write!(f, "{r:.10E}")?;
+                if i < rest.len() - 1 {
+                    write!(f, ", ")?;
+                }
+            }
+            writeln!(f)?;
+        }
+        Ok(())
     }
 }
 
@@ -103,6 +114,27 @@ mod tests {
                 vec![0.1000000000E+01],
             ],
         };
+        assert_eq!(got, want);
+    }
+
+    #[test]
+    fn write_params() {
+        let params = MolproParams::from_str(
+            &read_to_string("test_files/molpro.params").unwrap(),
+        )
+        .unwrap();
+        let got = params.to_string();
+        let want = "s, H, 5.4471780000E0, 8.2454724000E-1, 1.8319158000E-1
+c, 1.2, 1.5628497870E-1, 9.0469087670E-1
+c, 3.3, 1.0000000000E0
+s, C, 1.7225600000E2, 2.5910900000E1, 5.5333500000E0, 3.6649800000E0, 7.7054500000E-1, 1.9585700000E-1
+c, 1.3, 6.1766907380E-2, 3.5879404290E-1, 7.0071308370E-1
+c, 4.5, -3.9589516210E-1, 1.2158343560E0
+c, 6.6, 1.0000000000E0
+p, C, 3.6649800000E0, 7.7054500000E-1, 1.9585700000E-1
+c, 1.2, 2.3645994660E-1, 8.6061880570E-1
+c, 3.3, 1.0000000000E0
+";
         assert_eq!(got, want);
     }
 }

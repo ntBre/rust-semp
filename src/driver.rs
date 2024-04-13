@@ -77,7 +77,7 @@ pub trait Driver:
 
     fn new_full(
         filename: String,
-        params: Option<Self::Params>,
+        params: Self::Params,
         geom: Geom,
         charge: isize,
         template: Template,
@@ -152,12 +152,12 @@ impl Driver for Mopac {
 
     fn new_full(
         filename: String,
-        params: Option<Self::Params>,
+        params: Self::Params,
         geom: Geom,
         charge: isize,
         template: Template,
     ) -> Self {
-        Mopac::new_full(filename, params.map(|p| p.0), geom, charge, template)
+        Mopac::new_full(filename, Some(params.0), geom, charge, template)
     }
 }
 
@@ -213,7 +213,7 @@ impl Driver for Molpro {
 
     fn new_full(
         filename: String,
-        params: Option<Self::Params>,
+        params: Self::Params,
         geom: Geom,
         charge: isize,
         template: Template,

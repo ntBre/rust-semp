@@ -692,13 +692,7 @@ fn build_findiff<F: FiniteDifference, D: Driver>(
         let filename = format!("{dir}/job.{job_num:08}");
         job_num += 1;
         jobs.push(Job::new(
-            D::new_full(
-                filename,
-                None,
-                mol.geom.clone(),
-                molecule.charge,
-                tmpl.clone(),
-            ),
+            D::new(filename, tmpl.clone(), molecule.charge, mol.geom.clone()),
             mol.index + start_index,
         ));
     }
@@ -1040,7 +1034,7 @@ impl Frequency {
                     opts.push(Job::new(
                         D::new_full(
                             format!("inp/opt{row}_fwd{i}"),
-                            Some(pf),
+                            pf,
                             molecule.geometry.clone(),
                             molecule.charge,
                             molecule.template.clone(),
@@ -1059,7 +1053,7 @@ impl Frequency {
                     opts.push(Job::new(
                         D::new_full(
                             format!("inp/opt{row}_bwd{i}"),
-                            Some(pb),
+                            pb,
                             molecule.geometry.clone(),
                             molecule.charge,
                             molecule.template.clone(),

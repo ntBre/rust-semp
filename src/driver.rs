@@ -216,8 +216,11 @@ impl Driver for Molpro {
         params: Self::Params,
         geom: Geom,
         charge: isize,
-        template: Template,
+        mut template: Template,
     ) -> Self {
-        todo!()
+        // TODO do I need to do this?
+        template.header =
+            template.header.replace("{{.basis}}", &params.to_string());
+        Self::new(filename, template, charge, geom)
     }
 }

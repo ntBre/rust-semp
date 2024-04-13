@@ -66,7 +66,6 @@ pub trait Driver:
     #[allow(clippy::too_many_arguments)]
     fn build_jobs(
         moles: Vec<Geom>,
-        params: Option<&Self::Params>,
         dir: &'static str,
         start_index: usize,
         coeff: f64,
@@ -130,7 +129,6 @@ impl Driver for Mopac {
 
     fn build_jobs(
         moles: Vec<Geom>,
-        params: Option<&Self::Params>,
         dir: &'static str,
         start_index: usize,
         coeff: f64,
@@ -140,7 +138,7 @@ impl Driver for Mopac {
     ) -> Vec<Job<Self>> {
         Mopac::build_jobs(
             moles,
-            params.map(|p| &p.0),
+            None,
             dir,
             start_index,
             coeff,
@@ -200,7 +198,6 @@ impl Driver for Molpro {
 
     fn build_jobs(
         moles: Vec<Geom>,
-        params: Option<&Self::Params>,
         dir: &'static str,
         start_index: usize,
         coeff: f64,
@@ -208,7 +205,15 @@ impl Driver for Molpro {
         charge: isize,
         tmpl: Template,
     ) -> Vec<Job<Self>> {
-        todo!()
+        <Molpro as Program>::build_jobs(
+            moles,
+            dir,
+            start_index,
+            coeff,
+            job_num,
+            charge,
+            tmpl,
+        )
     }
 
     fn new_full(

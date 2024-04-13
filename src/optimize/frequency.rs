@@ -240,7 +240,6 @@ impl Frequency {
                 // call build_jobs like before
                 let jobs = <D as Driver>::build_jobs(
                     moles,
-                    None,
                     "inp",
                     start_index,
                     1.0,
@@ -290,7 +289,6 @@ impl Frequency {
                         .unwrap();
                     let jobs = <D as Driver>::build_jobs(
                         geoms,
-                        None,
                         dir,
                         start_index,
                         1.0,

@@ -57,13 +57,22 @@ impl Display for MolproParams {
 }
 
 impl Params for MolproParams {
-    #[allow(unused)]
     fn incr_value(&mut self, idx: usize, delta: f64) {
-        todo!()
+        let mut cur = 0;
+        for vs in self.rest.iter_mut() {
+            for v in vs.iter_mut() {
+                if cur == idx {
+                    *v += delta;
+                    return;
+                }
+                cur += 1;
+            }
+        }
     }
 
+    /// Sum all of the basis set entries from each row
     fn len(&self) -> usize {
-        todo!()
+        self.rest.iter().map(|v| v.len()).sum()
     }
 }
 

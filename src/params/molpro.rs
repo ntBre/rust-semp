@@ -79,8 +79,15 @@ impl Params for MolproParams {
 impl Add<&Dvec> for MolproParams {
     type Output = Self;
 
-    fn add(self, _rhs: &Dvec) -> Self::Output {
-        todo!()
+    fn add(mut self, rhs: &Dvec) -> Self::Output {
+        let mut cur = 0;
+        for vs in self.rest.iter_mut() {
+            for v in vs.iter_mut() {
+                *v += rhs[cur];
+                cur += 1;
+            }
+        }
+        self
     }
 }
 

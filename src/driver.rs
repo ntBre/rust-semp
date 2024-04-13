@@ -172,9 +172,20 @@ impl Driver for Molpro {
         dir: &str,
         name: &str,
         charge: isize,
-        template: Template,
+        mut template: Template,
     ) -> Option<ProgramResult> {
-        todo!()
+        template.header =
+            template.header.replace("{{.basis}}", &params.to_string());
+        let opt = Job::new(
+            Molpro::new(format!("{dir}/{name}"), template, charge, geom),
+            0,
+        );
+        let mut res = vec![Default::default(); 1];
+        let status = queue.energize(dir, vec![opt], &mut res);
+        if status.is_err() {
+            return None;
+        }
+        Some(res.pop().unwrap())
     }
 
     fn write_params(

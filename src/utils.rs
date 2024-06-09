@@ -99,7 +99,7 @@ pub fn load_params(filename: &str) -> Params {
     parse_params(&params)
 }
 
-pub(crate) static DIRS: &[&str] = &["inp", "tmparam", "opt"];
+pub(crate) static DIRS: &[&str] = &["inp", "inp/pts", "tmparam", "opt"];
 
 /// set up the directories needed for the program after deleting existing ones
 pub fn setup() {

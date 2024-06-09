@@ -511,7 +511,7 @@ dependencies = [
 [[package]]
 name = "rust-pbqff"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#6d0b87b450481bd6ab460cc2e3b12c580f50065e"
+source = "git+https://github.com/ntBre/rust-pbqff#d4dc82f96ab015910a28d48b65fdcb368b895317"
 dependencies = [
  "clap",
  "intder",

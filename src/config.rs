@@ -1,5 +1,5 @@
+use pbqff::{config::Queue, Intder};
 use psqs::program::Template;
-use rust_pbqff::{config::Queue, Intder};
 use serde::Deserialize;
 
 #[derive(Clone, Copy, Deserialize, Debug, PartialEq, Eq)]

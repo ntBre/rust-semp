@@ -6,12 +6,12 @@ use std::str::FromStr;
 
 use nalgebra as na;
 
+use pbqff::config::Queue;
 use psqs::program::molpro::Molpro;
 use psqs::program::mopac::Mopac;
 use psqs::queue::local::Local;
 use psqs::queue::pbs::Pbs;
 use psqs::queue::slurm::Slurm;
-use rust_pbqff::config::Queue;
 use rust_semp::config::Config;
 use rust_semp::optimize::energy::Energy;
 use rust_semp::optimize::frequency::Frequency;

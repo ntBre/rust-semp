@@ -46,7 +46,7 @@ pub(super) struct RawConfig {
     pub molecule: Vec<RawMolecule>,
 
     /// the queueing system to use
-    pub queue: rust_pbqff::config::Queue,
+    pub queue: pbqff::config::Queue,
 
     pub mopac: Option<String>,
 
@@ -106,7 +106,7 @@ impl RawConfig {
 
 #[cfg(test)]
 mod tests {
-    use rust_pbqff::config::Queue;
+    use pbqff::config::Queue;
 
     use crate::string;
 

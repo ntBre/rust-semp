@@ -412,6 +412,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "de3145af08024dea9fa9914f381a17b8fc6034dfb00f3a84013f7ff43f29ed4c"
 
 [[package]]
+name = "pbqff"
+version = "0.1.0"
+source = "git+https://github.com/ntBre/pbqff#6f6b31a52824fd2d18bbafba75cda6f971487f2b"
+dependencies = [
+ "clap",
+ "intder",
+ "libc",
+ "nalgebra",
+ "psqs",
+ "rust-anpass",
+ "rustc-hash",
+ "serde",
+ "serde_json",
+ "spectro",
+ "symm",
+ "taylor",
+ "toml",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.79"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -509,26 +529,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-pbqff"
-version = "0.1.0"
-source = "git+https://github.com/ntBre/rust-pbqff#d4dc82f96ab015910a28d48b65fdcb368b895317"
-dependencies = [
- "clap",
- "intder",
- "libc",
- "nalgebra",
- "psqs",
- "rust-anpass",
- "rustc-hash",
- "serde",
- "serde_json",
- "spectro",
- "symm",
- "taylor",
- "toml",
-]
-
-[[package]]
 name = "rust-semp"
 version = "0.1.0"
 dependencies = [
@@ -536,9 +536,9 @@ dependencies = [
  "intder",
  "libc",
  "nalgebra",
+ "pbqff",
  "psqs",
  "rayon",
- "rust-pbqff",
  "serde",
  "symm",
  "taylor",

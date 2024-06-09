@@ -6,12 +6,7 @@ use crate::{
 };
 use na::DVector;
 use nalgebra as na;
-use psqs::{
-    geom::Geom,
-    program::{Job, ProgramResult, Template},
-    queue::{Check, Queue},
-};
-use rust_pbqff::{
+use pbqff::{
     coord_type::{
         cart::{self, Derivative, FirstPart},
         findiff::{
@@ -23,6 +18,11 @@ use rust_pbqff::{
         Cart, Sic,
     },
     Output, Spectro,
+};
+use psqs::{
+    geom::Geom,
+    program::{Job, ProgramResult, Template},
+    queue::{Check, Queue},
 };
 use std::{
     cmp::Ordering,
@@ -74,7 +74,7 @@ struct FinDiff {
 #[derive(Clone, Debug)]
 enum FreqParts {
     Sic {
-        intder: rust_pbqff::Intder,
+        intder: pbqff::Intder,
         taylor: Taylor,
         atomic_numbers: Vec<usize>,
     },
@@ -114,7 +114,7 @@ impl Error for GeomError {}
 
 impl FreqParts {
     fn sic(
-        intder: rust_pbqff::Intder,
+        intder: pbqff::Intder,
         taylor: Taylor,
         atomic_numbers: Vec<usize>,
     ) -> Self {
@@ -337,7 +337,7 @@ impl Frequency {
         }
     }
 
-    /// call `rust_pbqff::coord_type::freqs`, but sort the frequencies by irrep
+    /// call `pbqff::coord_type::freqs`, but sort the frequencies by irrep
     /// and then frequency and return the result as a DVector
     fn freqs<W: std::io::Write>(
         &self,

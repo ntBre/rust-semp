@@ -443,10 +443,11 @@ dependencies = [
 [[package]]
 name = "psqs"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/psqs#d2ea8fe8cc2b4efacb20c33f6a7f5a0b70d30842"
+source = "git+https://github.com/ntBre/psqs#d373e1670d05eca40ff5af5a6712061a5ba8ffdc"
 dependencies = [
  "chrono",
  "libc",
+ "log",
  "nalgebra",
  "rayon",
  "regex",
@@ -640,7 +641,7 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 [[package]]
 name = "symm"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/symm#63553fbcdf941e7cd6c0c45ca06837d633d5f900"
+source = "git+https://github.com/ntBre/symm#e5f3c63db3554240a45f45d9a11006745ce09952"
 dependencies = [
  "approx",
  "nalgebra",

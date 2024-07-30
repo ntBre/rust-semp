@@ -3,13 +3,16 @@ use std::fmt::Display;
 use psqs::{
     geom::Geom,
     program::{
-        molpro::Molpro, mopac::Mopac, Job, Program, ProgramResult, Template,
+        dftbplus::DFTBPlus, molpro::Molpro, mopac::Mopac, Job, Program,
+        ProgramResult, Template,
     },
     queue::Queue,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::params::{molpro::MolproParams, mopac::MopacParams};
+use crate::params::{
+    dftbplus::DFTBPlusParams, molpro::MolproParams, mopac::MopacParams,
+};
 
 pub trait Params {
     /// increment the `idx`th parameter value by `delta`
@@ -225,6 +228,53 @@ impl Driver for Molpro {
         // TODO do I need to do this?
         template.header =
             template.header.replace("{{.basis}}", &params.to_string());
+        Self::new(filename, template, charge, geom)
+    }
+}
+
+impl Driver for DFTBPlus {
+    type Params = DFTBPlusParams;
+
+    fn optimize_geometry<Q: Queue<Self> + Sync>(
+        geom: Geom,
+        params: &Self::Params,
+        queue: &Q,
+        dir: &str,
+        name: &str,
+        charge: isize,
+        template: Template,
+    ) -> Option<ProgramResult> {
+        todo!()
+    }
+
+    fn write_params(
+        job_num: usize,
+        params: &Self::Params,
+        template: Template,
+    ) -> Template {
+        todo!()
+    }
+
+    fn build_jobs(
+        moles: Vec<Geom>,
+        dir: &'static str,
+        start_index: usize,
+        coeff: f64,
+        job_num: usize,
+        charge: isize,
+        tmpl: Template,
+    ) -> Vec<Job<Self>> {
+        todo!()
+    }
+
+    fn new_full(
+        filename: String,
+        params: Self::Params,
+        geom: Geom,
+        charge: isize,
+        template: Template,
+    ) -> Self {
+        todo!("put params into template somehow");
         Self::new(filename, template, charge, geom)
     }
 }

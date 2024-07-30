@@ -1,14 +1,15 @@
-
-use crate::optimize::Optimize;
-use crate::utils::log_params;
-use config::Molecule;
-use driver::Driver;
-use nalgebra as na;
-use psqs::queue::Queue;
-use stats::Stats;
 use std::io::Write;
 use std::ops::Add;
 use std::sync::LazyLock;
+
+use nalgebra as na;
+use psqs::queue::Queue;
+
+use config::Molecule;
+use driver::Driver;
+use optimize::Optimize;
+use stats::Stats;
+use utils::log_params;
 
 pub mod config;
 pub mod driver;

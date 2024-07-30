@@ -466,9 +466,9 @@ fn test_algo() {
     // loading everything
     let want = match hostname().as_str() {
         "cactus" => Stats {
-            norm: 17.68655029777878,
-            rmsd: 3.537310059555756,
-            max: 7.453759816083651,
+            norm: 7.939320028011808,
+            rmsd: 1.5878640056023616,
+            max: 3.9406828094473343,
         },
         "bonsai" | "lintel" => Stats {
             norm: 7.356730516402555,

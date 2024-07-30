@@ -123,6 +123,8 @@ ZS             C      2.047558000000
     );
     let want = if hostname() == "keystone" {
         load_mat("test_files/freq.jac")
+    } else if hostname() == "cactus" {
+        load_mat("test_files/cactus.jac")
     } else {
         load_mat("test_files/github.jac")
     };

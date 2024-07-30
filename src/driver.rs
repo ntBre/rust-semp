@@ -159,7 +159,6 @@ impl Driver for Mopac {
     }
 }
 
-#[allow(unused)]
 impl Driver for Molpro {
     type Params = MolproParams;
 

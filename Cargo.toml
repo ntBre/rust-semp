@@ -17,6 +17,7 @@ serde = { version = "1.0", features = ["derive"] }
 symm = { git = "https://github.com/ntBre/symm" }
 taylor = { git = "https://github.com/ntBre/taylor" }
 toml = "0.8.10"
+log = "0.4.22"
 
 [dev-dependencies]
 approx = "0.5.1"

@@ -232,6 +232,7 @@ impl Driver for Molpro {
     }
 }
 
+#[allow(unused)]
 impl Driver for DFTBPlus {
     type Params = DFTBPlusParams;
 

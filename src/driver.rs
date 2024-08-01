@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, path::Path};
 
 use psqs::{
     geom::Geom,
@@ -63,6 +63,8 @@ pub trait Driver:
         template: Template,
     ) -> Option<ProgramResult>;
 
+    /// generate a parameter filename using `job_num`, write the parameters to
+    /// that file, and return the template with the parameter filename added
     fn write_params(
         job_num: usize,
         params: &Self::Params,
@@ -269,9 +271,17 @@ impl Driver for DFTBPlus {
     fn write_params(
         job_num: usize,
         params: &Self::Params,
-        template: Template,
+        mut template: Template,
     ) -> Template {
-        todo!()
+        let dir = Path::new("tmparam");
+        for f in params.files.iter() {
+            let param_file = dir.join(&f.basename);
+            f.to_file(param_file);
+        }
+        template.header = template
+            .header
+            .replace("{{.prefix}}", &dir.display().to_string());
+        template
     }
 
     fn build_jobs(
@@ -291,9 +301,10 @@ impl Driver for DFTBPlus {
         params: Self::Params,
         geom: Geom,
         charge: isize,
-        template: Template,
+        mut template: Template,
     ) -> Self {
-        // TODO put params into template somehow
+        let template = Self::write_params(0, &params, template);
+        println!("{}", template.header);
         Self::new(filename, template, charge, geom)
     }
 }

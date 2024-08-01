@@ -4,7 +4,7 @@ use std::{
     error::Error,
     ffi::OsString,
     fmt::Display,
-    fs::read_to_string,
+    fs::{read_to_string, File},
     io,
     ops::Add,
     path::{Path, PathBuf},
@@ -34,9 +34,9 @@ mod utils {
 
 /// Representation of a single SKF.
 #[derive(Clone, Debug)]
-struct Skf {
+pub(crate) struct Skf {
     /// Base filename for writing back to disk
-    basename: PathBuf,
+    pub(crate) basename: PathBuf,
     /// Header junk
     header: String,
     /// For now, the parameters to optimize. If empty, we can just write the
@@ -111,21 +111,39 @@ impl Skf {
             footer: rest.join("\n"),
         })
     }
+
+    pub(crate) fn to_file(&self, param_file: PathBuf) -> std::io::Result<()> {
+        use std::io::Write;
+        let mut f = File::create(param_file)?;
+        write!(f, "{self}")
+    }
 }
 
 #[derive(Clone, Debug)]
 pub struct DFTBPlusParams {
-    files: Vec<Skf>,
+    pub(crate) files: Vec<Skf>,
 }
 
 impl DFTBPlusParams {
+    /// take the first 7 entries from line2, skipping the orbital occupations
+    const LINE2_SIZE: usize = 7;
+
     /// Returns a flattened vector of references into the first 7 entries of
     /// each line2 (the optimizable parameters).
     fn params_mut(&mut self) -> Vec<&mut f64> {
         self.files
             .iter_mut()
-            .flat_map(|mut s| &mut s.line2[..=6])
+            .flat_map(|mut s| {
+                let end = usize::min(s.line2.len(), Self::LINE2_SIZE);
+                &mut s.line2[..end]
+            })
             .collect()
+    }
+
+    fn params(&self) -> impl Iterator<Item = &f64> {
+        self.files.iter().flat_map(|s| {
+            &s.line2[..usize::min(s.line2.len(), Self::LINE2_SIZE)]
+        })
     }
 }
 
@@ -150,18 +168,25 @@ impl FromStr for DFTBPlusParams {
     }
 }
 
+impl Display for Skf {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.header)?; // should have trailing newline?
+        if !self.line2.is_empty() {
+            writeln!(f)?;
+        }
+        for v in self.line2.iter() {
+            write!(f, " {v:20.12}")?;
+        }
+        writeln!(f, "\n{}", self.footer)?;
+        Ok(())
+    }
+}
+
 impl Display for DFTBPlusParams {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for (i, file) in self.files.iter().enumerate() {
             writeln!(f, "=== START OF SKF {} ===", i + 1)?;
-            write!(f, "{}", file.header)?; // should have trailing newline?
-            if !file.line2.is_empty() {
-                writeln!(f)?;
-            }
-            for v in file.line2.iter() {
-                write!(f, " {v:20.12}")?;
-            }
-            writeln!(f, "\n{}", file.footer)?;
+            write!(f, "{}", file)?;
             writeln!(f, "=== END OF SKF {} ===", i + 1)?;
         }
         Ok(())
@@ -170,11 +195,12 @@ impl Display for DFTBPlusParams {
 
 impl Params for DFTBPlusParams {
     fn incr_value(&mut self, idx: usize, delta: f64) {
-        todo!()
+        let mut v = self.params_mut();
+        *v[idx] += delta;
     }
 
     fn len(&self) -> usize {
-        todo!()
+        self.params().count()
     }
 }
 
@@ -229,6 +255,7 @@ mod tests {
 
     #[test]
     fn test_run() {
+        env_logger::init();
         let config = Config::load("test_files/dftb.toml");
         let queue = Local {
             dir: "inp".to_owned(),

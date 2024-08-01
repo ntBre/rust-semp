@@ -623,6 +623,7 @@ name = "rust-semp"
 version = "0.1.0"
 dependencies = [
  "approx",
+ "env_logger",
  "insta",
  "intder",
  "libc",

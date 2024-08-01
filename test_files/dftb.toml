@@ -37,7 +37,7 @@ Geometry = xyzFormat {
 Hamiltonian = DFTB {
     Scc = Yes
     SlaterKosterFiles = Type2FileNames {
-        Prefix = "/home/brent/Downloads/slako/mio/mio-1-1/"
+        Prefix = "{{.prefix}}"
         Separator = "-"
         Suffix = ".skf"
     }

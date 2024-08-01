@@ -43,7 +43,7 @@ impl Add<&Dvec> for MopacParams {
         Self(Params {
             names,
             atoms,
-            values: values + rhs,
+            values: (Dvec::from(values) + rhs).data.as_vec().clone(),
         })
     }
 }

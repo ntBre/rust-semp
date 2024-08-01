@@ -224,6 +224,7 @@ mod tests {
         config::Config,
         optimize::{energy::Energy, frequency::Frequency},
         run_algo,
+        utils::{setup, takedown},
     };
 
     use super::*;
@@ -256,6 +257,7 @@ mod tests {
     #[test]
     fn test_run() {
         env_logger::init();
+        setup();
         let config = Config::load("test_files/dftb.toml");
         let queue = Local {
             dir: "inp".to_owned(),
@@ -276,5 +278,6 @@ mod tests {
             Frequency::new(config.delta, false),
         );
         assert_debug_snapshot!(got);
+        takedown();
     }
 }

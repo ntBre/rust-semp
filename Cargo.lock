@@ -533,7 +533,6 @@ dependencies = [
 [[package]]
 name = "psqs"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/psqs#38225fc968132339e0c92f2ccf5f88a5974f0a9c"
 dependencies = [
  "chrono",
  "libc",

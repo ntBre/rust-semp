@@ -273,7 +273,7 @@ impl Driver for DFTBPlus {
         params: &Self::Params,
         mut template: Template,
     ) -> Template {
-        let dir = Path::new("tmparam");
+        let dir = Path::new("tmparam").canonicalize().unwrap();
         for f in params.files.iter() {
             let param_file = dir.join(&f.basename);
             f.to_file(param_file);

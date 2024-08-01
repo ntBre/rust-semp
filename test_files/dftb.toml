@@ -29,4 +29,47 @@ H          0.0000000000        1.5952720351        0.9069548903
 coord_type = { norm = true }
 true_freqs = [3139.8, 3108.7, 1595.1, 1275.8, 1056.9, 1007.9, 876.8, 876.5, 772.7]
 irreps     = [  "A1",   "B2",   "A1",   "A1",   "B2",   "A2",  "A1",  "B2",  "B1"]
-template = "scfcrt=1.D-21 aux(precision=14) PM6 threads=1"
+template = """
+Geometry = xyzFormat {
+    {{.geom}}
+}
+
+Hamiltonian = DFTB {
+    Scc = Yes
+    SlaterKosterFiles = Type2FileNames {
+        Prefix = "/home/brent/Downloads/slako/mio/mio-1-1/"
+        Separator = "-"
+        Suffix = ".skf"
+    }
+    MaxAngularMomentum {
+        C = "p"
+        H = "s"
+    }
+    Charge = {{.charge}}
+}
+
+Options {
+}
+
+Analysis {
+    CalculateForces = Yes
+}
+
+ParserOptions {
+    ParserVersion = 12
+}
+
+Driver = GeometryOptimization {
+  Optimizer = Rational {}
+  MovedAtoms = 1:-1
+  MaxSteps = 500
+  OutputPrefix = "geom.out"
+  Convergence {
+    Energy = 1e-8
+    GradElem = 1e-8
+    GradNorm = 1e-8
+    DispElem = 1e-7
+    DispNorm = 1e-7
+  }
+}
+"""

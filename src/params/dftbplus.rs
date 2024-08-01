@@ -236,9 +236,6 @@ mod tests {
             mopac: "/opt/mopac/mopac".to_owned(),
             template: None,
         };
-        let geom_file = "test_files/small07";
-        let param_file = "test_files/small.params";
-        let energy_file = "test_files/25.dat";
         let got = run_algo::<DFTBPlus, _, _, _>(
             &mut std::io::sink(),
             &config.molecules,

@@ -87,7 +87,7 @@ Config {
                 B1,
             ],
             template: Template {
-                header: "scfcrt=1.D-21 aux(precision=14) PM6 threads=1",
+                header: "Geometry = xyzFormat {\n    {{.geom}}\n}\n\nHamiltonian = DFTB {\n    Scc = Yes\n    SlaterKosterFiles = Type2FileNames {\n        Prefix = \"/home/brent/Downloads/slako/mio/mio-1-1/\"\n        Separator = \"-\"\n        Suffix = \".skf\"\n    }\n    MaxAngularMomentum {\n        C = \"p\"\n        H = \"s\"\n    }\n    Charge = {{.charge}}\n}\n\nOptions {\n}\n\nAnalysis {\n    CalculateForces = Yes\n}\n\nParserOptions {\n    ParserVersion = 12\n}\n\nDriver = GeometryOptimization {\n  Optimizer = Rational {}\n  MovedAtoms = 1:-1\n  MaxSteps = 500\n  OutputPrefix = \"geom.out\"\n  Convergence {\n    Energy = 1e-8\n    GradElem = 1e-8\n    GradNorm = 1e-8\n    DispElem = 1e-7\n    DispNorm = 1e-7\n  }\n}\n",
             },
         },
     ],

@@ -34,7 +34,7 @@ mod utils {
 
 /// Representation of a single SKF.
 #[derive(Clone, Debug)]
-struct SKF {
+struct Skf {
     /// Base filename for writing back to disk
     basename: PathBuf,
     /// Header junk
@@ -47,7 +47,7 @@ struct SKF {
     footer: String,
 }
 
-impl SKF {
+impl Skf {
     /// Construct a [Self] from the Slater-Koster file located at `path`.
     ///
     /// The second line of the homo-atomic Slater-Koster files are the only ones
@@ -115,7 +115,7 @@ impl SKF {
 
 #[derive(Clone, Debug)]
 pub struct DFTBPlusParams {
-    files: Vec<SKF>,
+    files: Vec<Skf>,
 }
 
 impl DFTBPlusParams {
@@ -144,8 +144,8 @@ impl FromStr for DFTBPlusParams {
                         Some(s)
                     }
                 })
-                .map(SKF::from_file)
-                .collect::<Result<Vec<SKF>, _>>()?,
+                .map(Skf::from_file)
+                .collect::<Result<Vec<Skf>, _>>()?,
         })
     }
 }
@@ -156,7 +156,7 @@ impl Display for DFTBPlusParams {
             writeln!(f, "=== START OF SKF {} ===", i + 1)?;
             write!(f, "{}", file.header)?; // should have trailing newline?
             if !file.line2.is_empty() {
-                writeln!(f, "")?;
+                writeln!(f)?;
             }
             for v in file.line2.iter() {
                 write!(f, " {v:20.12}")?;
@@ -182,10 +182,8 @@ impl Add<&Dvec> for DFTBPlusParams {
     type Output = Self;
 
     fn add(mut self, rhs: &Dvec) -> Self::Output {
-        let mut idx = 0;
-        for p in self.params_mut() {
+        for (idx, p) in self.params_mut().into_iter().enumerate() {
             *p += rhs[idx];
-            idx += 1;
         }
         self
     }

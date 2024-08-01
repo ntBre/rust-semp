@@ -109,6 +109,17 @@ pub struct DFTBPlusParams {
     files: Vec<SKF>,
 }
 
+impl DFTBPlusParams {
+    /// Returns a flattened vector of references into the first 7 entries of
+    /// each line2 (the optimizable parameters).
+    fn params_mut(&mut self) -> Vec<&mut f64> {
+        self.files
+            .iter_mut()
+            .flat_map(|mut s| &mut s.line2[..=6])
+            .collect()
+    }
+}
+
 impl FromStr for DFTBPlusParams {
     type Err = Box<dyn Error>;
 
@@ -146,11 +157,29 @@ impl Params for DFTBPlusParams {
     }
 }
 
+impl Add<&Dvec> for DFTBPlusParams {
+    type Output = Self;
+
+    fn add(mut self, rhs: &Dvec) -> Self::Output {
+        let mut idx = 0;
+        for p in self.params_mut() {
+            *p += rhs[idx];
+            idx += 1;
+        }
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use insta::assert_debug_snapshot;
+    use psqs::{program::dftbplus::DFTBPlus, queue::local::Local};
 
-    use crate::config::Config;
+    use crate::{
+        config::Config,
+        optimize::{energy::Energy, frequency::Frequency},
+        run_algo,
+    };
 
     use super::*;
 
@@ -166,5 +195,32 @@ mod tests {
     #[test]
     fn test_config() {
         assert_debug_snapshot!(Config::load("test_files/dftb.toml"));
+    }
+
+    #[test]
+    fn test_run() {
+        let config = Config::load("test_files/dftb.toml");
+        let queue = Local {
+            dir: "inp".to_owned(),
+            chunk_size: 128,
+            mopac: "/opt/mopac/mopac".to_owned(),
+            template: None,
+        };
+        let geom_file = "test_files/small07";
+        let param_file = "test_files/small.params";
+        let energy_file = "test_files/25.dat";
+        let got = run_algo::<DFTBPlus, _, _, _>(
+            &mut std::io::sink(),
+            &config.molecules,
+            DFTBPlusParams::from_str(&config.params).unwrap(),
+            Dvec::from(crate::utils::sort_freqs(&config)),
+            5,
+            true,
+            5,
+            queue,
+            false,
+            Frequency::new(config.delta, false),
+        );
+        assert_debug_snapshot!(got);
     }
 }

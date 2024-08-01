@@ -48,7 +48,10 @@ impl Params for psqs::program::mopac::Params {
 pub trait Driver:
     Program + Clone + Sync + Send + Serialize + for<'a> Deserialize<'a>
 {
-    type Params: Params + Display + Clone;
+    type Params: Params
+        + Display
+        + Clone
+        + for<'a> std::ops::Add<&'a crate::Dvec>;
 
     fn optimize_geometry<Q: Queue<Self> + Sync>(
         geom: Geom,

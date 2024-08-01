@@ -1,0 +1,64 @@
+---
+source: src/params/dftbplus.rs
+expression: "Config::load(\"test_files/dftb.toml\")"
+---
+Config {
+    job_limit: 10000,
+    chunk_size: 128,
+    sleep_int: 5,
+    max_iter: 5,
+    params: "/home/brent/Downloads/slako/mio/mio-1-1/H-H.skf\n/home/brent/Downloads/slako/mio/mio-1-1/H-O.skf\n",
+    broyden: false,
+    broyd_int: 10,
+    optimize: Energy,
+    reset_lambda: false,
+    molecules: [
+        Molecule {
+            atom_names: [
+                "C",
+                "C",
+                "C",
+                "H",
+                "H",
+            ],
+            charge: 0,
+            geometry: Zmat(
+                "C\nC 1 CC\nC 1 CC 2 CCC\nH 2 CH 1 HCC 3 180.0\nH 3 CH 1 HCC 2 180.0\n\nCC =                  1.42101898\nCCC =                55.60133141\nCH =                  1.07692776\nHCC =               147.81488230\n",
+            ),
+            coord_type: Normal(
+                true,
+            ),
+            true_freqs: [
+                3139.8,
+                3108.7,
+                1595.1,
+                1275.8,
+                1056.9,
+                1007.9,
+                876.8,
+                876.5,
+                772.7,
+            ],
+            irreps: [
+                A1,
+                B2,
+                A1,
+                A1,
+                B2,
+                A2,
+                A1,
+                B2,
+                B1,
+            ],
+            template: Template {
+                header: "scfcrt=1.D-21 aux(precision=14) PM6 threads=1",
+            },
+        },
+    ],
+    queue: Slurm,
+    mopac: None,
+    delta: 0.0001,
+    queue_template: None,
+    sort_ascending: false,
+    program: Mopac,
+}

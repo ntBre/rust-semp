@@ -150,6 +150,8 @@ impl Params for DFTBPlusParams {
 mod tests {
     use insta::assert_debug_snapshot;
 
+    use crate::config::Config;
+
     use super::*;
 
     #[test]
@@ -159,5 +161,10 @@ mod tests {
              test_files/H-H.skf
             ",
         ));
+    }
+
+    #[test]
+    fn test_config() {
+        assert_debug_snapshot!(Config::load("test_files/dftb.toml"));
     }
 }

@@ -14,6 +14,7 @@ pub mod raw;
 use raw::*;
 use symm::Irrep;
 
+#[cfg_attr(test, derive(Debug))]
 pub struct Config {
     /// The maximum number of jobs that should be written/submitted to the Queue
     /// at one time.
@@ -77,6 +78,7 @@ pub enum ProgramType {
 }
 
 #[allow(clippy::large_enum_variant)]
+#[cfg_attr(test, derive(Debug))]
 pub(crate) enum CoordType {
     Sic(Intder),
     Cart,
@@ -94,6 +96,7 @@ impl CoordType {
     }
 }
 
+#[cfg_attr(test, derive(Debug))]
 pub struct Molecule {
     /// Array of string atomic symbols like ["C", "C", "C", "H", "H"]
     pub atom_names: Vec<String>,

@@ -39,12 +39,7 @@ struct SKF {
     footer: String,
 }
 
-#[derive(Clone)]
-pub struct DFTBPlusParams {
-    files: Vec<SKF>,
-}
-
-impl DFTBPlusParams {
+impl SKF {
     /// Construct a [Self] from the Slater-Koster file located at `path`.
     ///
     /// The second line of the homo-atomic Slater-Koster files are the only ones
@@ -78,37 +73,60 @@ impl DFTBPlusParams {
         let path = path.as_ref();
         let name = path.file_name();
         let s = read_to_string(path)?;
-        // TODO this whole function is actually for a single SKF, not for a
-        // whole DFTBPlusParams
-        for (i, line) in s.lines().enumerate() {
+        let mut lines = s.lines();
+        let header = lines
+            .next()
+            .expect("expecting at least 1 line in skf")
+            .to_owned();
+        let line = lines.next().expect("expecting at least 2 lines in skf");
+        let mut rest = Vec::new();
+        let mut line2 = Vec::new();
+        if let Ok(fields) = utils::split_somehow(line) {
+            // assume homo-atom skf here
+            assert_eq!(fields.len(), 10, "expecting 10 fields for line2");
+            line2 = fields;
+        } else {
+            log::warn!("assuming hetero-atom skf, enable tracing to see line");
+            log::trace!("{name:?}:2: {line}");
+            rest.push(line);
+        };
+        for line in lines {
             if line.starts_with("Spline") {
                 break;
             }
-            if i == 0 {
-                // I don't think we actually need these separately for our
-                // purposes, but following the dftb+ parser for now.
-                let mut sp = line.split(',').map(str::trim);
-                let dist = sp.next().unwrap();
-                let ngrid = sp.next().unwrap();
-            } else if i == 2 {
-                // the only line we care about
-                if let Ok(fields) = utils::split_somehow(line) {
-                    // assume homo-atom skf here
-                    let &[ed, ep, es, spe, ud, up, us, fd, fp, fs] =
-                        &fields[..]
-                    else {
-                        panic!("wrong number of skf fields for homo atoms")
-                    };
-                } else {
-                    log::warn!(
-                        "assuming hetero-atom skf, enable tracing to see line"
-                    );
-                    log::trace!("{name:?}:{i}: {line}");
-                };
-            }
-            println!("{:?}", line);
+            rest.push(line);
         }
-        Ok(Self)
+        Ok(Self {
+            header,
+            line2,
+            footer: rest.join("\n"),
+        })
+    }
+}
+
+#[derive(Clone)]
+pub struct DFTBPlusParams {
+    files: Vec<SKF>,
+}
+
+impl FromStr for DFTBPlusParams {
+    type Err = Box<dyn Error>;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self {
+            files: s
+                .lines()
+                .filter_map(|s| {
+                    let s = s.trim();
+                    if s.is_empty() {
+                        None
+                    } else {
+                        Some(s)
+                    }
+                })
+                .map(SKF::from_file)
+                .collect::<Result<Vec<SKF>, _>>()?,
+        })
     }
 }
 
@@ -134,7 +152,11 @@ mod tests {
 
     #[test]
     fn test_from_file() {
-        DFTBPlusParams::from_file("test_files/H-O.skf").unwrap();
-        DFTBPlusParams::from_file("test_files/H-H.skf").unwrap();
+        DFTBPlusParams::from_str(
+            "test_files/H-O.skf
+             test_files/H-H.skf
+            ",
+        )
+        .unwrap();
     }
 }

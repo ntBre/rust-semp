@@ -21,6 +21,7 @@ log = "0.4.22"
 
 [dev-dependencies]
 approx = "0.5.1"
+insta = { version = "1.39.0", features = ["yaml"] }
 
 [[bin]]
 name = "one_iter"

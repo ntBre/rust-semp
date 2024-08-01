@@ -27,7 +27,7 @@ mod utils {
 }
 
 /// Representation of a single SKF.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct SKF {
     /// Header junk
     header: String,
@@ -104,7 +104,7 @@ impl SKF {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DFTBPlusParams {
     files: Vec<SKF>,
 }
@@ -148,15 +148,16 @@ impl Params for DFTBPlusParams {
 
 #[cfg(test)]
 mod tests {
+    use insta::assert_debug_snapshot;
+
     use super::*;
 
     #[test]
     fn test_from_file() {
-        DFTBPlusParams::from_str(
+        assert_debug_snapshot!(DFTBPlusParams::from_str(
             "test_files/H-O.skf
              test_files/H-H.skf
             ",
-        )
-        .unwrap();
+        ));
     }
 }

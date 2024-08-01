@@ -1,8 +1,14 @@
 #![allow(unused, unreachable_code)]
 
 use std::{
-    error::Error, ffi::OsString, fmt::Display, fs::read_to_string, io,
-    ops::Add, path::Path, str::FromStr,
+    error::Error,
+    ffi::OsString,
+    fmt::Display,
+    fs::read_to_string,
+    io,
+    ops::Add,
+    path::{Path, PathBuf},
+    str::FromStr,
 };
 
 use crate::{
@@ -29,6 +35,8 @@ mod utils {
 /// Representation of a single SKF.
 #[derive(Clone, Debug)]
 struct SKF {
+    /// Base filename for writing back to disk
+    basename: PathBuf,
     /// Header junk
     header: String,
     /// For now, the parameters to optimize. If empty, we can just write the
@@ -97,6 +105,7 @@ impl SKF {
             rest.push(line);
         }
         Ok(Self {
+            basename: name.unwrap().to_owned().into(),
             header,
             line2,
             footer: rest.join("\n"),

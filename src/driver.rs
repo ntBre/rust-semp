@@ -248,7 +248,22 @@ impl Driver for DFTBPlus {
         charge: isize,
         template: Template,
     ) -> Option<ProgramResult> {
-        todo!()
+        let opt = Job::new(
+            DFTBPlus::new_full(
+                format!("{dir}/{name}"),
+                params.clone(),
+                geom,
+                charge,
+                template,
+            ),
+            0,
+        );
+        let mut res = vec![Default::default(); 1];
+        let status = queue.energize(dir, vec![opt], &mut res);
+        if status.is_err() {
+            return None;
+        }
+        Some(res.pop().unwrap())
     }
 
     fn write_params(

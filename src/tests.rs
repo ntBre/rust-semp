@@ -167,7 +167,7 @@ fn test_load_params() {
 fn test_write_submit_script() {
     <Slurm as Queue<Mopac>>::write_submit_script(
         &Slurm::new(3, 3, 2, ".", false, None),
-        &string!["input1", "input2", "input3"],
+        string!["input1", "input2", "input3"],
         "/tmp/submit.slurm",
     );
     let got = fs::read_to_string("/tmp/submit.slurm")

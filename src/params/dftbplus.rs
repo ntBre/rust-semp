@@ -143,7 +143,19 @@ impl FromStr for DFTBPlusParams {
 
 impl Display for DFTBPlusParams {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        for (i, file) in self.files.iter().enumerate() {
+            writeln!(f, "=== START OF SKF {} ===", i + 1)?;
+            write!(f, "{}", file.header)?; // should have trailing newline?
+            if !file.line2.is_empty() {
+                writeln!(f, "")?;
+            }
+            for v in file.line2.iter() {
+                write!(f, " {v:20.12}")?;
+            }
+            writeln!(f, "\n{}", file.footer)?;
+            writeln!(f, "=== END OF SKF {} ===", i + 1)?;
+        }
+        Ok(())
     }
 }
 
@@ -172,7 +184,7 @@ impl Add<&Dvec> for DFTBPlusParams {
 
 #[cfg(test)]
 mod tests {
-    use insta::assert_debug_snapshot;
+    use insta::{assert_debug_snapshot, assert_snapshot};
     use psqs::{program::dftbplus::DFTBPlus, queue::local::Local};
 
     use crate::{
@@ -195,6 +207,17 @@ mod tests {
     #[test]
     fn test_config() {
         assert_debug_snapshot!(Config::load("test_files/dftb.toml"));
+    }
+
+    #[test]
+    fn test_display() {
+        let params = DFTBPlusParams::from_str(
+            "test_files/H-O.skf
+             test_files/H-H.skf
+            ",
+        )
+        .unwrap();
+        assert_snapshot!(params);
     }
 
     #[test]

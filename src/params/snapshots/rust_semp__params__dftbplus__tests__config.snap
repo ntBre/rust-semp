@@ -22,8 +22,44 @@ Config {
                 "H",
             ],
             charge: 0,
-            geometry: Zmat(
-                "C\nC 1 CC\nC 1 CC 2 CCC\nH 2 CH 1 HCC 3 180.0\nH 3 CH 1 HCC 2 180.0\n\nCC =                  1.42101898\nCCC =                55.60133141\nCH =                  1.07692776\nHCC =               147.81488230\n",
+            geometry: Xyz(
+                [
+                    Atom {
+                        atomic_number: 6,
+                        x: 0.0,
+                        y: 0.0,
+                        z: -0.8887390447,
+                        weight: None,
+                    },
+                    Atom {
+                        atomic_number: 6,
+                        x: 0.0,
+                        y: -0.6627588746,
+                        z: 0.3682596138,
+                        weight: None,
+                    },
+                    Atom {
+                        atomic_number: 6,
+                        x: 0.0,
+                        y: 0.6627588746,
+                        z: 0.3682596138,
+                        weight: None,
+                    },
+                    Atom {
+                        atomic_number: 1,
+                        x: 0.0,
+                        y: -1.5952720351,
+                        z: 0.9069548903,
+                        weight: None,
+                    },
+                    Atom {
+                        atomic_number: 1,
+                        x: 0.0,
+                        y: 1.5952720351,
+                        z: 0.9069548903,
+                        weight: None,
+                    },
+                ],
             ),
             coord_type: Normal(
                 true,

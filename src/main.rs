@@ -19,6 +19,7 @@ use rust_semp::utils::{load_energies, load_geoms, parse_params};
 use rust_semp::*;
 
 fn main() {
+    env_logger::init();
     // load first arg or default to `semp.toml`
     let args: Vec<String> = std::env::args().collect();
     let mut conf_name = "semp.toml".to_string();

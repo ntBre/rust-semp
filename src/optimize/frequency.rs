@@ -854,11 +854,12 @@ where
     ) -> na::DMatrix<f64> {
         let start = std::time::Instant::now();
 
+        setup();
+
         let rows = params.len();
         // build all the optimizations
         let opts = self.jac_opt(rows, params, molecules);
 
-        setup();
         let mut geoms = vec![Default::default(); opts.len()];
         submitter
             .energize("inp", opts, &mut geoms)

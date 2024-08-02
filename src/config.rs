@@ -75,6 +75,7 @@ pub enum ProgramType {
     #[default]
     Mopac,
     Molpro,
+    Dftb,
 }
 
 #[allow(clippy::large_enum_variant)]

@@ -4,7 +4,9 @@ use std::str::FromStr;
 
 use nalgebra as na;
 
+use params::dftbplus::DFTBPlusParams;
 use pbqff::config::Queue;
+use psqs::program::dftbplus::DFTBPlus;
 use psqs::program::molpro::Molpro;
 use psqs::program::mopac::Mopac;
 use psqs::queue::local::Local;
@@ -171,6 +173,32 @@ fn main() {
                     &mut param_log,
                     &conf.molecules,
                     MolproParams::from_str(&conf.params).unwrap(),
+                    na::DVector::from(ai),
+                    conf.max_iter,
+                    conf.broyden,
+                    conf.broyd_int,
+                    Pbs::new(
+                        conf.chunk_size,
+                        conf.job_limit,
+                        conf.sleep_int,
+                        "inp",
+                        false,
+                        conf.queue_template,
+                    ),
+                    conf.reset_lambda,
+                    Frequency::new(conf.delta, conf.sort_ascending),
+                ),
+                _ => todo!(),
+            };
+        }
+        (config::Protocol::Energy, config::ProgramType::Dftb) => todo!(),
+        (config::Protocol::Frequency, config::ProgramType::Dftb) => {
+            let ai = crate::utils::sort_freqs(&conf);
+            match conf.queue {
+                Queue::Pbs => run_algo::<DFTBPlus, _, _, _>(
+                    &mut param_log,
+                    &conf.molecules,
+                    DFTBPlusParams::from_str(&conf.params).unwrap(),
                     na::DVector::from(ai),
                     conf.max_iter,
                     conf.broyden,

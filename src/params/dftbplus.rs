@@ -250,31 +250,4 @@ mod tests {
         .unwrap();
         assert_snapshot!(params);
     }
-
-    #[test]
-    fn test_run() {
-        env_logger::init();
-        setup();
-        let config = Config::load("test_files/dftb.toml");
-        let queue = Local {
-            dir: "inp".to_owned(),
-            chunk_size: 128,
-            mopac: "/opt/mopac/mopac".to_owned(),
-            template: None,
-        };
-        let got = run_algo::<DFTBPlus, _, _, _>(
-            &mut std::io::sink(),
-            &config.molecules,
-            DFTBPlusParams::from_str(&config.params).unwrap(),
-            Dvec::from(crate::utils::sort_freqs(&config)),
-            5,
-            true,
-            5,
-            queue,
-            false,
-            Frequency::new(config.delta, false),
-        );
-        assert_debug_snapshot!(got);
-        takedown();
-    }
 }

@@ -276,11 +276,13 @@ impl Driver for DFTBPlus {
         let dir = Path::new("tmparam").canonicalize().unwrap();
         for f in params.files.iter() {
             let param_file = dir.join(&f.basename);
-            f.to_file(param_file);
+            f.to_file(param_file).expect("failed to write params");
         }
-        template.header = template
-            .header
-            .replace("{{.prefix}}", &dir.display().to_string());
+        // dftb+ just concatenates the Prefix and the filename, so we have to
+        // add the path separator here
+        let mut dir = dir.display().to_string();
+        dir.push('/');
+        template.header = template.header.replace("{{.prefix}}", &dir);
         template
     }
 

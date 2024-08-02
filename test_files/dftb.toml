@@ -6,7 +6,9 @@ max_iter = 5
 # slater-koster files, one per line
 params = """
 /home/brent/Downloads/slako/mio/mio-1-1/H-H.skf
-/home/brent/Downloads/slako/mio/mio-1-1/H-O.skf
+/home/brent/Downloads/slako/mio/mio-1-1/H-C.skf
+/home/brent/Downloads/slako/mio/mio-1-1/C-H.skf
+/home/brent/Downloads/slako/mio/mio-1-1/C-C.skf
 """
 optimize = "energy"
 broyden = false

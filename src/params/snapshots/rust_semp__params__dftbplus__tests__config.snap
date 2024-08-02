@@ -7,7 +7,7 @@ Config {
     chunk_size: 128,
     sleep_int: 5,
     max_iter: 5,
-    params: "/home/brent/Downloads/slako/mio/mio-1-1/H-H.skf\n/home/brent/Downloads/slako/mio/mio-1-1/H-O.skf\n",
+    params: "/home/brent/Downloads/slako/mio/mio-1-1/H-H.skf\n/home/brent/Downloads/slako/mio/mio-1-1/H-C.skf\n/home/brent/Downloads/slako/mio/mio-1-1/C-H.skf\n/home/brent/Downloads/slako/mio/mio-1-1/C-C.skf\n",
     broyden: false,
     broyd_int: 10,
     optimize: Energy,

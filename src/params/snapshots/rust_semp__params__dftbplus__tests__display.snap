@@ -523,6 +523,107 @@ expression: params
 8*0.0  -1.556664278487e-05   3.563397102997e-05 8*0.0   4.841875820352e-05  -3.746972002203e-05 
 8*0.0  -1.587250363236e-05   3.522658469562e-05 8*0.0   4.848711080393e-05  -3.673249706752e-05 
 8*0.0  -1.616913826660e-05   3.481105162224e-05 8*0.0   4.853693341810e-05  -3.599039677893e-05 
+Spline
+25 3.47
+2.872317393175472 2.731242468503665 -0.0683179495995197
+1.324181 1.374181    0.273928 -0.9830389937785564 1.411799999999931 0.3955975114242168
+1.374181 1.424181    0.228355 -0.8388920124428816 1.471139626713564 -1.977987557119605
+1.424181 1.474181    0.189841 -0.7066129564499226 1.174441493145624 -1.043647282943199
+1.474181 1.524181    0.157316 -0.5969961617574342 1.017894400704144 -1.031423311109158
+1.524181 1.574181    0.129882 -0.5029423965203383 0.8631809040377701 -0.8626594726198465
+1.574181 1.624181    0.106785 -0.4230942521612102 0.733781983144793 -0.67793879841172
+1.624181 1.674181    0.08738 -0.3548005948348187 0.6320911633830349 -0.6815853337336084
+1.674181 1.724181    0.071135 -0.2967033684995175 0.529853363322994 -0.4917198666528247
+1.724181 1.774181    0.057563 -0.2474059311671142 0.4560953833250703 -0.4635351996557094
+1.774181 1.824182    0.046275 -0.205272906832025 0.3865651033767138 -0.3807835591744103
+1.824182 1.874182    0.03693 -0.169471614294165 0.3294464271498748 -0.3442828253314231
+1.874182 1.924182    0.029237 -0.1391090927691632 0.2778040033501613 -0.2804429593378966
+1.924182 1.974182    0.022941 -0.1134320146291813 0.2357375594494767 -0.2379453373169778
+1.974182 2.024182    0.017829 -0.09164284871411092 0.20004575885193 -0.2077756913942128
+2.024182 2.074182    0.013721 -0.07319659051437449 0.1688794051427981 -0.1709518971062409
+2.074182 2.124182    0.010462 -0.05759078922839155 0.143236620576862 -0.1644167201806904
+2.124182 2.174182    0.00792 -0.04450025257206057 0.1185741125497585 -0.1393812221708699
+2.174182 2.224182    0.005974 -0.03368820048336619 0.09766692922412794 -0.1180583911361239
+2.224182 2.274182    0.004519 -0.02480694549447435 0.07995817055370942 -0.09238521328440716
+2.274182 2.324182    0.003467 -0.01750401753873643 0.06610038856104827 -0.08040075572641249
+2.324182 2.374182    0.002747 -0.01149698435057971 0.05404027520208644 -0.07401176380985178
+2.374182 2.424182    0.002298 -0.006648045058944969 0.04293851063060872 -0.0635521890341815
+2.424182 2.474182    0.002065 -0.002830835413640442 0.03340568227548144 -0.05577948005345174
+2.474182 2.524182    0.002 9.138671350680631e-05 0.02503876026746371 -0.1693298907519993
+2.524182 3.47    0.002046 0.001325288559613183 -0.0003607233453363208 -0.03192618831419139 0.0496711689724826 -0.020760701885977
+<Documentation>
+  <General>
+    <Identifier>O-H.skf</Identifier>
+    <Author>Marcus Elstner (elstner@phys.uni-paderborn.de)</Author>
+    <Creation>April 1997</Creation>
+    <Element1>H</Element1>
+    <Element2>O</Element2>
+    <Md5sum>38707214cbb1ec7e75890bcba6a969bf</Md5sum>
+    <Svn_Id>$Id: O-H.skf 2131 2006-11-10 12:15:26Z niehaus $</Svn_Id>
+    <Svn_URL>$URL: svn+ssh://svn/slako/trunk/skful/mio/O-H.skf $</Svn_URL>
+    <Compatibility>
+       <Partner Identifier="O-O.skf">
+    	   <Element1>O</Element1>
+           <Md5sum>1307bccbc31ef5eca3b6ffdd0eb53197</Md5sum>
+           <SvnLoc>trunk/skful/mio</SvnLoc>
+       </Partner> 
+       <Partner Identifier="H-H.skf">
+    	   <Element1>H</Element1>
+           <Md5sum>899f0bca0d424a7e655b640ab49cedc1</Md5sum>
+           <SvnLoc>trunk/skful/mio</SvnLoc>
+       </Partner> 
+    </Compatibility>
+  </General>
+  <SK_table>
+    <Code>twocnt</Code>
+    <Functional>pbe</Functional>
+    <Superposition>dense</Superposition>
+    <Basis atom="1">
+      <Shells>1s</Shells>
+      <Exponents>0.50 1.0 2.0</Exponents>
+      <Power>2</Power>
+      <Potential>2</Potential>
+      <Density>2.5</Density>
+      <Wavefunction>3.0</Wavefunction>
+    </Basis>
+    <Basis atom="2">
+      <Shells>2s 2p </Shells>
+      <Exponents>0.50 1.26 3.17 8.0</Exponents>
+      <Power>2</Power>
+      <Potential>2</Potential>
+      <Density>11.0</Density>
+      <Wavefunction>2.3 2.3 </Wavefunction>
+    </Basis>
+  </SK_table>
+  <E_rep>
+    <Storage>spline </Storage>
+    <SCC>yes</SCC>
+    <Ab_initio>Gaussian B3LYP/6-31G*</Ab_initio>
+    <Fit_systems>OH2</Fit_systems>
+  </E_rep>
+  <Misc>
+    <Accuracy>
+    Parameter set tested in combination for all O, N, C, H interactions.
+    Reaction energies show errors of about 5 kcal, although parameters
+    have overbinding of 5-10 kcal. Geometries have an accuracy of 0.014 A in bond
+    lengths and of  about 2 degree in bond angles. Vibrational frequencies show mean errors
+    of 5-7 % , although several modes show larger errors (e.g. C-C stretching modes).
+    </Accuracy>
+    <Failures/>
+    <Publications>
+      <Fit>Elstner M. Dissertation an der Universitaet Paderborn
+      </Fit>
+      <Other id="1">
+       M. Elstner et al., Phys. Rev. B  58 (1998) 7260.
+      </Other> 
+    </Publications>
+    <Notes>
+      Erep shifted in order to reproduce small errors in reaction energies.
+      Cutoff chosen in order to be smaller than second neighbor distance in typical
+      organic molecules (see Dissertation).
+    </Notes>
+  </Misc>
+</Documentation>
 === END OF SKF 1 ===
 === START OF SKF 2 ===
 0.02, 500,1
@@ -1047,4 +1148,128 @@ expression: params
 9*0.0   1.452420619317e-05 9*0.0  -8.323914276168e-05 
 9*0.0   1.448920563394e-05 9*0.0  -8.238875523220e-05 
 9*0.0   1.453885522259e-05 9*0.0  -8.151918642808e-05 
+Spline
+16 2.08
+3.729040602121917 1.528691797102741 -0.02094423834462684
+1.2 1.24    0.031597 -0.1959284110728784 0.3653124999999984 0.1036944205491228
+1.24 1.28    0.024351 -0.1662056778542427 0.3777558304658931 -0.5184721027456175
+1.28 1.32    0.018274 -0.1384738775101502 0.315539178136419 -0.2798060095665399
+1.32 1.36    0.013222 -0.114573812105156 0.2819624569884341 -0.2841788589882761
+1.36 1.4    0.009072 -0.09338087406922499 0.247860993909841 -0.2553535544806217
+1.4 1.44    0.005717 -0.07477769161794479 0.2172185673721665 -0.2256569230886414
+1.44 1.48    0.003059 -0.05848335945899692 0.1901397366015295 -0.2013937531651388
+1.48 1.52    0.001011 -0.04423887054606722 0.1659724862217128 -0.1875180642507936
+1.52 1.56    -0.000505 -0.03186115835673399 0.1434703185116176 -0.1891589898316849
+1.56 1.6    -0.001562 -0.02129149602699666 0.1207712397318154 -0.1495959764224673
+1.6 1.64    -0.00223 -0.01234785753527927 0.1028197225611193 -0.181207104478451
+1.64 1.68    -0.002571 -0.004992073831886318 0.08107487002370527 -0.1412006056636846
+1.68 1.72    -0.00265 0.0008161528628244223 0.0641307973440631 -0.1446154728668473
+1.72 1.76    -0.002524 0.005252462380588607 0.04677694060004142 -0.1865875028689151
+1.76 1.8    -0.002251 0.00809899761482113 0.02438644025577158 0.06284048434249809
+1.8 2.08    -0.001884 0.01035154716012685 0.03192729837687136 -0.2760522871379942 0.3964438998275914 0.06135847458156315
+<Documentation>
+  <General>
+    <Identifier>H-H.skf</Identifier>
+    <Author>Marcus Elstner (elstner@phys.uni-paderborn.de)</Author>
+    <Creation>April 1997</Creation>
+    <Element1>H</Element1>
+    <Md5sum>899f0bca0d424a7e655b640ab49cedc1</Md5sum>
+    <Svn_Id>$Id: H-H.skf 2131 2006-11-10 12:15:26Z niehaus $</Svn_Id>
+    <Svn_URL>$URL: svn+ssh://svn/slako/trunk/skful/mio/H-H.skf $</Svn_URL>
+    <Compatibility>
+       <Partner Identifier="S-H.skf">
+    	   <Element1>S</Element1>
+    	   <Element2>H</Element2>
+           <Md5sum>50ad30730cb40b75770d48b229f94098</Md5sum>
+           <SvnLoc>trunk/skful/mio</SvnLoc> 
+       </Partner>
+       <Partner Identifier="H-S.skf">
+    	   <Element1>H</Element1>
+    	   <Element2>S</Element2>
+           <Md5sum>50ad30730cb40b75770d48b229f94098</Md5sum>
+           <SvnLoc>trunk/skful/mio</SvnLoc> 
+       </Partner>
+       <Partner Identifier="O-H.skf">
+    	   <Element1>O</Element1>
+    	   <Element2>H</Element2>
+           <Md5sum>38707214cbb1ec7e75890bcba6a969bf</Md5sum>
+           <SvnLoc>trunk/skful/mio</SvnLoc> 
+       </Partner>
+       <Partner Identifier="H-O.skf">
+    	   <Element1>H</Element1>
+    	   <Element2>O</Element2>
+           <Md5sum>38707214cbb1ec7e75890bcba6a969bf</Md5sum>
+           <SvnLoc>trunk/skful/mio</SvnLoc> 
+       </Partner>
+       <Partner Identifier="N-H.skf">
+    	   <Element1>N</Element1>
+    	   <Element2>H</Element2>
+           <Md5sum>80cf79bc146a95b23476f1e6721968e8</Md5sum>
+           <SvnLoc>trunk/skful/mio</SvnLoc> 
+       </Partner>
+       <Partner Identifier="H-N.skf">
+    	   <Element1>H</Element1>
+    	   <Element2>N</Element2>
+           <Md5sum>80cf79bc146a95b23476f1e6721968e8</Md5sum>
+           <SvnLoc>trunk/skful/mio</SvnLoc> 
+       </Partner>
+       <Partner Identifier="C-H.skf">
+    	   <Element1>C</Element1>
+    	   <Element2>H</Element2>
+           <Md5sum>5e2e109a0b7eb08a36f6d774599a524b</Md5sum>
+           <SvnLoc>trunk/skful/mio</SvnLoc> 
+       </Partner>
+       <Partner Identifier="H-C.skf">
+    	   <Element1>H</Element1>
+    	   <Element2>C</Element2>
+           <Md5sum>5e2e109a0b7eb08a36f6d774599a524b</Md5sum>
+           <SvnLoc>trunk/skful/mio</SvnLoc>
+       </Partner>
+    </Compatibility>
+  </General>
+  <SK_table>
+    <Code>twocnt</Code>
+    <Functional>pbe</Functional>
+    <Superposition>dense</Superposition>
+    <Basis atom="1">
+      <Shells>1s </Shells>
+      <Exponents>0.50 1.0 2.0</Exponents>
+      <Power>2</Power>
+      <Potential>2</Potential>
+      <Density>2.50</Density>
+      <Wavefunction>3.0 </Wavefunction>
+    </Basis>
+    <Hubbard>td</Hubbard>
+  </SK_table>
+  <E_rep>
+    <Storage>spline </Storage>
+    <SCC>yes</SCC>
+    <Ab_initio>Gaussian B3LYP/6-31G*</Ab_initio>
+    <Fit_systems>H2 from 1.04-1.84au </Fit_systems>
+  </E_rep>
+  <Misc>
+    <Accuracy> Parameter set tested in combination for all O, N, C, H interactions.
+             Reaction energies show errors of about 5 kcal, although parameters
+             have overbinding of 5-10 kcal. Geometries have an accuracy of 0.014 A in bond
+             lengths and of  about 2 degree in bond angles. Vibrational frequencies show mean errors
+              of 5-7 % , although several modes show larger errors (e.g. C-C stretching modes).
+    </Accuracy>
+    <Failures>Blank</Failures>
+    <Publications>
+      <Fit>Elstner M. Dissertation an der Universitaet Paderborn
+      </Fit>
+      <Other id="1">
+                    M. Elstner et al., Phys. Rev. B  58 (1998) 7260. 
+      </Other>
+    </Publications>
+    <Notes> 
+        Erep shifted in order to reproduce small errors in reaction energies.
+        Cutoff chosen in order to be smaller than second neighbor distance in typical
+        organic molecules (see Dissertation).	   
+
+       A better value for comprossion might be 2.4 for Wf and 3.6 for density. 
+       This will be refitted soon. The reason for the actual choice can be read in my (Dissertation).
+    </Notes>
+  </Misc>
+</Documentation>
 === END OF SKF 2 ===

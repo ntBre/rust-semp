@@ -99,9 +99,6 @@ impl Skf {
             rest.push(line);
         };
         for line in lines {
-            if line.starts_with("Spline") {
-                break;
-            }
             rest.push(line);
         }
         Ok(Self {

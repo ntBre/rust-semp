@@ -18,11 +18,15 @@ build:
 	RUSTFLAGS='-C target-feature=+crt-static' \
 	cargo build --release --target x86_64-unknown-linux-gnu --bin rust-semp
 
+target := target/x86_64-unknown-linux-gnu/release/rust-semp
+
 eland: build
-	scp -C ${BASE}/target/x86_64-unknown-linux-gnu/release/rust-semp ${ELAND_DEST}
+	scp -C ${BASE}/$(target) ${ELAND_DEST}
+
+hash := $(shell git rev-parse HEAD | cut -c 1-7)
 
 woods: build
-	scp -C ${BASE}/target/x86_64-unknown-linux-gnu/release/rust-semp ${WOODS_DEST}${ALPHA}
+	scp -C ${BASE}/$(target) ${WOODS_DEST}.$(hash)
 
 eland.scripts: scripts/time.awk
 	scp -C $? ${ELAND_DEST}

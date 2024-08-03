@@ -14,6 +14,7 @@ use std::thread::{self};
 use symm::atom::Atom;
 use symm::Irrep;
 
+use crate::config::Config;
 use crate::Dvec;
 
 /// from [StackOverflow](https://stackoverflow.com/a/45145246)
@@ -289,6 +290,39 @@ pub(crate) fn mae(a: &DVector<f64>, b: &DVector<f64>) -> f64 {
         sum += f64::abs(a[i] - b[i]);
     }
     sum / l as f64
+}
+
+/// write the `true` frequencies to `true.dat` in the same format used in the
+/// log
+fn write_true(tru: &[f64]) {
+    let mut f =
+        std::fs::File::create("true.dat").expect("failed to make true.dat");
+    write!(f, "{:5}", "true").unwrap();
+    for t in tru {
+        write!(f, "{t:8.1}").unwrap();
+    }
+    writeln!(f).unwrap();
+}
+
+pub fn sort_freqs(conf: &Config) -> Vec<f64> {
+    let mut ai = Vec::new();
+    eprintln!("symmetry-sorted true frequencies:");
+    for (i, mol) in conf.molecules.iter().enumerate() {
+        eprintln!("Molecule {i}");
+        let irreps = &mol.irreps;
+        let mut a = mol.true_freqs.clone();
+        if conf.sort_ascending {
+            a = sort_ascending(&a, irreps);
+        } else {
+            a = sort_irreps(&a, irreps);
+        }
+        for (i, a) in zip(irreps, a.clone()) {
+            eprintln!("{i} {a:8.1}");
+        }
+        ai.extend(a);
+    }
+    write_true(&ai);
+    ai
 }
 
 #[cfg(test)]

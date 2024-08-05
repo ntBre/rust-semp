@@ -460,12 +460,13 @@ checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 [[package]]
 name = "pbqff"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/pbqff#61fa1480b03912b9b08353a536fbc543c14de97e"
+source = "git+https://github.com/ntBre/pbqff#2285995f3338e5992e305afcf0d7988f17274706"
 dependencies = [
  "clap",
  "env_logger",
  "intder",
  "libc",
+ "log",
  "nalgebra",
  "psqs",
  "rust-anpass",

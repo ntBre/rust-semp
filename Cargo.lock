@@ -460,12 +460,13 @@ checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 [[package]]
 name = "pbqff"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/pbqff#61fa1480b03912b9b08353a536fbc543c14de97e"
+source = "git+https://github.com/ntBre/pbqff#973246e3131ad61e2d9231d825f4a1140cc297f8"
 dependencies = [
  "clap",
  "env_logger",
  "intder",
  "libc",
+ "log",
  "nalgebra",
  "psqs",
  "rust-anpass",
@@ -490,7 +491,7 @@ dependencies = [
 [[package]]
 name = "psqs"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/psqs#38225fc968132339e0c92f2ccf5f88a5974f0a9c"
+source = "git+https://github.com/ntBre/psqs#7fe39adec81783b850a2b30948af5d3d2d99ac15"
 dependencies = [
  "chrono",
  "libc",
@@ -670,7 +671,7 @@ dependencies = [
 [[package]]
 name = "spectro"
 version = "0.1.0"
-source = "git+https://github.com/ntBre/spectro#afc966226d7eb42710865650cf986823646735af"
+source = "git+https://github.com/ntBre/spectro#8c4cd263bbba8c4bb51b762046e1c29162406671"
 dependencies = [
  "log",
  "nalgebra",

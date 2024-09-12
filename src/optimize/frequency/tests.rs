@@ -121,15 +121,26 @@ ZS             C      2.047558000000
         &config.molecules,
         9,
     );
-    let want = if hostname() == "keystone" {
-        load_mat("test_files/freq.jac")
-    } else if hostname() == "cactus" {
-        load_mat("test_files/cactus.jac")
-    } else {
-        load_mat("test_files/github.jac")
+    let jac_file = match hostname().as_str() {
+        "keystone" => "test_files/freq.jac",
+        "cactus" => "test_files/cactus.jac",
+        _ => "test_files/github.jac",
     };
+    if std::env::var("SEMP_RESET_JAC").is_ok() {
+        use std::io::Write;
+        let mut f = File::create(jac_file).unwrap();
+        for (i, row) in got.row_iter().enumerate() {
+            write!(f, "{}", i + 1).unwrap();
+            for r in row {
+                write!(f, " {r:20.12}").unwrap();
+            }
+            writeln!(f).unwrap();
+        }
+    }
+    let want = load_mat(jac_file);
     if !approx::abs_diff_eq!(got, want, epsilon = 1e-12) {
-        panic!("got\n{got}, wanted\n{want}");
+        let diff = (&got - &want).abs().max();
+        panic!("got\n{got}, wanted\n{want}\nmax diff={diff}");
     }
     takedown();
 }

@@ -273,7 +273,13 @@ impl Driver for DFTBPlus {
         params: &Self::Params,
         mut template: Template,
     ) -> Template {
-        let dir = Path::new("tmparam").canonicalize().unwrap();
+        let dir = Path::new("tmparam")
+            .canonicalize()
+            .unwrap()
+            .join(job_num.to_string());
+        if let Err(e) = std::fs::create_dir_all(&dir) {
+            panic!("failed to create param {dir:?} with {e}");
+        }
         for f in params.files.iter() {
             let param_file = dir.join(&f.basename);
             f.to_file(param_file).expect("failed to write params");

@@ -248,6 +248,7 @@ mod tests {
             ",
         )
         .unwrap();
+        assert_eq!(params.len(), 7);
         assert_snapshot!(params);
     }
 }

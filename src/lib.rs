@@ -129,7 +129,14 @@ where
     let ntrue = ai.len();
     let conv = optimizer.stat_multiplier();
     let mut params = params;
+
+    let nparams = params.len();
+    assert!(
+        nparams > 0,
+        "must provide at least one parameter to optimize"
+    );
     log_params(param_log, 0, &params);
+
     let semi_empirical_failure = || {
         eprintln!("semi_empirical failed, replacing");
         na::DVector::zeros(ntrue)
@@ -155,7 +162,9 @@ where
     let mut in_broyden = false;
     let mut need_num_jac = false;
     start = std::time::Instant::now();
-    log::trace!("initial num_jac with {} params", params.len());
+
+    log::trace!("initial num_jac with {nparams} params");
+
     let mut jac = optimizer.num_jac(&params, &queue, molecules, ntrue);
 
     // have to "initialize" this to satisfy compiler, but any use should panic

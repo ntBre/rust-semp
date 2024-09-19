@@ -306,7 +306,6 @@ impl Driver for DFTBPlus {
         mut template: Template,
     ) -> Self {
         let template = Self::write_params(0, &params, template);
-        println!("{}", template.header);
         Self::new(filename, template, charge, geom)
     }
 }

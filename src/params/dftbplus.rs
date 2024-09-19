@@ -21,12 +21,17 @@ mod utils {
 
     /// It looks like SKF file entries can be separated by either commas or
     /// spaces, so this function will try to split on both and make sure we get
-    /// all the entries we expect. It also converts everything to f64
+    /// all the entries we expect. It also converts everything to f64.
+    ///
+    /// Some SKF files (namely matsci) also exceed the expected 10 fields, so
+    /// only take the first `count` fields before converting to f64.
     pub(super) fn split_somehow(
         line: &str,
+        count: usize,
     ) -> Result<Vec<f64>, ParseFloatError> {
         line.split(',')
             .flat_map(|s| s.split_ascii_whitespace())
+            .take(count)
             .map(|s| s.parse::<f64>())
             .collect()
     }
@@ -89,7 +94,7 @@ impl Skf {
         let line = lines.next().expect("expecting at least 2 lines in skf");
         let mut rest = Vec::new();
         let mut line2 = Vec::new();
-        if let Ok(fields) = utils::split_somehow(line) {
+        if let Ok(fields) = utils::split_somehow(line, 10) {
             // assume homo-atom skf here
             assert_eq!(fields.len(), 10, "expecting 10 fields for line2");
             line2 = fields;
@@ -248,6 +253,13 @@ mod tests {
             ",
         )
         .unwrap();
+        assert_eq!(params.len(), 7);
+        assert_snapshot!(params);
+    }
+
+    #[test]
+    fn test_skf_trailing_junk() {
+        let params = DFTBPlusParams::from_str("test_files/matsci.skf").unwrap();
         assert_eq!(params.len(), 7);
         assert_snapshot!(params);
     }

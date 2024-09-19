@@ -633,6 +633,7 @@ dependencies = [
  "pbqff",
  "psqs",
  "rayon",
+ "regex",
  "serde",
  "symm",
  "taylor",

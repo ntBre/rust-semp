@@ -9,7 +9,10 @@ use std::{
     ops::Add,
     path::{Path, PathBuf},
     str::FromStr,
+    sync::LazyLock,
 };
+
+use regex::Regex;
 
 use crate::{
     driver::{self, Params},
@@ -83,8 +86,12 @@ impl Skf {
     /// so I think we can actually return as soon as we see it without breaking
     /// the calculations.
     pub fn from_file(path: impl AsRef<Path>) -> Result<Self, Box<dyn Error>> {
+        static HETATOM: LazyLock<Regex> = LazyLock::new(|| {
+            Regex::new("([A-Za-z]+)-([A-Za-z]+).skf").unwrap()
+        });
         let path = path.as_ref();
-        let name = path.file_name();
+        let name = path.file_name().unwrap().to_str().unwrap();
+        let hetatom = HETATOM.captures(name).is_some_and(|c| &c[1] != &c[2]);
         let s = read_to_string(path)?;
         let mut lines = s.lines();
         let header = lines
@@ -94,20 +101,18 @@ impl Skf {
         let line = lines.next().expect("expecting at least 2 lines in skf");
         let mut rest = Vec::new();
         let mut line2 = Vec::new();
-        if let Ok(fields) = utils::split_somehow(line, 10) {
-            // assume homo-atom skf here
+        if hetatom {
+            rest.push(line);
+        } else {
+            let fields = utils::split_somehow(line, 10).unwrap();
             assert_eq!(fields.len(), 10, "expecting 10 fields for line2");
             line2 = fields;
-        } else {
-            log::warn!("assuming hetero-atom skf, enable tracing to see line");
-            log::trace!("{name:?}:2: {line}");
-            rest.push(line);
-        };
+        }
         for line in lines {
             rest.push(line);
         }
         Ok(Self {
-            basename: name.unwrap().to_owned().into(),
+            basename: name.into(),
             header,
             line2,
             footer: rest.join("\n"),

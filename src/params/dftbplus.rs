@@ -91,7 +91,7 @@ impl Skf {
         });
         let path = path.as_ref();
         let name = path.file_name().unwrap().to_str().unwrap();
-        let hetatom = HETATOM.captures(name).is_some_and(|c| &c[1] != &c[2]);
+        let hetatom = HETATOM.captures(name).is_some_and(|c| c[1] != c[2]);
         let s = read_to_string(path)?;
         let mut lines = s.lines();
         let header = lines

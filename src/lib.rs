@@ -6,7 +6,7 @@ use nalgebra as na;
 use psqs::queue::Queue;
 
 use config::Molecule;
-use driver::Driver;
+use driver::{Driver, Params};
 use optimize::Optimize;
 use stats::Stats;
 use utils::log_params;
@@ -155,6 +155,7 @@ where
     let mut in_broyden = false;
     let mut need_num_jac = false;
     start = std::time::Instant::now();
+    log::trace!("initial num_jac with {} params", params.len());
     let mut jac = optimizer.num_jac(&params, &queue, molecules, ntrue);
 
     // have to "initialize" this to satisfy compiler, but any use should panic

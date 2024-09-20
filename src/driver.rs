@@ -1,4 +1,8 @@
-use std::{fmt::Display, path::Path};
+use std::{
+    fmt::Display,
+    path::Path,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 use psqs::{
     geom::Geom,
@@ -312,7 +316,15 @@ impl Driver for DFTBPlus {
         charge: isize,
         mut template: Template,
     ) -> Self {
-        let template = Self::write_params(0, &params, template);
+        static JOB_NUM: AtomicUsize = AtomicUsize::new(0);
+        let next = JOB_NUM.fetch_add(1, Ordering::Relaxed);
+        // NOTE: this is unlikely to be a problem because I would have to have
+        // usize::MAX files around at the same time, but I'll at least check for
+        // and log it if it happens
+        if next == usize::MAX {
+            log::warn!("DFTB+ job_num exceeded usize::MAX");
+        }
+        let template = Self::write_params(next, &params, template);
         Self::new(filename, template, charge, geom)
     }
 }

@@ -953,6 +953,8 @@ where
                     // just want to consume freqs
                     let mut fwd = pair[0].clone();
                     let mut bwd = pair[1].clone();
+                    log::trace!("fwd: {fwd}");
+                    log::trace!("bwd: {bwd}");
                     let (fl, bl) = (fwd.len(), bwd.len());
                     if fl != bl {
                         eprintln!("fl ({fl}) != bl ({bl}), resizing");

@@ -277,6 +277,7 @@ impl Driver for DFTBPlus {
             .canonicalize()
             .unwrap()
             .join(job_num.to_string());
+        log::trace!("writing parameters to {dir:?}");
         if let Err(e) = std::fs::create_dir_all(&dir) {
             panic!("failed to create param {dir:?} with {e}");
         }

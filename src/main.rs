@@ -155,9 +155,6 @@ fn main() {
                     Local {
                         dir: "inp".to_owned(),
                         chunk_size: conf.chunk_size,
-                        mopac: conf.mopac.expect(
-                            "mopac field must be specified for local queue",
-                        ),
                         template: None,
                     },
                     conf.reset_lambda,

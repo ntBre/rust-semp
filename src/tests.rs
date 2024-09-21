@@ -12,6 +12,7 @@ use crate::{
     utils::{load_energies, load_params},
 };
 
+use insta::assert_snapshot;
 use psqs::{
     geom::Geom,
     program::mopac::Mopac,
@@ -172,23 +173,7 @@ fn test_write_submit_script() {
     );
     let got = fs::read_to_string("/tmp/submit.slurm")
         .expect("failed to read /tmp/submit.slurm");
-    let want = "#!/bin/bash
-#SBATCH --job-name=semp
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=1
-#SBATCH -o /tmp/submit.slurm.out
-#SBATCH --no-requeue
-#SBATCH --mem=1gb
-export LD_LIBRARY_PATH=/home/qc/mopac2016/
-echo $SLURM_JOB_ID
-date
-hostname
-/home/qc/mopac2016/MOPAC2016.exe input1.mop
-/home/qc/mopac2016/MOPAC2016.exe input2.mop
-/home/qc/mopac2016/MOPAC2016.exe input3.mop
-";
-
-    assert_eq!(got, want);
+    assert_snapshot!(got);
     fs::remove_file("/tmp/submit.slurm").unwrap();
 }
 
@@ -289,7 +274,6 @@ fn test_num_jac() {
             &Local {
                 dir: "inp".to_owned(),
                 chunk_size: 128,
-                mopac: "/opt/mopac/mopac".to_owned(),
                 template: None,
             },
             &config.molecules,
@@ -307,7 +291,6 @@ fn test_num_jac() {
             &Local {
                 dir: "inp".to_owned(),
                 chunk_size: 128,
-                mopac: "/opt/mopac/mopac".to_owned(),
                 template: None,
             },
             &config.molecules,
@@ -493,7 +476,6 @@ fn test_algo() {
     let queue = Local {
         dir: "inp".to_owned(),
         chunk_size: 128,
-        mopac: "/opt/mopac/mopac".to_owned(),
         template: None,
     };
     let geom_file = "test_files/small07";

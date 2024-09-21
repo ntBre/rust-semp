@@ -16,7 +16,6 @@ fn main() {
     let queue = Local {
         dir: "inp".to_owned(),
         chunk_size: 128,
-        mopac: "/opt/mopac/mopac".to_owned(),
         template: None,
     };
     run_algo::<DFTBPlus, _, _, _>(

@@ -16,7 +16,6 @@ fn se_from_config(config: Config, want: Dvec) {
     let queue = Local {
         dir: "inp".to_owned(),
         chunk_size: 128,
-        mopac: "/opt/mopac/mopac".to_owned(),
         template: None,
     };
     let mut got = Optimize::<psqs::program::mopac::Mopac>::semi_empirical(
@@ -103,7 +102,6 @@ fn freq_num_jac() {
     let queue = Local {
         dir: "inp".to_owned(),
         chunk_size: 128,
-        mopac: "/opt/mopac/mopac".to_owned(),
         template: None,
     };
     let got = Optimize::<psqs::program::mopac::Mopac>::num_jac(

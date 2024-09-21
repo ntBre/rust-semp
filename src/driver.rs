@@ -37,16 +37,6 @@ pub trait Params {
     }
 }
 
-impl Params for psqs::program::mopac::Params {
-    fn incr_value(&mut self, idx: usize, delta: f64) {
-        self.values[idx] += delta;
-    }
-
-    fn len(&self) -> usize {
-        self.names.len()
-    }
-}
-
 /// [Driver] is an extension of [psqs::program::Program] with the additional
 /// methods needed to call `run_algo`.
 pub trait Driver:

@@ -23,7 +23,7 @@ impl FromStr for MopacParams {
 
 impl driver::Params for MopacParams {
     fn incr_value(&mut self, idx: usize, delta: f64) {
-        self.0.incr_value(idx, delta)
+        self.0.values[idx] += delta;
     }
 
     fn len(&self) -> usize {

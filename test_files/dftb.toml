@@ -1,0 +1,77 @@
+# global config
+job_limit = 10000
+chunk_size = 128
+sleep_int = 5
+max_iter = 5
+# slater-koster files, one per line
+params = """
+/home/brent/Downloads/slako/mio/mio-1-1/H-H.skf
+/home/brent/Downloads/slako/mio/mio-1-1/H-C.skf
+/home/brent/Downloads/slako/mio/mio-1-1/C-H.skf
+/home/brent/Downloads/slako/mio/mio-1-1/C-C.skf
+"""
+optimize = "energy"
+broyden = false
+broyd_int = 10
+reset_lambda = false
+queue = "slurm"
+delta = 1e-4
+
+[[molecule]]
+atom_names = ["C", "C", "C", "H", "H"]
+charge = 0
+dummies = []
+geometry = """
+C          0.0000000000        0.0000000000       -0.8887390447
+C          0.0000000000       -0.6627588746        0.3682596138
+C          0.0000000000        0.6627588746        0.3682596138
+H          0.0000000000       -1.5952720351        0.9069548903
+H          0.0000000000        1.5952720351        0.9069548903
+"""
+coord_type = { norm = true }
+true_freqs = [3139.8, 3108.7, 1595.1, 1275.8, 1056.9, 1007.9, 876.8, 876.5, 772.7]
+irreps     = [  "A1",   "B2",   "A1",   "A1",   "B2",   "A2",  "A1",  "B2",  "B1"]
+template = """
+Geometry = xyzFormat {
+    {{.geom}}
+}
+
+Hamiltonian = DFTB {
+    Scc = Yes
+    SlaterKosterFiles = Type2FileNames {
+        Prefix = "{{.prefix}}"
+        Separator = "-"
+        Suffix = ".skf"
+    }
+    MaxAngularMomentum {
+        C = "p"
+        H = "s"
+    }
+    Charge = {{.charge}}
+}
+
+Options {
+}
+
+Analysis {
+    CalculateForces = Yes
+}
+
+ParserOptions {
+    ParserVersion = 12
+}
+
+Driver = GeometryOptimization {
+  Optimizer = Rational {}
+  MovedAtoms = 1:-1
+  MaxSteps = 500
+  OutputPrefix = "geom.out"
+  Convergence {
+    Energy = 1e-8
+    GradElem = 1e-8
+    GradNorm = 1e-8
+    DispElem = 1e-7
+    DispNorm = 1e-7
+  }
+}
+"""

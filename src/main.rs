@@ -1,12 +1,12 @@
 use std::fs::File;
-use std::io::Write;
-use std::iter::zip;
 use std::os::unix::io::AsRawFd;
 use std::str::FromStr;
 
 use nalgebra as na;
 
+use params::dftbplus::DFTBPlusParams;
 use pbqff::config::Queue;
+use psqs::program::dftbplus::DFTBPlus;
 use psqs::program::molpro::Molpro;
 use psqs::program::mopac::Mopac;
 use psqs::queue::local::Local;
@@ -17,45 +17,11 @@ use rust_semp::optimize::energy::Energy;
 use rust_semp::optimize::frequency::Frequency;
 use rust_semp::params::molpro::MolproParams;
 use rust_semp::params::mopac::MopacParams;
-use rust_semp::utils::{
-    load_energies, load_geoms, parse_params, sort_ascending, sort_irreps,
-};
+use rust_semp::utils::{load_energies, load_geoms};
 use rust_semp::*;
 
-/// write the `true` frequencies to `true.dat` in the same format used in the
-/// log
-fn write_true(tru: &[f64]) {
-    let mut f =
-        std::fs::File::create("true.dat").expect("failed to make true.dat");
-    write!(f, "{:5}", "true").unwrap();
-    for t in tru {
-        write!(f, "{t:8.1}").unwrap();
-    }
-    writeln!(f).unwrap();
-}
-
-fn sort_freqs(conf: &Config) -> Vec<f64> {
-    let mut ai = Vec::new();
-    eprintln!("symmetry-sorted true frequencies:");
-    for (i, mol) in conf.molecules.iter().enumerate() {
-        eprintln!("Molecule {i}");
-        let irreps = &mol.irreps;
-        let mut a = mol.true_freqs.clone();
-        if conf.sort_ascending {
-            a = sort_ascending(&a, irreps);
-        } else {
-            a = sort_irreps(&a, irreps);
-        }
-        for (i, a) in zip(irreps, a.clone()) {
-            eprintln!("{i} {a:8.1}");
-        }
-        ai.extend(a);
-    }
-    write_true(&ai);
-    ai
-}
-
 fn main() {
+    env_logger::init();
     // load first arg or default to `semp.toml`
     let args: Vec<String> = std::env::args().collect();
     let mut conf_name = "semp.toml".to_string();
@@ -86,7 +52,7 @@ fn main() {
                 Queue::Pbs => run_algo(
                     &mut param_log,
                     &conf.molecules,
-                    MopacParams(parse_params(&conf.params)),
+                    MopacParams(conf.params.parse().unwrap()),
                     ai,
                     conf.max_iter,
                     conf.broyden,
@@ -110,7 +76,7 @@ fn main() {
                 Queue::Slurm => run_algo(
                     &mut param_log,
                     &conf.molecules,
-                    MopacParams(parse_params(&conf.params)),
+                    MopacParams(conf.params.parse().unwrap()),
                     ai,
                     conf.max_iter,
                     conf.broyden,
@@ -138,12 +104,12 @@ fn main() {
         // 1. intder template called `intder.in` (for SICs)
         // 2. optimize = "frequency" in `semp.toml`
         (config::Protocol::Frequency, config::ProgramType::Mopac) => {
-            let ai = sort_freqs(&conf);
+            let ai = crate::utils::sort_freqs(&conf);
             match conf.queue {
                 Queue::Pbs => run_algo::<Mopac, _, _, _>(
                     &mut param_log,
                     &conf.molecules,
-                    MopacParams(parse_params(&conf.params)),
+                    MopacParams(conf.params.parse().unwrap()),
                     na::DVector::from(ai),
                     conf.max_iter,
                     conf.broyden,
@@ -162,7 +128,7 @@ fn main() {
                 Queue::Slurm => run_algo::<Mopac, _, _, _>(
                     &mut param_log,
                     &conf.molecules,
-                    MopacParams(parse_params(&conf.params)),
+                    MopacParams(conf.params.parse().unwrap()),
                     na::DVector::from(ai),
                     conf.max_iter,
                     conf.broyden,
@@ -181,7 +147,7 @@ fn main() {
                 Queue::Local => run_algo::<Mopac, _, _, _>(
                     &mut param_log,
                     &conf.molecules,
-                    MopacParams(parse_params(&conf.params)),
+                    MopacParams(conf.params.parse().unwrap()),
                     na::DVector::from(ai),
                     conf.max_iter,
                     conf.broyden,
@@ -189,9 +155,6 @@ fn main() {
                     Local {
                         dir: "inp".to_owned(),
                         chunk_size: conf.chunk_size,
-                        mopac: conf.mopac.expect(
-                            "mopac field must be specified for local queue",
-                        ),
                         template: None,
                     },
                     conf.reset_lambda,
@@ -201,12 +164,38 @@ fn main() {
         }
         (config::Protocol::Energy, config::ProgramType::Molpro) => todo!(),
         (config::Protocol::Frequency, config::ProgramType::Molpro) => {
-            let ai = sort_freqs(&conf);
+            let ai = crate::utils::sort_freqs(&conf);
             match conf.queue {
                 Queue::Pbs => run_algo::<Molpro, _, _, _>(
                     &mut param_log,
                     &conf.molecules,
                     MolproParams::from_str(&conf.params).unwrap(),
+                    na::DVector::from(ai),
+                    conf.max_iter,
+                    conf.broyden,
+                    conf.broyd_int,
+                    Pbs::new(
+                        conf.chunk_size,
+                        conf.job_limit,
+                        conf.sleep_int,
+                        "inp",
+                        false,
+                        conf.queue_template,
+                    ),
+                    conf.reset_lambda,
+                    Frequency::new(conf.delta, conf.sort_ascending),
+                ),
+                _ => todo!(),
+            };
+        }
+        (config::Protocol::Energy, config::ProgramType::Dftb) => todo!(),
+        (config::Protocol::Frequency, config::ProgramType::Dftb) => {
+            let ai = crate::utils::sort_freqs(&conf);
+            match conf.queue {
+                Queue::Pbs => run_algo::<DFTBPlus, _, _, _>(
+                    &mut param_log,
+                    &conf.molecules,
+                    DFTBPlusParams::from_str(&conf.params).unwrap(),
                     na::DVector::from(ai),
                     conf.max_iter,
                     conf.broyden,

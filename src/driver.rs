@@ -1,15 +1,22 @@
-use std::fmt::Display;
+use std::{
+    fmt::Display,
+    path::Path,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 use psqs::{
     geom::Geom,
     program::{
-        molpro::Molpro, mopac::Mopac, Job, Program, ProgramResult, Template,
+        dftbplus::DFTBPlus, molpro::Molpro, mopac::Mopac, Job, Program,
+        ProgramResult, Template,
     },
     queue::Queue,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::params::{molpro::MolproParams, mopac::MopacParams};
+use crate::params::{
+    dftbplus::DFTBPlusParams, molpro::MolproParams, mopac::MopacParams,
+};
 
 pub trait Params {
     /// increment the `idx`th parameter value by `delta`
@@ -30,22 +37,15 @@ pub trait Params {
     }
 }
 
-impl Params for psqs::program::mopac::Params {
-    fn incr_value(&mut self, idx: usize, delta: f64) {
-        self.values[idx] += delta;
-    }
-
-    fn len(&self) -> usize {
-        self.names.len()
-    }
-}
-
 /// [Driver] is an extension of [psqs::program::Program] with the additional
 /// methods needed to call `run_algo`.
 pub trait Driver:
     Program + Clone + Sync + Send + Serialize + for<'a> Deserialize<'a>
 {
-    type Params: Params + Display + Clone;
+    type Params: Params
+        + Display
+        + Clone
+        + for<'a> std::ops::Add<&'a crate::Dvec>;
 
     fn optimize_geometry<Q: Queue<Self> + Sync>(
         geom: Geom,
@@ -57,6 +57,8 @@ pub trait Driver:
         template: Template,
     ) -> Option<ProgramResult>;
 
+    /// generate a parameter filename using `job_num`, write the parameters to
+    /// that file, and return the template with the parameter filename added
     fn write_params(
         job_num: usize,
         params: &Self::Params,
@@ -225,6 +227,94 @@ impl Driver for Molpro {
         // TODO do I need to do this?
         template.header =
             template.header.replace("{{.basis}}", &params.to_string());
+        Self::new(filename, template, charge, geom)
+    }
+}
+
+impl Driver for DFTBPlus {
+    type Params = DFTBPlusParams;
+
+    fn optimize_geometry<Q: Queue<Self> + Sync>(
+        geom: Geom,
+        params: &Self::Params,
+        queue: &Q,
+        dir: &str,
+        name: &str,
+        charge: isize,
+        template: Template,
+    ) -> Option<ProgramResult> {
+        let opt = Job::new(
+            DFTBPlus::new_full(
+                format!("{dir}/{name}"),
+                params.clone(),
+                geom,
+                charge,
+                template,
+            ),
+            0,
+        );
+        let mut res = vec![Default::default(); 1];
+        let status = queue.energize(dir, vec![opt], &mut res);
+        if status.is_err() {
+            return None;
+        }
+        Some(res.pop().unwrap())
+    }
+
+    fn write_params(
+        job_num: usize,
+        params: &Self::Params,
+        mut template: Template,
+    ) -> Template {
+        let dir = Path::new("tmparam")
+            .canonicalize()
+            .unwrap()
+            .join(job_num.to_string());
+        log::trace!("writing parameters to {dir:?}");
+        if let Err(e) = std::fs::create_dir_all(&dir) {
+            panic!("failed to create param {dir:?} with {e}");
+        }
+        for f in params.files.iter() {
+            let param_file = dir.join(&f.basename);
+            f.to_file(param_file).expect("failed to write params");
+        }
+        // dftb+ just concatenates the Prefix and the filename, so we have to
+        // add the path separator here
+        let mut dir = dir.display().to_string();
+        dir.push('/');
+        template.header = template.header.replace("{{.prefix}}", &dir);
+        template
+    }
+
+    #[allow(unused)]
+    fn build_jobs(
+        moles: Vec<Geom>,
+        dir: &'static str,
+        start_index: usize,
+        coeff: f64,
+        job_num: usize,
+        charge: isize,
+        tmpl: Template,
+    ) -> Vec<Job<Self>> {
+        todo!()
+    }
+
+    fn new_full(
+        filename: String,
+        params: Self::Params,
+        geom: Geom,
+        charge: isize,
+        template: Template,
+    ) -> Self {
+        static JOB_NUM: AtomicUsize = AtomicUsize::new(0);
+        let next = JOB_NUM.fetch_add(1, Ordering::Relaxed);
+        // NOTE: this is unlikely to be a problem because I would have to have
+        // usize::MAX files around at the same time, but I'll at least check for
+        // and log it if it happens
+        if next == usize::MAX {
+            log::warn!("DFTB+ job_num exceeded usize::MAX");
+        }
+        let template = Self::write_params(next, &params, template);
         Self::new(filename, template, charge, geom)
     }
 }

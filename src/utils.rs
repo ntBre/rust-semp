@@ -8,12 +8,14 @@ use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Write};
 use std::iter::zip;
 use std::path::Path;
+use std::str::FromStr;
 use std::sync::mpsc::Sender;
 use std::sync::{mpsc, LazyLock, Mutex, Once};
 use std::thread::{self};
 use symm::atom::Atom;
 use symm::Irrep;
 
+use crate::config::Config;
 use crate::Dvec;
 
 /// from [StackOverflow](https://stackoverflow.com/a/45145246)
@@ -96,7 +98,7 @@ pub fn load_params(filename: &str) -> Params {
             std::process::exit(1);
         }
     };
-    parse_params(&params)
+    Params::from_str(&params).unwrap()
 }
 
 pub(crate) static DIRS: &[&str] = &["inp", "inp/pts", "tmparam", "opt"];
@@ -105,11 +107,8 @@ pub(crate) static DIRS: &[&str] = &["inp", "inp/pts", "tmparam", "opt"];
 pub fn setup() {
     takedown();
     for dir in DIRS {
-        match fs::create_dir(dir) {
-            Ok(_) => (),
-            Err(e) => {
-                panic!("can't create '{dir}' for '{e}'");
-            }
+        if let Err(e) = fs::create_dir(dir) {
+            panic!("can't create '{dir}' for '{e}'");
         }
     }
 }
@@ -193,29 +192,6 @@ pub fn takedown() {
     );
 }
 
-/// parse a string containing lines like:
-///
-/// ```text
-///   USS            H    -11.246958000000
-///   ZS             H      1.268641000000
-/// ```
-/// into a vec of Params
-pub fn parse_params(params: &str) -> Params {
-    let lines = params.split('\n');
-    let mut names = Vec::new();
-    let mut atoms = Vec::new();
-    let mut values = Vec::new();
-    for line in lines {
-        let fields: Vec<&str> = line.split_whitespace().collect();
-        if fields.len() == 3 {
-            names.push(fields[0].to_string());
-            atoms.push(fields[1].to_string());
-            values.push(fields[2].parse().unwrap());
-        }
-    }
-    Params::from(names, atoms, values)
-}
-
 pub fn dump_vec<W: Write>(w: &mut W, vec: &Dvec) {
     for (i, v) in vec.iter().enumerate() {
         writeln!(w, "{i:>5}{v:>20.12}").unwrap();
@@ -289,6 +265,39 @@ pub(crate) fn mae(a: &DVector<f64>, b: &DVector<f64>) -> f64 {
         sum += f64::abs(a[i] - b[i]);
     }
     sum / l as f64
+}
+
+/// write the `true` frequencies to `true.dat` in the same format used in the
+/// log
+fn write_true(tru: &[f64]) {
+    let mut f =
+        std::fs::File::create("true.dat").expect("failed to make true.dat");
+    write!(f, "{:5}", "true").unwrap();
+    for t in tru {
+        write!(f, "{t:8.1}").unwrap();
+    }
+    writeln!(f).unwrap();
+}
+
+pub fn sort_freqs(conf: &Config) -> Vec<f64> {
+    let mut ai = Vec::new();
+    eprintln!("symmetry-sorted true frequencies:");
+    for (i, mol) in conf.molecules.iter().enumerate() {
+        eprintln!("Molecule {i}");
+        let irreps = &mol.irreps;
+        let mut a = mol.true_freqs.clone();
+        if conf.sort_ascending {
+            a = sort_ascending(&a, irreps);
+        } else {
+            a = sort_irreps(&a, irreps);
+        }
+        for (i, a) in zip(irreps, a.clone()) {
+            eprintln!("{i} {a:8.1}");
+        }
+        ai.extend(a);
+    }
+    write_true(&ai);
+    ai
 }
 
 #[cfg(test)]

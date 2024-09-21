@@ -1,11 +1,13 @@
-use super::Optimize;
-use crate::{
-    config::{self, CoordType},
-    driver::{Driver, Params},
-    utils::{mae, setup, takedown},
+use std::{
+    cmp::Ordering,
+    error::Error,
+    fmt::Display,
+    fs::File,
+    io::Write,
+    path::Path,
+    sync::{LazyLock, Mutex},
 };
-use na::DVector;
-use nalgebra as na;
+
 use pbqff::{
     coord_type::{
         cart::{self, Derivative, FirstPart},
@@ -24,17 +26,16 @@ use psqs::{
     program::{Job, ProgramResult, Template},
     queue::{Check, Queue},
 };
-use std::{
-    cmp::Ordering,
-    error::Error,
-    fmt::Display,
-    fs::File,
-    io::Write,
-    path::Path,
-    sync::{LazyLock, Mutex},
-};
 use symm::{Irrep, Molecule, PointGroup};
 use taylor::Taylor;
+
+use super::Optimize;
+use crate::{
+    config::{self, CoordType},
+    driver::{Driver, Params},
+    utils::{mae, setup, takedown},
+    Dmat, Dvec,
+};
 
 #[cfg(test)]
 mod tests;
@@ -65,8 +66,6 @@ struct FinDiff {
     fcs: Vec<f64>,
     targets: Vec<Target>,
     n: usize,
-    nfc2: usize,
-    nfc3: usize,
 }
 
 /// the state generated in build_jobs needed to finish running frequencies after
@@ -338,13 +337,13 @@ impl Frequency {
     }
 
     /// call `pbqff::coord_type::freqs`, but sort the frequencies by irrep
-    /// and then frequency and return the result as a DVector
+    /// and then frequency and return the result as a Dvec
     fn freqs<W: std::io::Write>(
         &self,
         w: &mut W,
         energies: &mut [f64],
         freq: FreqParts,
-    ) -> DVector<f64> {
+    ) -> Dvec {
         let (_, summary) = match freq {
             FreqParts::Sic {
                 intder,
@@ -370,8 +369,6 @@ impl Frequency {
                         mut fcs,
                         targets,
                         n,
-                        nfc2,
-                        nfc3,
                     },
             } => {
                 let (fc2, f3, f4) = Cart.make_fcs(
@@ -379,7 +376,7 @@ impl Frequency {
                     energies,
                     &mut fcs,
                     n,
-                    Derivative::Quartic(nfc2, nfc3, 0),
+                    Derivative::quartic(n),
                     None::<&Path>,
                 );
                 cart::freqs(None::<&Path>, &mol, fc2, f3, f4)
@@ -399,7 +396,7 @@ impl Frequency {
                     &output,
                 );
                 let o = spectro.finish(
-                    DVector::from(output.harms.clone()),
+                    Dvec::from(output.harms.clone()),
                     F3qcm::new(f3),
                     F4qcm::new(f4),
                     output.irreps,
@@ -417,17 +414,16 @@ impl Frequency {
                         mut fcs,
                         targets,
                         n,
-                        nfc2,
-                        nfc3,
                     },
             } => {
                 normal.map_energies(targets, energies, &mut fcs);
+                let (nfc2, nfc3, _) = Derivative::parts(n);
                 let cubs = &fcs[nfc2..nfc2 + nfc3];
                 let quarts = &fcs[nfc2 + nfc3..];
                 let (f3, f4) =
                     to_qcm(&output.harms, n, cubs, quarts, intder::HART);
                 let o = spectro.finish(
-                    DVector::from(output.harms.clone()),
+                    Dvec::from(output.harms.clone()),
                     F3qcm::new(f3),
                     F4qcm::new(f4),
                     output.irreps,
@@ -452,7 +448,7 @@ impl Frequency {
             eprintln!("filtered out {} non-finite corrs from", s - e);
         }
         let freqs = (self.sort_fn)(&freqs, &summary.irreps);
-        DVector::from(freqs)
+        Dvec::from(freqs)
     }
 
     /// generate all of the HFF energies for finding normal coordinates
@@ -562,8 +558,6 @@ impl Frequency {
                                 mut fcs,
                                 targets,
                                 n,
-                                nfc2,
-                                nfc3,
                             },
                         mol,
                         pg,
@@ -576,7 +570,7 @@ impl Frequency {
                         energy,
                         &mut fcs,
                         n,
-                        Derivative::Quartic(nfc2, nfc3, 0),
+                        Derivative::harmonic(n),
                         None::<&Path>,
                     );
                     let (s, o) = norm.harm_freqs(None, &mol, fc2);
@@ -663,16 +657,13 @@ fn build_findiff<F: FiniteDifference, D: Driver>(
     harmonic: bool,
 ) -> (FinDiff, Vec<Job<D>>) {
     let n = ncoords;
-    let nfc2 = n * n;
-    let nfc3 = n * (n + 1) * (n + 2) / 6;
-    let nfc4 = n * (n + 1) * (n + 2) * (n + 3) / 24;
-    let mut fcs = vec![0.0; nfc2 + nfc3 + nfc4];
     let mut target_map = BigHash::new(mol.clone(), pg);
     let deriv = if harmonic {
-        Derivative::Harmonic(nfc2)
+        Derivative::harmonic(n)
     } else {
-        Derivative::Quartic(nfc2, nfc3, nfc4)
+        Derivative::quartic(n)
     };
+    let mut fcs = vec![0.0; deriv.nfcs()];
     let geoms = coord.build_points(
         Geom::Xyz(mol.atoms.clone()),
         STEP_SIZE,
@@ -694,16 +685,7 @@ fn build_findiff<F: FiniteDifference, D: Driver>(
             mol.index + start_index,
         ));
     }
-    (
-        FinDiff {
-            n,
-            nfc2,
-            nfc3,
-            fcs,
-            targets,
-        },
-        jobs,
-    )
+    (FinDiff { n, fcs, targets }, jobs)
 }
 
 impl Default for Frequency {
@@ -723,7 +705,7 @@ where
         submitter: &Q,
         molecules: &[config::Molecule],
         ntrue: usize,
-    ) -> Option<DVector<f64>>
+    ) -> Option<Dvec>
     where
         Q: Queue<D> + Sync,
     {
@@ -837,7 +819,7 @@ where
             ret.extend(res.iter());
         }
         ret.resize(ntrue, 0.0);
-        Some(DVector::from(ret))
+        Some(Dvec::from(ret))
     }
 
     /// Compute the numerical Jacobian for the geomeries in `moles` and the
@@ -851,14 +833,15 @@ where
         submitter: &Q,
         molecules: &[config::Molecule],
         ntrue: usize,
-    ) -> na::DMatrix<f64> {
+    ) -> Dmat {
         let start = std::time::Instant::now();
+
+        setup();
 
         let rows = params.len();
         // build all the optimizations
         let opts = self.jac_opt(rows, params, molecules);
 
-        setup();
         let mut geoms = vec![Default::default(); opts.len()];
         submitter
             .energize("inp", opts, &mut geoms)
@@ -952,6 +935,8 @@ where
                     // just want to consume freqs
                     let mut fwd = pair[0].clone();
                     let mut bwd = pair[1].clone();
+                    log::trace!("fwd: {fwd}");
+                    log::trace!("bwd: {bwd}");
                     let (fl, bl) = (fwd.len(), bwd.len());
                     if fl != bl {
                         eprintln!("fl ({fl}) != bl ({bl}), resizing");
@@ -989,7 +974,7 @@ where
                 eprintln!("singular column {i} in jacobian, fixing");
                 tmp[0] = 1.0;
             }
-            cols.push(DVector::from(tmp));
+            cols.push(Dvec::from(tmp));
         }
 
         eprintln!(
@@ -997,14 +982,14 @@ where
             start.elapsed().as_millis() as f64 / 1000.
         );
 
-        na::DMatrix::from_columns(&cols)
+        Dmat::from_columns(&cols)
     }
 
     fn stat_multiplier(&self) -> f64 {
         1.0
     }
 
-    fn log(&self, iter: usize, got: &DVector<f64>, want: &DVector<f64>) {
+    fn log(&self, iter: usize, got: &Dvec, want: &Dvec) {
         let mut logger = self.logger.lock().unwrap();
         write!(logger, "{iter:5}").unwrap();
         for g in got {

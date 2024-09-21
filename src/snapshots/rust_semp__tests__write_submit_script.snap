@@ -1,0 +1,19 @@
+---
+source: src/tests.rs
+expression: got
+---
+#!/bin/bash
+#SBATCH --job-name=semp
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=1
+#SBATCH -o /tmp/submit.slurm.out
+#SBATCH --no-requeue
+#SBATCH --mem=1gb
+export LD_LIBRARY_PATH=/home/qc/mopac2016/
+export MOPAC_CMD=/home/qc/mopac2016/MOPAC2016.exe
+echo $SLURM_JOB_ID
+date
+hostname
+$MOPAC_CMD input1.mop
+$MOPAC_CMD input2.mop
+$MOPAC_CMD input3.mop

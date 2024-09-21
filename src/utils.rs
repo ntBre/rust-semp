@@ -8,6 +8,7 @@ use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Write};
 use std::iter::zip;
 use std::path::Path;
+use std::str::FromStr;
 use std::sync::mpsc::Sender;
 use std::sync::{mpsc, LazyLock, Mutex, Once};
 use std::thread::{self};
@@ -97,7 +98,7 @@ pub fn load_params(filename: &str) -> Params {
             std::process::exit(1);
         }
     };
-    parse_params(&params)
+    Params::from_str(&params).unwrap()
 }
 
 pub(crate) static DIRS: &[&str] = &["inp", "inp/pts", "tmparam", "opt"];
@@ -189,29 +190,6 @@ pub fn takedown() {
         "finished after {:.1} s",
         now.elapsed().as_millis() as f64 / 1000.0
     );
-}
-
-/// parse a string containing lines like:
-///
-/// ```text
-///   USS            H    -11.246958000000
-///   ZS             H      1.268641000000
-/// ```
-/// into a vec of Params
-pub fn parse_params(params: &str) -> Params {
-    let lines = params.split('\n');
-    let mut names = Vec::new();
-    let mut atoms = Vec::new();
-    let mut values = Vec::new();
-    for line in lines {
-        let fields: Vec<&str> = line.split_whitespace().collect();
-        if fields.len() == 3 {
-            names.push(fields[0].to_string());
-            atoms.push(fields[1].to_string());
-            values.push(fields[2].parse().unwrap());
-        }
-    }
-    Params::from(names, atoms, values)
 }
 
 pub fn dump_vec<W: Write>(w: &mut W, vec: &Dvec) {

@@ -17,7 +17,7 @@ use rust_semp::optimize::energy::Energy;
 use rust_semp::optimize::frequency::Frequency;
 use rust_semp::params::molpro::MolproParams;
 use rust_semp::params::mopac::MopacParams;
-use rust_semp::utils::{load_energies, load_geoms, parse_params};
+use rust_semp::utils::{load_energies, load_geoms};
 use rust_semp::*;
 
 fn main() {
@@ -52,7 +52,7 @@ fn main() {
                 Queue::Pbs => run_algo(
                     &mut param_log,
                     &conf.molecules,
-                    MopacParams(parse_params(&conf.params)),
+                    MopacParams(conf.params.parse().unwrap()),
                     ai,
                     conf.max_iter,
                     conf.broyden,
@@ -76,7 +76,7 @@ fn main() {
                 Queue::Slurm => run_algo(
                     &mut param_log,
                     &conf.molecules,
-                    MopacParams(parse_params(&conf.params)),
+                    MopacParams(conf.params.parse().unwrap()),
                     ai,
                     conf.max_iter,
                     conf.broyden,
@@ -109,7 +109,7 @@ fn main() {
                 Queue::Pbs => run_algo::<Mopac, _, _, _>(
                     &mut param_log,
                     &conf.molecules,
-                    MopacParams(parse_params(&conf.params)),
+                    MopacParams(conf.params.parse().unwrap()),
                     na::DVector::from(ai),
                     conf.max_iter,
                     conf.broyden,
@@ -128,7 +128,7 @@ fn main() {
                 Queue::Slurm => run_algo::<Mopac, _, _, _>(
                     &mut param_log,
                     &conf.molecules,
-                    MopacParams(parse_params(&conf.params)),
+                    MopacParams(conf.params.parse().unwrap()),
                     na::DVector::from(ai),
                     conf.max_iter,
                     conf.broyden,
@@ -147,7 +147,7 @@ fn main() {
                 Queue::Local => run_algo::<Mopac, _, _, _>(
                     &mut param_log,
                     &conf.molecules,
-                    MopacParams(parse_params(&conf.params)),
+                    MopacParams(conf.params.parse().unwrap()),
                     na::DVector::from(ai),
                     conf.max_iter,
                     conf.broyden,

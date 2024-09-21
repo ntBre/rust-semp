@@ -3,9 +3,8 @@ use crate::{
     config::{self, CoordType},
     driver::{Driver, Params},
     utils::{mae, setup, takedown},
+    Dmat, Dvec,
 };
-use na::DVector;
-use nalgebra as na;
 use pbqff::{
     coord_type::{
         cart::{self, Derivative, FirstPart},
@@ -338,13 +337,13 @@ impl Frequency {
     }
 
     /// call `pbqff::coord_type::freqs`, but sort the frequencies by irrep
-    /// and then frequency and return the result as a DVector
+    /// and then frequency and return the result as a Dvec
     fn freqs<W: std::io::Write>(
         &self,
         w: &mut W,
         energies: &mut [f64],
         freq: FreqParts,
-    ) -> DVector<f64> {
+    ) -> Dvec {
         let (_, summary) = match freq {
             FreqParts::Sic {
                 intder,
@@ -399,7 +398,7 @@ impl Frequency {
                     &output,
                 );
                 let o = spectro.finish(
-                    DVector::from(output.harms.clone()),
+                    Dvec::from(output.harms.clone()),
                     F3qcm::new(f3),
                     F4qcm::new(f4),
                     output.irreps,
@@ -427,7 +426,7 @@ impl Frequency {
                 let (f3, f4) =
                     to_qcm(&output.harms, n, cubs, quarts, intder::HART);
                 let o = spectro.finish(
-                    DVector::from(output.harms.clone()),
+                    Dvec::from(output.harms.clone()),
                     F3qcm::new(f3),
                     F4qcm::new(f4),
                     output.irreps,
@@ -452,7 +451,7 @@ impl Frequency {
             eprintln!("filtered out {} non-finite corrs from", s - e);
         }
         let freqs = (self.sort_fn)(&freqs, &summary.irreps);
-        DVector::from(freqs)
+        Dvec::from(freqs)
     }
 
     /// generate all of the HFF energies for finding normal coordinates
@@ -723,7 +722,7 @@ where
         submitter: &Q,
         molecules: &[config::Molecule],
         ntrue: usize,
-    ) -> Option<DVector<f64>>
+    ) -> Option<Dvec>
     where
         Q: Queue<D> + Sync,
     {
@@ -837,7 +836,7 @@ where
             ret.extend(res.iter());
         }
         ret.resize(ntrue, 0.0);
-        Some(DVector::from(ret))
+        Some(Dvec::from(ret))
     }
 
     /// Compute the numerical Jacobian for the geomeries in `moles` and the
@@ -851,7 +850,7 @@ where
         submitter: &Q,
         molecules: &[config::Molecule],
         ntrue: usize,
-    ) -> na::DMatrix<f64> {
+    ) -> Dmat {
         let start = std::time::Instant::now();
 
         setup();
@@ -992,7 +991,7 @@ where
                 eprintln!("singular column {i} in jacobian, fixing");
                 tmp[0] = 1.0;
             }
-            cols.push(DVector::from(tmp));
+            cols.push(Dvec::from(tmp));
         }
 
         eprintln!(
@@ -1000,14 +999,14 @@ where
             start.elapsed().as_millis() as f64 / 1000.
         );
 
-        na::DMatrix::from_columns(&cols)
+        Dmat::from_columns(&cols)
     }
 
     fn stat_multiplier(&self) -> f64 {
         1.0
     }
 
-    fn log(&self, iter: usize, got: &DVector<f64>, want: &DVector<f64>) {
+    fn log(&self, iter: usize, got: &Dvec, want: &Dvec) {
         let mut logger = self.logger.lock().unwrap();
         write!(logger, "{iter:5}").unwrap();
         for g in got {

@@ -106,11 +106,8 @@ pub(crate) static DIRS: &[&str] = &["inp", "inp/pts", "tmparam", "opt"];
 pub fn setup() {
     takedown();
     for dir in DIRS {
-        match fs::create_dir(dir) {
-            Ok(_) => (),
-            Err(e) => {
-                panic!("can't create '{dir}' for '{e}'");
-            }
+        if let Err(e) = fs::create_dir(dir) {
+            panic!("can't create '{dir}' for '{e}'");
         }
     }
 }

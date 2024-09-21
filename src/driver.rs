@@ -231,7 +231,6 @@ impl Driver for Molpro {
     }
 }
 
-#[allow(unused)]
 impl Driver for DFTBPlus {
     type Params = DFTBPlusParams;
 
@@ -287,6 +286,7 @@ impl Driver for DFTBPlus {
         template
     }
 
+    #[allow(unused)]
     fn build_jobs(
         moles: Vec<Geom>,
         dir: &'static str,
@@ -304,7 +304,7 @@ impl Driver for DFTBPlus {
         params: Self::Params,
         geom: Geom,
         charge: isize,
-        mut template: Template,
+        template: Template,
     ) -> Self {
         static JOB_NUM: AtomicUsize = AtomicUsize::new(0);
         let next = JOB_NUM.fetch_add(1, Ordering::Relaxed);

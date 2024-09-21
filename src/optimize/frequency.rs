@@ -1,10 +1,13 @@
-use super::Optimize;
-use crate::{
-    config::{self, CoordType},
-    driver::{Driver, Params},
-    utils::{mae, setup, takedown},
-    Dmat, Dvec,
+use std::{
+    cmp::Ordering,
+    error::Error,
+    fmt::Display,
+    fs::File,
+    io::Write,
+    path::Path,
+    sync::{LazyLock, Mutex},
 };
+
 use pbqff::{
     coord_type::{
         cart::{self, Derivative, FirstPart},
@@ -23,17 +26,16 @@ use psqs::{
     program::{Job, ProgramResult, Template},
     queue::{Check, Queue},
 };
-use std::{
-    cmp::Ordering,
-    error::Error,
-    fmt::Display,
-    fs::File,
-    io::Write,
-    path::Path,
-    sync::{LazyLock, Mutex},
-};
 use symm::{Irrep, Molecule, PointGroup};
 use taylor::Taylor;
+
+use super::Optimize;
+use crate::{
+    config::{self, CoordType},
+    driver::{Driver, Params},
+    utils::{mae, setup, takedown},
+    Dmat, Dvec,
+};
 
 #[cfg(test)]
 mod tests;

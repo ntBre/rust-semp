@@ -23,7 +23,7 @@ regex = "1.10.6"
 
 [dev-dependencies]
 approx = "0.5.1"
-insta = { version = "1.39.0", features = ["yaml"] }
+insta = { version = "1.39.0" }
 
 [[bin]]
 name = "one_iter"

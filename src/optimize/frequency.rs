@@ -66,8 +66,6 @@ struct FinDiff {
     fcs: Vec<f64>,
     targets: Vec<Target>,
     n: usize,
-    nfc2: usize,
-    nfc3: usize,
 }
 
 /// the state generated in build_jobs needed to finish running frequencies after
@@ -371,8 +369,6 @@ impl Frequency {
                         mut fcs,
                         targets,
                         n,
-                        nfc2,
-                        nfc3,
                     },
             } => {
                 let (fc2, f3, f4) = Cart.make_fcs(
@@ -380,7 +376,7 @@ impl Frequency {
                     energies,
                     &mut fcs,
                     n,
-                    Derivative::Quartic(nfc2, nfc3, 0),
+                    Derivative::quartic(n),
                     None::<&Path>,
                 );
                 cart::freqs(None::<&Path>, &mol, fc2, f3, f4)
@@ -418,11 +414,10 @@ impl Frequency {
                         mut fcs,
                         targets,
                         n,
-                        nfc2,
-                        nfc3,
                     },
             } => {
                 normal.map_energies(targets, energies, &mut fcs);
+                let (nfc2, nfc3, _) = Derivative::parts(n);
                 let cubs = &fcs[nfc2..nfc2 + nfc3];
                 let quarts = &fcs[nfc2 + nfc3..];
                 let (f3, f4) =
@@ -563,8 +558,6 @@ impl Frequency {
                                 mut fcs,
                                 targets,
                                 n,
-                                nfc2,
-                                nfc3,
                             },
                         mol,
                         pg,
@@ -577,7 +570,7 @@ impl Frequency {
                         energy,
                         &mut fcs,
                         n,
-                        Derivative::Quartic(nfc2, nfc3, 0),
+                        Derivative::harmonic(n),
                         None::<&Path>,
                     );
                     let (s, o) = norm.harm_freqs(None, &mol, fc2);
@@ -664,16 +657,13 @@ fn build_findiff<F: FiniteDifference, D: Driver>(
     harmonic: bool,
 ) -> (FinDiff, Vec<Job<D>>) {
     let n = ncoords;
-    let nfc2 = n * n;
-    let nfc3 = n * (n + 1) * (n + 2) / 6;
-    let nfc4 = n * (n + 1) * (n + 2) * (n + 3) / 24;
-    let mut fcs = vec![0.0; nfc2 + nfc3 + nfc4];
     let mut target_map = BigHash::new(mol.clone(), pg);
     let deriv = if harmonic {
-        Derivative::Harmonic(nfc2)
+        Derivative::harmonic(n)
     } else {
-        Derivative::Quartic(nfc2, nfc3, nfc4)
+        Derivative::quartic(n)
     };
+    let mut fcs = vec![0.0; deriv.nfcs()];
     let geoms = coord.build_points(
         Geom::Xyz(mol.atoms.clone()),
         STEP_SIZE,
@@ -695,16 +685,7 @@ fn build_findiff<F: FiniteDifference, D: Driver>(
             mol.index + start_index,
         ));
     }
-    (
-        FinDiff {
-            n,
-            nfc2,
-            nfc3,
-            fcs,
-            targets,
-        },
-        jobs,
-    )
+    (FinDiff { n, fcs, targets }, jobs)
 }
 
 impl Default for Frequency {

@@ -110,7 +110,7 @@ pub fn broyden_update(
 pub fn run_algo<D, O, Q, W>(
     param_log: &mut W,
     molecules: &[Molecule],
-    params: D::Params,
+    mut params: D::Params,
     ai: Dvec,
     max_iter: usize,
     broyden: bool,
@@ -128,7 +128,6 @@ where
 {
     let ntrue = ai.len();
     let conv = optimizer.stat_multiplier();
-    let mut params = params;
 
     let nparams = params.len();
     assert!(
